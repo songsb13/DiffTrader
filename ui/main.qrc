@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="img">
+    <file>img/blockchain24.png</file>
+    <file>img/blockchain22.png</file>
+    <file>img/blockchain23.png</file>
+  </qresource>
+</RCC>
