@@ -1,0 +1,1 @@
+USE_TAG_COINS = ['XRP', 'XMR']
