@@ -597,7 +597,7 @@ class TradeThread(QThread):
                 success, res, msg, st = self.trade(max_profit, deposit, fees)
 
                 requests.post(sai_url, data=self.collected_data)
-                self._save_profit_expected(data, bal_n_crncy[2], self.primary.NAME,
+                self._save_profit_expected(data, currencies, self.primary.NAME,
                                                     self.secondary.NAME)
             
                 if not success:
