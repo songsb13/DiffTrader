@@ -67,15 +67,12 @@ class TradeThread(QThread):
     
     def run(self):
         exchanges = []
-        for
-        
-        
-        self.primary = self.get_exchange(self.primary_exchange_str, self.primary_cfg)
+        self.primary = self.get_exchange(self.primary.NAME, self.primary_cfg)
         if not self.primary:
             self.stop()
             self.stopped.emit()
             return
-        self.secondary = self.get_exchange(self.secondary_exchange_str, self.secondary_cfg)
+        self.secondary = self.get_exchange(self.secondary.NAME, self.secondary_cfg)
         if not self.secondary:
             self.stop()
             self.stopped.emit()
@@ -133,6 +130,11 @@ class TradeThread(QThread):
             return False
 
     def get_exchange(self, exchange_name, cfg):
+        """
+        :param exchange_name: 입력받을 객체 이름
+        :param cfg: key, secret등 객체저장에 필요한 정보
+        :return: Exchange 객체
+        """
         key, secret = cfg['key'], cfg['secret']
         if exchange_name == 'Bithumb':
             return Bithumb(key, secret)
@@ -168,7 +170,7 @@ class TradeThread(QThread):
                                       "채팅 아이디가 올바르다면 봇에게 메세지를 보낸 후 다시 시도해 주세요."))
             
             # <--- 여기 부분은 업비트로 가야할거 같은뎅 --->
-            self.log_signal.emit(logging.INFO, "[{}] 업비트 인증을 시작합니다.".format(exchange_str))
+            self.log_signal.emit(logging.INFO, "[{}] 업비트 인증을 시작합니다.".format(exchange.NAME))
             if 'pydevd' in sys.modules:
                 exchange.chrome(headless=False)
             else:
@@ -176,7 +178,7 @@ class TradeThread(QThread):
             while True:
                 success, tokens, msg, st = exchange.sign_in(id_, pw)
                 if not tokens:
-                    self.log_signal.emit(logging.INFO, msg)
+                    self.log_signal.emit(logging.INFO, '')
                     exchange.off()
                     if '비밀번호' in msg:
                         return False
@@ -202,15 +204,10 @@ class TradeThread(QThread):
         pry_suc, pry_precision, pry_msg, pry_time  = self.primary.get_precision(currency)
         sec_suc, sec_precision, sec_msg, sec_time = self.secondary.get_precision(currency)
         
-        if not pry_suc:
-            self.log_signal.emit(logging.INFO, pry_msg)
-        
-        if not sec_suc:
-            self.log_signal.emit(logging.INFO, sec_msg)
-            
         is_success = (pry_suc and sec_suc)
         
         if not is_success:
+            [self.log_signal.emit(logging.INFO, msg) for msg in (pry_msg, sec_msg) if msg]
             time.sleep(max(pry_time, sec_time))
             return False
         
@@ -223,56 +220,86 @@ class TradeThread(QThread):
         return btc_precision, alt_precision
     
     def _default_btc_settings(self):
+        """
+            양쪽 거래소에 BTC가 있는지 확인하는 함수.
+            양쪽 거래소는 BTC를 가지고 있어야 프로그램 실행이 가능함.
+        :return: default_btc * 1.5 if exist_btc else None
+        """
+        empty_exchange_list = []
+        
         if not 'BTC' in self.primary_balance :
-            self.log_signal.emit(logging.INFO, "거래소 [{}]에 BTC가 없습니다.".format(self.primary_name))
+            empty_exchange_list.append(self.primary.NAME)
+        elif not 'BTC' in self.secondary_balance:
+            empty_exchange_list.append(self.secondary.NAME)
+        if empty_exchange_list:
+            self.log_signal.emit(logging.INFO, "거래소 {}에 BTC가 없습니다.".format(empty_exchange_list))
             return None
             
-        elif not 'BTC' in self.secondary_balance:
-            self.log_signal.emit(logging.INFO, "거래소 [{}]에 BTC가 존재하지 않습니다.".format(self.secondary_name))
-            return None
-        
         default_btc = max(self.primary_balance['BTC'], self.secondary_balance['BTC'])
         if not default_btc:
-            self.log_signal.emit(logging.INFO, "선택된 거래소들 {}에 BTC가 존재하지 않습니다.".format([self.primary_name, self.secondary_name]))
+            self.log_signal.emit(logging.INFO, '거래소 {}에 BTC 잔고가 없습니다.'.format([self.primary.NAME, self.secondary.NAME]))
             return None
         
         return default_btc * 1.5
     
     def _able_trading_exchange_validator(self, trading_type):
+        """
+        :param trading_type: main to sub or sub to main
+        :return: type에 대해 거래가 가능하면 True 이외는 False
+        """
         if self.primary_name == 'Korbit' and trading_type == 'm_to_s':
             # 코빗은 현재 s_to_m만 지원하고 있는 상태임.
             return False
         return True
         
     def _is_exist_balance_validator(self, alt):
+        """
+        :param alt: XRP, ETH ...
+        :return: 잔고있으면 True 그 외 False
+        """
+        balance_empty_list = []
+        
         if alt not in self.primary_balance.keys() or not self.primary_balance[alt]:
-            self.log_signal.emit(logging.INFO, "[거래불가] {} {} 잔고가 없습니다.".format(alt, self.primary_name))
+            balance_empty_list.append(self.primary.NAME)
+        
+        if alt not in self.secondary_balance.keys() or not self.secondary_balance[alt]:
+            balance_empty_list.append(self.secondary.NAME)
+        
+        if balance_empty_list:
+            self.log_signal.emit(logging.INFO, '[거래불가]{} {} 잔고가 없습니다.'.format(balance_empty_list, alt))
             return False
         
-        elif alt not in self.secondary_balance.keys() or not self.secondary_balance[alt]:
-            self.log_signal.emit(logging.INFO, "[거래불가] {} {} 잔고가 없습니다.".format(alt, self.secondary_name))
-            return False
+        return True
         
-        else:
-            return True
     
     def _fee_calculator(self, *args):
+        """
+        :param args: alt 출금비용 & 가격 & btc 출금비용
+        :return:
+        """
         alt_tx_fee, alt_price, btc_tx_fee = args
         
         return Decimal(alt_tx_fee * alt_price) - Decimal(btc_tx_fee)
         
     def get_max_profit(self, data, currencies, fees, fee_cnt):
+        """
+        :param data: 거래소 간 orderbook data
+        :param currencies: 거래소 간 intersection currencies
+        :param fees: 거래소 간 거래&출금 수수료
+        :param fee_cnt: 거래 수수료를 몇번 하는지에 대한 COUnt
+        :return: 거래소 간 거래 비교 후 가장 큰 차익을 내는 거래소의 각종 데이터들
+        """
         primary_trade_fee, secondary_trade_fee, primary_tx_fee, secondary_tx_fee = fees
         primary_fee_cnt, secondary_fee_cnt = fee_cnt
         max_profit = None
         primary_orderbook, secondary_orderbook, data = data
 
-        trading_type = ['m_to_s', 's_to_m']
         
         if isinstance(self.min_profit_per, str):
             self.log_signal.emit(logging.INFO, "예상 차익 퍼센트는 실수여야만 합니다.")
             return False
-        
+
+        trading_type = ['m_to_s', 's_to_m']
         for type_ in trading_type:
             if not self._able_trading_exchange_validator(type_):
                 continue
@@ -281,54 +308,54 @@ class TradeThread(QThread):
                 alt = currency.split('_')[1]
                 pry_orderbook, sec_orderbook = primary_orderbook[currency], secondary_orderbook[currency]
                 
-                
                 if not self._is_exist_balance_validator(alt):
                     continue
                 
                 if data[type_][currency] < self.min_profit_per:
                     continue
                 
+                expected = data[type_][currency] * 100
                 if trade == 'm_to_s':
-                    self.log_signal.emit(logging.INFO, '[{} {}->{}] 예상 차익: {} %'.format(currency, self.primary_name, self.secondary_name,
-                                                                          data[type_][currency] * 100))
+                    self.log_signal.emit(logging.INFO, '[{} {}->{}] 예상 차익: {} %'.format(currency, self.primary.NAME, self.secondary.NAME, expected))
                     self.log_signal.emit(logging.DEBUG, '[{}] {} ask: {}, {} bids: {}'.format(currency, self.primary_name, pry_orderbook['asks'],
-                                                                               self.secondary_name, sec_orderbook['bids']))
+                                                                               self.secondary.NAME, sec_orderbook['bids']))
                 else:
-                    self.log_signal.emit(logging.INFO, '[{} {}->{}] 예상 차익: {} %'.format(currency, self.secondary_name, self.primary_name,
-                                                                          data[type_][currency] * 100))
-                    self.log_signal.emit(logging.DEBUG, '[{}] {} ask: {}, {} bids: {}'.format(currency, self.secondary_name,
-                                             sec_orderbook['asks'], self.primary_name, primary_orderbook['bids']))
+                    self.log_signal.emit(logging.INFO, '[{} {}->{}] 예상 차익: {} %'.format(currency, self.secondary.NAME, self.primary.NAME, expected))
+                    self.log_signal.emit(logging.DEBUG, '[{}] {} ask: {}, {} bids: {}'.format(currency, self.secondary.NAME,
+                                             sec_orderbook['asks'], self.primary.NAME, primary_orderbook['bids']))
                     
                 res = self._get_precision(currency)
                 
                 if not res:
                     continue
                     
-                real_diff = ((1 + data[trade][currency]) * ((1 - primary_trade_fee) ** primary_fee_cnt) * (
+                real_diff = ((1 + data[type_][currency]) * ((1 - primary_trade_fee) ** primary_fee_cnt) * (
                         (1 - secondary_trade_fee) ** secondary_fee_cnt)) - 1
 
                 btc_precision, alt_precision = res
                 if type_ == 'm_to_s':
                     # 거래소 1에서 ALT를 사고 거래소2에서 ALT를 판다.
                     buy_alt_exchange_balance = self.primary_balance['BTC']
+                    buy_alt_exchange_orderbook = primary_orderbook[currency]
                     
                     sell_alt_exchange_balance = self.secondary_balance[alt]
                     sell_alt_exchange_orderbook = secondary_orderbook[currency]
                     
-                    buy_alt_exchange_name = self.primary_name
-                    sell_alt_exchange_name = self.secondary_name
+                    buy_alt_exchange_name = self.primary.NAME
+                    sell_alt_exchange_name = self.secondary.NAME
                     
                     calculated_fee = self._fee_calculator(primary_tx_fee[alt], primary_orderbook['asks'], secondary_tx_fee['BTC'])
                     
                 else:
                     # 거래소 1에서 ALT를 팔고 거래소 2에서 ALT를 산다.
                     buy_alt_exchange_balance = self.secondary_balance['BTC']
-    
+                    buy_alt_exchange_orderbook = secondary_orderbook[currency]
+
                     sell_alt_exchange_balance = self.primary_balance[alt]
                     sell_alt_exchange_orderbook = primary_orderbook[currency]
                     
-                    buy_alt_exchange_name = self.secondary_name
-                    sell_alt_exchange_name = self.primary_name
+                    buy_alt_exchange_name = self.secondary.NAME
+                    sell_alt_exchange_name = self.primary.NAME
                     
                     calculated_fee = self._fee_calculator(secondary_tx_fee[alt], secondary_orderbook['asks'], secondary_tx_fee['BTC'])
 
@@ -336,6 +363,8 @@ class TradeThread(QThread):
                                                      sell_alt_exchange_orderbook, currency, btc_precision, alt_precision)
 
                 btc_profit = (tradable_btc * Decimal(real_diff)) - Decimal(calculated_fee)
+                tradable_btc = tradable_btc.quantize(Decimal(10) ** -4, rounding=ROUND_DOWN)
+                self.log_signal.emit(logging.DEBUG, 'actual trading btc: {}'.format(tradable_btc))
 
                 self.log_signal.emit(logging.INFO, '[{}] 거래 가능: {} {} {} / {} {} BTC'.format(alt, buy_alt_exchange_name, alt_amount, alt,
                                      sell_alt_exchange_name, tradable_btc))
@@ -343,13 +372,8 @@ class TradeThread(QThread):
                 self.log_signal.emit(logging.INFO, '[{}] {} -> {} 수익: {} BTC / {} %'.format(alt, buy_alt_exchange_name, sell_alt_exchange_name,
                                      btc_profit, real_diff * 100))
 
-                tradable_btc = tradable_btc.quantize(Decimal(10) ** -4, rounding=ROUND_DOWN)
-                self.log_signal.emit(logging.DEBUG, 'actual trading btc: {}'.format(tradable_btc))
-                self.log_signal.emit(logging.DEBUG,
-                                     'tradable bids/asks: {}: {} {}: {}'.format(self.secondary_exchange_str,
-                                                                                secondary_orderbook[currency],
-                                                                                self.primary_exchange_str,
-                                                                                primary_orderbook[currency]))
+                self.log_signal.emit(logging.DEBUG, 'tradable bids/asks: {}: {} {}: {}'.format(sell_alt_exchange_name, sell_alt_exchange_orderbook,
+                                                                                buy_alt_exchange_name, buy_alt_exchange_orderbook))
 
                 if max_profit is None and (tradable_btc != 0 or alt_amount != 0):
                     max_profit = [btc_profit, tradable_btc, alt_amount, currency, type_]
@@ -363,27 +387,25 @@ class TradeThread(QThread):
                     'profit_percent': real_diff,
                     'profit_btc': btc_profit,
                     'current_time': datetime.now().strftime('%d-%m-%Y %H:%M:%S'),
-                    'primary_market': self.primary_exchange_str,
-                    'secondary_market': self.secondary_exchange_str,
+                    'primary_market': self.primary.NAME,
+                    'secondary_market': self.secondary.NAME,
                     'coin_name': currency
                 }
             
             return max_profit
         
-    def _save_profit_expected(self, profits, currencies, primary_name: str, secondary_name: str):
+    def _save_profit_expected(self, profits, currencies):
         """
         :param profits: 예상차익
         :param currencies: 거래될 코인종류
-        :param primary_name: 주 거래소 이름
-        :param secondary_name: 보조 거래소 이름
         :return: Boolean
         """
         #   m_to_s, s_to_m 정보가 담긴 딕셔너리만 보낸다. 0: primary orderbook, 1: secondary orderbook
         profit = profits[2]
         try:
             r = requests.get("http://saiblockchain.com/api/expected_profit",
-                             json={'profit': profit, 'currencies': currencies, 'primary': primary_name,
-                                   'secondary': secondary_name})
+                             json={'profit': profit, 'currencies': currencies, 'primary': self.primary.NAME,
+                                   'secondary': self.secondary.NAME})
             if r.status_code == 200:
                 return True
             else:
@@ -439,8 +461,8 @@ class TradeThread(QThread):
                 return False
         
         if self.primary_balance != pry_balance or self.secondary_balance != sec_balance:
-            self.log_signal.emit(logging.INFO, '[{} 잔고] {}'.format(self.primary_exchange_str, pry_balance))
-            self.log_signal.emit(logging.INFO, '[{} 잔고] {}'.format(self.secondary_exchange_str, sec_balance))
+            self.log_signal.emit(logging.INFO, '[{} 잔고] {}'.format(self.primary.NAME, pry_balance))
+            self.log_signal.emit(logging.INFO, '[{} 잔고] {}'.format(self.secondary.NAME, sec_balance))
 
             self.primary_balance = pry_balance
             self.secondary_balance = sec_balance
@@ -448,9 +470,9 @@ class TradeThread(QThread):
         currencies = list(set(sec_balance).intersection(pry_balance))
         self.log_signal.emit(logging.DEBUG, 'tradable coins: {}'.format(currencies))
 
-        attatched_currencies = ['BTC_' + coin for coin in currencies if not coin == 'BTC']
+        attached_currencies = ['BTC_' + coin for coin in currencies if not coin == 'BTC']
 
-        return attatched_currencies
+        return attached_currencies
 
     async def _deposits(self):
         """
@@ -465,9 +487,9 @@ class TradeThread(QThread):
         pry_suc, pry_data, pry_msg, pry_time = pry_res
         sec_suc, sec_data, sec_msg, sec_time = pry_res
         
-        if not pry_res:
+        if not pry_suc:
             self.log_signal.emit(logging.INFO, pry_msg)
-        if not sec_res:
+        if not sec_suc:
             self.log_signal.emit(logging.INFO, sec_msg)
             
         is_success = (pry_suc and sec_suc)
@@ -518,82 +540,83 @@ class TradeThread(QThread):
         fee_cnt = (self.primary.fee_count(), self.secondary.fee_count())
         refreshed = 0
         while evt.is_set() and not self.stop_flag:
-            try:
-                if time.time() >= refreshed + 600:
-                    fees = [await self._fees(exchange) async for exchange in self.exchanges]
-                    if not fees:
-                        #   실패 했을 경우 다시 요청
-                        continue
-                    refreshed = time.time()
+            if time.time() >= refreshed + 600:
+                fees = [await self._fees(exchange) async for exchange in self.exchanges]
+                if not fees:
+                    #   실패 했을 경우 다시 요청
+                    continue
+                refreshed = time.time()
 
-                currencies = await self._balance_and_currencies()
+            currencies = await self._balance_and_currencies()
+            
+            if not self.primary_balance or not self.secondary_balance:
+                continue
+            
+            elif not currencies:
+                continue
                 
-                if not self.primary_balance or not self.secondary_balance:
-                    continue
-                
-                elif not currencies:
-                    continue
-                    
-                default_btc = self._default_btc_settings()
-                
-                if default_btc is None:
-                    continue
+            default_btc = self._default_btc_settings()
+            
+            if default_btc is None:
+                continue
 
-                self.log_signal.emit(logging.DEBUG, "orderbook 호출")
-                
-                # 해당 위치에 있는게 적절한지 재고
-                success, data, msg, time_ = await self.primary.compare_orderbook(
-                    self.secondary, currencies, default_btc
-                )
+            self.log_signal.emit(logging.DEBUG, "orderbook 호출")
+            
+            # 해당 위치에 있는게 적절한지 재고
+            success, data, msg, time_ = await self.primary.compare_orderbook(
+                self.secondary, currencies, default_btc
+            )
+            if not success:
+                self.log_signal.emit(logging.INFO, msg)
+                time.sleep(time_)
+                continue
+
+            # btc_profit, tradable_btc, alt_amount, currency, trade
+            max_profit = self.get_max_profit(data, currencies, fees, fee_cnt)
+            if max_profit is None:
+                self.log_signal.emit(logging.INFO, "만족하는 조건을 찾지 못하였습니다. 조건 재검색...")
+                self._save_profit_expected(data, currencies, self.primary.NAME, self.secondary.NAME)
+                continue
+            elif max_profit is False:
+                # 예상차익이 실수가 아닌경우
+                continue
+
+            btc_profit = max_profit[0]
+
+            if DEBUG:
+                self.log_signal.emit(logging.INFO, "디버그 모드")
+                try:
+                    bot = Bot(token='607408701:AAGYRRnzUKTWRIdJvYzl8AQMlGz52vinoUA')
+                    bot.get_chat('348748653')
+                    bot.sendMessage('348748653',
+                                    '[{}] {} - {}: {}'.format(currencies, self.primary.NAME, self.secondary.NAME, data))
+                except:
+                    self.log_signal.emit(logging.INFO, "텔레그램 메세지 전송 실패")
+
+            if btc_profit >= self.min_profit_btc:
+                success, res, msg, st = self.trade(max_profit, deposit, fees)
+
+                requests.post(sai_url, data=self.collected_data)
+                self._save_profit_expected(data, bal_n_crncy[2], self.primary.NAME,
+                                                    self.secondary.NAME)
+            
                 if not success:
-                    self.log_signal.emit(logging.INFO, msg)
-                    time.sleep(time_)
+                    self.log_signal.emit(logging.INFO, "거래에 실패하였습니다. 처음부터 다시 진행합니다." )
+                    self.log_signal.emit(logging.DEBUG, "내용: [{}]".format(msg))
                     continue
 
-                # btc_profit, tradable_btc, alt_amount, currency, trade
-                max_profit = self.get_max_profit(data, currencies, fees, fee_cnt)
-                if max_profit is None:
-                    self.log_signal.emit(logging.INFO, "만족하는 조건을 찾지 못하였습니다. 조건 재검색...")
-                    self._save_profit_expected(data, currencies,
-                                              self.primary_exchange_str, self.secondary_exchange_str)
-                    continue
-                elif max_profit is False:
-                    # 예상차익이 실수가 아닌경우
-                    continue
+                self.log_signal.emit(logging.INFO, "차익거래에 성공했습니다.")
+            
+            else:
+                #   사용자 지정 BTC 보다 적은경우
+                self.log_signal.emit(logging.INFO,
+                                     "최고 이익이 사용자 지정 BTC 보다 작아 거래하지 않습니다.")
+                self._save_profit_expected(data, currencies)
 
-                btc_profit = max_profit[0]
-
-                if DEBUG:
-                    self.log_signal.emit(logging.INFO, "디버그 모드")
-                    try:
-                        bot = Bot(token='607408701:AAGYRRnzUKTWRIdJvYzl8AQMlGz52vinoUA')
-                        bot.get_chat('348748653')
-                        bot.sendMessage('348748653',
-                                        '[{}] {} - {}: {}'.format(currencies, self.primary_exchange_str,
-                                                                  self.secondary_exchange_str, data))
-                    except:
-                        self.log_signal.emit(logging.INFO, "텔레그램 메세지 전송 실패")
-
-                if btc_profit >= self.min_profit_btc:
-                    success, res, msg, st = self.trade(max_profit, deposit, fees)
-
-                    requests.post(sai_url, data=self.collected_data)
-                    self._save_profit_expected(data, bal_n_crncy[2], self.primary_exchange_str,
-                                                        self.secondary_exchange_str)
-                
-                    if not success:
-                        self.log_signal.emit(logging.INFO, "거래에 실패하였습니다. 처음부터 다시 진행합니다." )
-                        self.log_signal.emit(logging.DEBUG, "거래 실패 msg[{}]".format(msg))
-                        continue
-
-                    self.log_signal.emit(logging.INFO, "차익거래에 성공했습니다.")
-            except:
-                pass
-    
     def _is_exist_deposit_addrs_checker(self, addrs, coin):
         return True if coin in addrs and addrs[coin] else False
         
-    def deposit_trigger(self, *args):
+    def withdraw_trigger(self, *args):
         coin, btc_send_amount, send_amount, buy_coin_exchange, sell_coin_exchange, buy_coin_addr, sell_coin_addrs = args
         
         if self._is_exist_deposit_addrs_checker(sell_coin_addrs, coin):
@@ -617,10 +640,9 @@ class TradeThread(QThread):
         return True, '', 'address_not_exist', 0
     
     def buy_sell_alt_trader(self, *args):
-        buy_alt_exchange, sell_alt_exchange, max_profit, buy_alt_fees, sell_alt_fees = args
+        buy_alt_exchange, sell_alt_exchange, max_profit, buy_alt_fees = args
         
         buy_alt_td_fee, buy_alt_tx_fee = buy_alt_fees
-        sell_alt_td_fee, sell_alt_tx_fee = sell_alt_fees
         
         btc_profit, tradable_btc, alt_amount, currency, trade = max_profit
         alt = currency.split('_')[1]
@@ -636,7 +658,7 @@ class TradeThread(QThread):
         self.log_signal.emit(logging.DEBUG, "{}: {} 구입".format(buy_alt_exchange.NAME, alt))
 
         alt_amount = res
-        buy_alt_exchange.alt_to_base(currency, tradable_btc, alt_amount)
+        sell_alt_exchange.alt_to_base(currency, tradable_btc, alt_amount)
         
         self.log_signal.emit(logging.DEBUG, '{}: {} 판매'.format(sell_alt_exchange.NAME, alt))
         
@@ -667,8 +689,7 @@ class TradeThread(QThread):
         alt = currency.split('_')[1]
         if trade == 'm_to_s':
             buy_alt_fees = (primary_td_fee, primary_tx_fee)
-            sell_alt_fees = (secondary_td_fee, secondary_tx_fee)
-            success, send_amount, msg, time_ = self.buy_sell_alt_trader(self.primary, self.secondary, max_profit, buy_alt_fees, sell_alt_fees)
+            success, send_amount, msg, time_ = self.buy_sell_alt_trader(self.primary, self.secondary, max_profit, buy_alt_fees)
 
             btc_send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
                 Decimal(10) ** tradable_btc.as_tuple().exponent)
@@ -679,8 +700,7 @@ class TradeThread(QThread):
             if self.auto_withdrawal:
                 while not self._stop_flag:
                     # 거래소1 -> 거래소2 ALT 이체
-                    
-                    success, data, msg, time_ = self.deposit_trigger(alt, btc_send_amount, send_amount, self.primary, self.secondary, primary_deposit_addrs,
+                    success, data, msg, time_ = self.withdraw_trigger(alt, btc_send_amount, send_amount, self.primary, self.secondary, primary_deposit_addrs,
                                                    secondary_deposit_addrs)
                     
                     if success:
@@ -689,17 +709,15 @@ class TradeThread(QThread):
                             return True, '', '', 0
                     
                     else:
-                        self.log_signal.emit(logging.INFO,
-                                             '{}: {} 이체에 실패했습니다.'.format(self.primary.NAME, alt))
-                        self.log_signal.emit(logging.INFO, '내용: [{}]'.format(msg))
-                        self.log_signal.emit(logging.INFO, "이체에러가 계속되면 수동정지 해주세요.")
+                        self.log_signal.emit(logging.INFO, '{}: {} 이체에 실패했습니다. 에러가 계속되면 중지해주세요.'.format(self.primary.NAME, alt))
+                        self.log_signal.emit(logging.DEBUG, '내용: [{}]'.format(msg))
                         continue
                         
                     break
                     
                 while not self._stop_flag:
                     # 거래소2 -> 거래소1 BTC 이체
-                    success, data, msg, time_ = self.deposit_trigger('BTC', btc_send_amount, send_amount, self.secondary, self.primary, secondary_deposit_addrs,
+                    success, data, msg, time_ = self.withdraw_trigger('BTC', btc_send_amount, send_amount, self.secondary, self.primary, secondary_deposit_addrs,
                                                                      primary_deposit_addrs)
     
                     if success:
@@ -708,10 +726,8 @@ class TradeThread(QThread):
                             return True, '', '', 0
     
                     else:
-                        self.log_signal.emit(logging.INFO,
-                                             '{}: BTC 이체에 실패했습니다.'.format(self.secondary.NAME))
-                        self.log_signal.emit(logging.INFO, '내용: [{}]'.format(msg))
-                        self.log_signal.emit(logging.INFO, "이체에러가 계속되면 수동정지 해주세요.")
+                        self.log_signal.emit(logging.INFO, '{}: BTC 이체에 실패했습니다. 에러가 게/속되면 중지해주세요.'.format(self.secondary.NAME))
+                        self.log_signal.emit(logging.DEBUG, '내용: [{}]'.format(msg))
                         continue
                         
                     break
@@ -726,9 +742,54 @@ class TradeThread(QThread):
             
         else:
             buy_alt_fees = (secondary_td_fee, secondary_tx_fee)
-            sell_alt_fees = (primary_td_fee, primary_tx_fee)
             
-            success, send_amount, msg, time_ = self.buy_sell_alt_trader(self.secondary, self.primary, max_profit, buy_alt_fees, sell_alt_fees)
+            success, send_amount, msg, time_ = self.buy_sell_alt_trader(self.secondary, self.primary, max_profit, buy_alt_fees)
             
+            btc_send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
+                Decimal(10) ** tradable_btc.as_tuple().exponent)
+
             if not success:
                 return False
+            
+            if self.auto_withdrawal:
+                while not self._stop_flag:
+                    # 거래소2 -> 거래소1 ALT 이체
+                    success, data, msg, time_ = self.withdraw_trigger(alt, btc_send_amount, send_amount, self.secondary, self.primary, secondary_deposit_addrs,
+                                                   primary_deposit_addrs)
+                    if success:
+                        if 'address_not_exist' in msg:
+                            self.stop()
+                            return True, '', '', 0
+
+                    else:
+                        self.log_signal.emit(logging.INFO, '{}: {} 이체에 실패했습니다. 에러가 계속되면 정지해주세요.'.format(self.secondary.NAME, alt))
+                        self.log_signal.emit(logging.INFO, '내용: [{}]'.format(msg))
+                        continue
+
+                    break
+
+                while not self._stop_flag:
+                    # 거래소1 -> 거래소2 BTC 이체
+                    success, data, msg, time_ = self.withdraw_trigger('BTC', btc_send_amount, send_amount,
+                                                                      self.primary, self.secondary,
+                                                                      primary_deposit_addrs,
+                                                                      secondary_deposit_addrs)
+                    if success:
+                        if 'address_not_exist' in msg:
+                            self.stop()
+                            return True, '', '', 0
+
+                    else:
+                        self.log_signal.emit(logging.INFO, '{}: {} 이체에 실패했습니다. 실패가 계속되면 정지해주세요.'.format(self.primary.NAME, alt))
+                        self.log_signal.emit(logging.DEBUG, '내용: [{}]'.format(msg))
+                        continue
+
+                    break
+
+            else:
+                self.log_signal.emit(logging.INFO, "수동 이체 상태입니다. 아래 안내대로 수동 이체해주세요.")
+                self.log_signal.emit(logging.INFO, '{}->{} {} {} 만큼 이동'.format(self.secondary.NAME, self.primary.NAME, alt, send_amount))
+                self.log_signal.emit(logging.INFO, '{}->{} BTC {} 만큼 이동'.format(self.primary.NAME, self.secondary.NAME, btc_send_amount))
+
+            self.log_signal.emit(logging.INFO, "거래가 완료되었습니다. 수동이체 후 다시 시작해주세요.")
+            self.stop()
