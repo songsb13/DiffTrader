@@ -77,11 +77,16 @@ class OrderbookWatcher(object):
 		각 거래소 별 파라메터가 다를 수 있음.
 		:return:
 		"""
+		
+		self.log_signal.emit(logging.DEBUG, self._log_header + 'parameter_colleciting_by_market_name')
 		exchange_name = self._exchange.NAME.lower()
 		if exchange_name == 'upbit':
 			market_listing = self._watch_currencies
 			data = [{"ticket": "gimo's_ticket"}, {"type": "ticker", "codes": market_listing, "isOnlyRealtime": True}]
 		elif exchange_name == 'bithumb':
+			pass
+		
+		elif exchange_name == 'binance':
 			pass
 		
 		else:
@@ -99,6 +104,7 @@ class OrderbookWatcher(object):
 			:return: price_dic에 값이 없거나 trade_price의 값이 변경된게 감지되면 True
 			그 외는 False
 		"""
+		self.log_signal.emit(logging.DEBUG, self._log_header + 'is_price_changed_checker param={}'.format(args))
 		market, trade_price, price_dic = args
 		return True if market not in price_dic or price_dic[market] != trade_price \
 			else False
@@ -109,7 +115,10 @@ class OrderbookWatcher(object):
 		:param coin: coin name
 		:return: True if already running else False
 		"""
-		return self._is_already_thread_running_flag[exchange_name][coin]
+		is_already_running = self._is_already_thread_running_flag[exchange_name][coin]
+		
+		self.log_signal.emit(logging.DEBUG, self._log_header + 'running_check param=[{}]'.format(is_already_running))
+		return is_already_running
 		
 
 """
@@ -122,3 +131,4 @@ class OrderbookWatcher(object):
 	lock은 orderbookWatcher 윗단에서 parameter, 거래소 pair로 dict해서 받는다.
 
 """
+
