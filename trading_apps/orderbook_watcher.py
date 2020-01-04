@@ -17,6 +17,7 @@ class OrderbookWatcher(object):
 		self._is_already_thread_running_flag = {exchange.NANE: {currency: False for currency in input_currencies} for exchange in exchanges}
 		
 		self._stop_flag = False
+		self._price_dic = {}
 		
 		self._exchange_ws = self._exchange.websocket()
 		
@@ -82,11 +83,10 @@ class OrderbookWatcher(object):
 		"""
 		
 		self.log_signal.emit(logging.DEBUG, self._log_header + 'Start get_current_price')
-		price_dic = {}
 		market_price_data_set = self._exchange_ws.request_all_market_price_data(self._watch_currencies)
 		for market, trade_price in market_price_data_set.items():
-			if self._is_price_changed_checker(market, trade_price, price_dic):
-				price_dic[market] = trade_price
+			if self._is_price_changed_checker(market, trade_price, self._price_dic):
+				self._price_dic[market] = trade_price
 				self._run_other_exchanges(market)
 
 
