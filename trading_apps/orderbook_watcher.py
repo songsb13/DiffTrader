@@ -1,4 +1,3 @@
-from trading_apps import *
 from trading_apps.profit_validator import ProfitValidator
 
 
@@ -14,7 +13,7 @@ class OrderbookWatcher(object):
 		self._lock_container = lock_container
 
 		self._watch_currencies = input_currencies
-		self._is_already_thread_running_flag = {exchange.NANE: {currency: False for currency in input_currencies} for exchange in exchanges}
+		self._is_thread_running_flag = {exchange.NANE: {currency: False for currency in input_currencies} for exchange in exchanges}
 		
 		self._stop_flag = False
 		self._price_dic = {}
@@ -35,7 +34,7 @@ class OrderbookWatcher(object):
 		self.log_signal.emit(logging.DEBUG, self._log_header + 'STOP')
 	
 	def trading_thread_done(self, exchange, market):
-		self._is_already_thread_running_flag[exchange][market] = False
+		self._is_thread_running_flag[exchange][market] = False
 		
 	def _is_price_changed_checker(self, *args):
 		"""
@@ -58,11 +57,11 @@ class OrderbookWatcher(object):
 		:param coin: coin name
 		:return: True if already running else False
 		"""
-		is_already_running = self._is_already_thread_running_flag[exchange_name][coin]
+		is_running = self._is_thread_running_flag[exchange_name][coin]
 		
 		self.log_signal.emit(logging.DEBUG, self._log_header + 'running_check param=[{}]'.format(
-			is_already_running))
-		return is_already_running
+			is_running))
+		return is_running
 	
 	def _run_other_exchanges(self, market):
 		"""
@@ -74,7 +73,7 @@ class OrderbookWatcher(object):
 				self.log_signal.emit(logging.DEBUG, self._log_header + 'main[{}] sub[{}] market[{}] START!!'.
 									 format(self._exchange.NAME, other.NAME, market))
 				ProfitValidator(self._exchange, other, market, self._lock_container[self._exchange.NAME][other.NAME])
-				self._is_already_thread_running_flag[other][market] = True
+				self._is_thread_running_flag[other][market] = True
 	
 	def get_current_price(self):
 		"""
@@ -88,15 +87,3 @@ class OrderbookWatcher(object):
 			if self._is_price_changed_checker(market, trade_price, self._price_dic):
 				self._price_dic[market] = trade_price
 				self._run_other_exchanges(market)
-
-
-"""
-	OrderbookWatcher
-	오더북 감지, 에를들어 3개 거래소로 시작하면 각 exchange object를 받아서 진행 ( a, b, c 거래소 )
-	exchange.get_orderbook_with_socket으로 값 가져오면서 변화 감지
-	변화 감지되면 Profitvalidator thread 실행 ( ab, ac )
-	수익은 한번만 남 ( 가격변화 감지가 없는 한 )
-	코인별로 거래소 키면 됨 ab(xrp), ab(eth), ac(xrp), ac(eth)
-	lock은 orderbookWatcher 윗단에서 parameter, 거래소 pair로 dict해서 받는다.
-
-"""
