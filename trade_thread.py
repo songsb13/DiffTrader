@@ -102,33 +102,6 @@ class TradeThread(QThread):
         self.stop()
         self.stopped.emit()
     
-    def _is_validate_telegram_token(self, upbit, telegram_key):
-        """
-        :param upbit: upbit object
-        :param telegram_key: telegram_key
-        :return: True if telegram_key is right key else False
-        """
-        try:
-            upbit.bot = Bot(telegram_key)
-            return True
-        except:
-            return False
-        
-    def _is_validate_telegram_chat_id(self, telegram, telegram_id):
-        """
-        :param telegram: telegram bot object
-        :param telegram_id: telegram_id
-        :return: True if chat id is exist else False
-        """
-        try:
-            telegram.get_chat(telegram_id)
-            return True
-        except:
-            self.log_signal.emit(logging.INFO,
-                                 ("존재하지 않는 채팅 아이디 입니다.\n"
-                                  "채팅 아이디가 올바르다면 봇에게 메세지를 보낸 후 다시 시도해 주세요."))
-            return False
-
     def get_exchange(self, exchange_name, cfg):
         """
         :param exchange_name: 입력받을 객체 이름
@@ -408,13 +381,7 @@ class TradeThread(QThread):
             alt_amount = Decimal(float(alt_amount)).quantize(Decimal(10) ** alt_precision, rounding=ROUND_DOWN)
             return alt_btc, alt_amount
 
-
-    async def _balance_and_currencies(self):
-        """
-            잔고 확인 및 balance self 변수에 넣는 함수
-            :return: 거래 가능한 currencies들을 BTC_XXX로 리스트 리턴
-            
-        """
+    async def _insert_balance_info(self):
         if DEBUG:
             pry_balance = {'BTC': 0.4, 'ETH': 10, 'BCC': 7, 'LTC': 55, 'XRP': 10000,
                                'ETC': 262, 'OMG': 1000, 'DASH': 1.5, 'XMR': 37, 'ADA': 55000,
@@ -422,33 +389,40 @@ class TradeThread(QThread):
             sec_balance = {'BTC': 0.4, 'ETH': 10, 'BCH': 7, 'LTC': 55, 'XRP': 10000,
                                  'ETC': 262, 'OMG': 1000, 'DASH': 1.5, 'XMR': 37,
                                  'QTUM': 500, 'ZEC': 19, 'BTG': 200}
-
         else:
             res = await asyncio.gather(self.primary.balance(), self.secondary.balance())
             pry_res, sec_res = res
-            
+
             pry_suc, pry_balance, pry_msg, pry_time = pry_res
             sec_suc, sec_balance, sec_msg, sec_time = sec_res
-            
+
             if not pry_suc:
                 self.log_signal.emit(logging.INFO, pry_msg)
             if not sec_suc:
                 self.log_signal.emit(logging.INFO, sec_msg)
-            
+
             is_success = (pry_suc, sec_suc)
-            
+
             if not is_success:
                 time.sleep(max(pry_time, sec_time))
                 return False
-        
+
         if self.primary_balance != pry_balance or self.secondary_balance != sec_balance:
             self.log_signal.emit(logging.INFO, '[{} 잔고] {}'.format(self.primary.NAME, pry_balance))
             self.log_signal.emit(logging.INFO, '[{} 잔고] {}'.format(self.secondary.NAME, sec_balance))
 
             self.primary_balance = pry_balance
             self.secondary_balance = sec_balance
+
+        return True
+
+    async def _get_tradable_coin_ifno(self):
+        """
+            잔고 확인 및 balance self 변수에 넣는 함수
+            :return: 거래 가능한 currencies들을 BTC_XXX로 리스트 리턴
             
-        currencies = list(set(sec_balance).intersection(pry_balance))
+        """
+        currencies = list(set(self.secondary_balance).intersection(self.primary_balance))
         self.log_signal.emit(logging.DEBUG, 'tradable coins: {}'.format(currencies))
 
         attached_currencies = ['BTC_' + coin for coin in currencies if not coin == 'BTC']
@@ -528,14 +502,14 @@ class TradeThread(QThread):
                     continue
                 refreshed = time.time()
 
-            currencies = await self._balance_and_currencies()
+            if not await self._insert_balance_info():
+                return False
+
+            currencies = self._get_tradable_coin_ifno()
             
-            if not self.primary_balance or not self.secondary_balance:
+            if (not self.primary_balance or not self.secondary_balance) or not currencies:
                 continue
-            
-            elif not currencies:
-                continue
-                
+
             default_btc = self._default_btc_settings()
             
             if default_btc is None:
