@@ -20,8 +20,8 @@ from Binance.binance import Binance
 from Bitfinex.bitfinex import Bitfinex
 from Upbit.upbit import UpbitBTC, UpbitUSDT, UpbitKRW
 from Huobi.huobi import Huobi
-
-import .settings
+from decorators import loop_three_times, async_loop_three_times
+from . import settings
 # --- END ---
 
 
@@ -159,37 +159,18 @@ class TradeThread(QThread):
             else:
                 self.log_signal.emit(logging.DEBUG, "Upbit내부에 있는 객체가 아닙니다. [{}]".format(exchange_name))
                 return False
-            
-            if not self._is_validate_telegram_token(exchange, tkey):
+
+            connect_telegram_bot = exchange.get_telegram_token()
+
+            if connect_telegram_bot is None:
                 self.log_signal.emit(logging.INFO, "잘못된 텔레그램 봇 토큰입니다.")
                 return False
-                
-            if not self._is_validate_telegram_chat_id(exchange.bot, tchatid):
+
+            elif connect_telegram_bot is False:
                 self.log_signal.emit(logging.INFO,
                                      ("존재하지 않는 채팅 아이디 입니다.\n"
                                       "채팅 아이디가 올바르다면 봇에게 메세지를 보낸 후 다시 시도해 주세요."))
-            
-            # <--- 여기 부분은 업비트로 가야할거 같은뎅 --->
-            self.log_signal.emit(logging.INFO, "[{}] 업비트 인증을 시작합니다.".format(exchange.NAME))
-            if 'pydevd' in sys.modules:
-                exchange.chrome(headless=False)
-            else:
-                exchange.chrome(headless=True)
-            while True:
-                success, tokens, msg, st = exchange.sign_in(id_, pw)
-                if not tokens:
-                    self.log_signal.emit(logging.INFO, '')
-                    exchange.off()
-                    if '비밀번호' in msg:
-                        return False
-                    time.sleep(st)
-                    exchange.chrome(headless=True)
-                else:
-                    exchange.decrypt_token(tokens)
-                    exchange.off()
-                    break
-            return exchange
-        # <-------------------->
+
         else:
             self.log_signal.emit(logging.DEBUG, "올바른 객체를 입력받지 않았습니다. [{}]".format(exchange_name))
             return False
