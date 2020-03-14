@@ -67,12 +67,12 @@ class TradeThread(QThread):
     
     def run(self):
         exchanges = []
-        self.primary = self.get_exchange(self.primary.NAME, self.primary_cfg)
+        self.primary = self.get_exchange(self.primary_name, self.primary_cfg)
         if not self.primary:
             self.stop()
             self.stopped.emit()
             return
-        self.secondary = self.get_exchange(self.secondary.NAME, self.secondary_cfg)
+        self.secondary = self.get_exchange(self.secondary_name, self.secondary_cfg)
         if not self.secondary:
             self.stop()
             self.stopped.emit()
