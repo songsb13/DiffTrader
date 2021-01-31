@@ -10,6 +10,8 @@ from Binance.binance import Binance
 from Bitfinex.bitfinex import Bitfinex
 from Upbit.upbit import UpbitBTC, UpbitUSDT, UpbitKRW
 from Huobi.huobi import Huobi
+from settings.messages import Logs
+from settings.messages import Messages as Msg
 
 
 class TradeThread(QThread):
@@ -20,6 +22,7 @@ class TradeThread(QThread):
     def __init__(self, email, primary_info, secondary_info, min_profit_per, min_profit_btc, auto_withdrawal):
         super().__init__()
         self.stop_flag = True
+        self.log = Logs(self.log_signal)
         self.email = email
         self.min_profit_per = min_profit_per
         self.min_profit_btc = min_profit_btc
