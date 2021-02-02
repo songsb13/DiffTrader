@@ -57,17 +57,18 @@ class TradeThread(QThread):
 
         self.stop_flag = False
         try:
-            self.log_signal.emit(logging.INFO, "최소 %: {}%".format(self.min_profit_per))
             self.min_profit_per /= 100.0
-            self.log_signal.emit(logging.INFO, "최소 btc: {}BTC".format(self.min_profit_btc))
-            self.log_signal.emit(logging.INFO, "자동 출금: {}".format(self.auto_withdrawal))
+            self.log.send(Msg.Init.MIN_PROFIT.format(min_profit=self.min_profit_per))
+            self.log.send(Msg.Init.MIN_BTC.format(min_btc=self.min_profit_btc))
+            self.log.send(Msg.Init.AUTO.format(auto_withdrawal=self.auto_withdrawal))
         except:
-            self.log_signal.emit(logging.INFO, "잘못된 값이 설정되어 있습니다. 설정값을 확인해주세요")
+            self.log.send(Msg.Init.WRONG_INPUT)
             self.stop()
             self.stopped.emit()
             return
-
-        self.log_signal.emit(logging.INFO, "자동 차익매매 감지 시작")
+        
+        self.log.send(Msg.Init.START)
+        
         loop = asyncio.new_event_loop()
         loop.run_until_complete(self.trader())
         loop.close()
@@ -78,13 +79,12 @@ class TradeThread(QThread):
     async def trader(self):
         try:
             if self.auto_withdrawal:
-                self.log_signal.emit(logging.INFO, "출금정보를 가져오는 중입니다...")
+                self.log.send(Msg.Init.GET_WITHDRAWAL_INFO)
                 deposit = await self.deposits(self.primary, self.secondary)
                 if not deposit:
-                    self.log_signal.emit(logging.INFO,
-                                         "출금정보 추출 실패. 출금 정보 확인 후 다시 시작해 주세요.")
+                    self.log.send(Msg.Init.FAIL_WITHDRAWAL_INFO)
                     return False
-                self.log_signal.emit(logging.INFO, "출금정보 추출 완료.")
+                self.log.send(Msg.Init.SUCCESS_WITHDRAWAL_INFO)
             else:
                 deposit = None
             # primary_deposit_addrs, secondary_deposit_addrs 가 온다.
@@ -99,14 +99,14 @@ class TradeThread(QThread):
                         if not fee:
                             #   실패 했을 경우 다시 요청
                             continue
-                        self.log_signal.emit(logging.DEBUG, "수수료 조회 성공")
+                        self.log.send(Msg.Trade.SUCCESS_FEE_INFO)
                         t = time.time()
                     bal_n_crncy = await self.balance_and_currencies(self.primary, self.secondary, deposit)
                     if not bal_n_crncy:
                         continue
                     if not bal_n_crncy[2]:
                         # Intersection 결과가 비어있는 경우
-                        self.log_signal.emit(logging.INFO, "거래가능한 코인이 없습니다. 잔고를 확인해 주세요.")
+                        self.log.send(Msg.Trade.NO_AVAILABLE)
                         continue
                     try:
                         if bal_n_crncy[0]['BTC'] > bal_n_crncy[1]['BTC']:
@@ -114,7 +114,7 @@ class TradeThread(QThread):
                         else:
                             default_btc = bal_n_crncy[1]['BTC'] * 1.5
                     except:
-                        self.log_signal.emit(logging.INFO, "BTC 잔고가 없습니다. 확인해주세요.")
+                        self.log.send(Msg.Trade.NO_BALANCE_BTC)
                         continue
 
                     self.log_signal.emit(logging.DEBUG, "orderbook 호출")
@@ -166,18 +166,14 @@ class TradeThread(QThread):
                                 pass
 
                             if not success:
-                                self.log_signal.emit(logging.INFO,
-                                                     ("거래에 실패하였습니다.[{}]"
-                                                      "처음부터 다시 진행합니다.").format(msg))
+                                self.log.send(Msg.Trade.FAIL)
                                 continue
-                            self.log_signal.emit(logging.INFO, "차익거래에 성공했습니다.")
+                            self.log.send(Msg.Trade.SUCCESS)
 
                         except:
                             #   trade 함수 내에서 처리하지 못한 함수가 발견한 경우
                             debugger.exception('FATAL')
-                            self.log_signal.emit(logging.ERROR,
-                                                 ("프로그램에 예기치 못한 문제가 발생하였습니다. "
-                                                  "로그를 개발자에게 즉시 보내주세요"))
+                            self.log.send_error(Msg.Error.EXCEPTION)
                             self.save_profit_expected(data, bal_n_crncy[2],
                                                       self.primary_exchange_str, self.secondary_exchange_str)
                             return False
@@ -189,14 +185,13 @@ class TradeThread(QThread):
                                                   self.primary_exchange_str, self.secondary_exchange_str)
 
                 except:
-                    self.log_signal.emit(logging.ERROR,
-                                         ("프로그램에 예기치 못한 문제가 발생하였습니다. "
-                                          "로그를 개발자에게 즉시 보내주세요"))
+                    self.log.send_error(Msg.Error.EXCEPTION)
                     debugger.exception("Trade Thread")
                     return False
 
             return True
         except:
+            self.log.send_error(Msg.Error.EXCEPTION)
             debugger.exception("FATAL")
             return False
 
@@ -254,7 +249,7 @@ class TradeThread(QThread):
             exchange = Huobi(cfg['key'], cfg['secret'])
             suc, data, msg, st = exchange.get_account_id()
             if not suc:
-                self.log_signal.emit(logging.INFO, msg)
+                self.log.send(msg)
                 return False
 
             return exchange
@@ -265,11 +260,11 @@ class TradeThread(QThread):
         ts = 0
         err = False
         if not result1[0]:
-            self.log_signal.emit(logging.INFO, result1[2])
+            self.log.send(result1[2])
             ts = result1[3]
             err = True
         if not result2[0]:
-            self.log_signal.emit(logging.INFO, result2[2])
+            self.log.send(result2[2])
             if ts < result2[3]:
                 ts = result2[3]
             err = True
@@ -292,21 +287,21 @@ class TradeThread(QThread):
         ts = 0
         err = False
         if not ret[0][0]:
-            self.log_signal.emit(logging.INFO, ret[0][2])
+            self.log.send( ret[0][2])
             ts = ret[0][3]
             err = True
         if not ret[1][0]:
-            self.log_signal.emit(logging.INFO, ret[1][2])
+            self.log.send(ret[1][2])
             if ts < ret[1][3]:
                 ts = ret[1][3]
             err = True
         if not ret[2][0]:
-            self.log_signal.emit(logging.INFO, ret[2][2])
+            self.log.send(ret[2][2])
             if ts < ret[2][3]:
                 ts = ret[2][3]
             err = True
         if not ret[3][0]:
-            self.log_signal.emit(logging.INFO, ret[3][2])
+            self.log.send(ret[3][2])
             if ts < ret[3][3]:
                 ts = ret[3][3]
             err = True
@@ -321,11 +316,11 @@ class TradeThread(QThread):
         secondary_ret = secondary.get_precision(currency)
 
         if not primary_ret[0]:
-            self.log_signal.emit(logging.INFO, primary_ret[2])
+            self.log.send(primary_ret[2])
             time.sleep(primary_ret[3])
             return False
         elif not secondary_ret[0]:
-            self.log_signal.emit(logging.INFO, secondary_ret[2])
+            self.log.send(secondary_ret[2])
             time.sleep(secondary_ret[3])
             return False
 
@@ -349,13 +344,13 @@ class TradeThread(QThread):
             ts = 0
             err = False
             if not primary_balance[0]:
-                self.log_signal.emit(logging.INFO, primary_balance[2])
+                self.log.send(primary_balance[2])
                 ts = primary_balance[3]
                 err = True
             else:
                 primary_balance = primary_balance[1]
             if not secondary_balance[0]:
-                self.log_signal.emit(logging.INFO, secondary_balance[2])
+                self.log.send(secondary_balance[2])
                 if ts < secondary_balance[3]:
                     ts = secondary_balance[3]
                 err = True
@@ -367,13 +362,13 @@ class TradeThread(QThread):
                 return False
 
         if self.primary_balance != primary_balance or self.secondary_balance != secondary_balance:
-            self.log_signal.emit(logging.INFO, '[{} 잔고] {}'.format(self.primary_exchange_str, primary_balance))
-            self.log_signal.emit(logging.INFO, '[{} 잔고] {}'.format(self.secondary_exchange_str, secondary_balance))
             self.primary_balance = primary_balance
             self.secondary_balance = secondary_balance
+            self.log.send(Msg.Balance.CURRENT.format(exchange=self.primary_exchange_str, balance=primary_balance))
+            self.log.send(Msg.Balance.CURRENT.format(exchange=self.secondary_exchange_str, balance=secondary_balance))
         currencies = list(set(secondary_balance).intersection(primary_balance))
-
-        self.log_signal.emit(logging.DEBUG, 'tradable coins: {}'.format(currencies))
+        
+        self.log.send_debug(Msg.Debug.TRADABLE.format(currencies))
         temp = []
         for c in currencies:  # Currency_pair의 필요성(BTC_xxx)
             if c == 'BTC':
@@ -394,45 +389,47 @@ class TradeThread(QThread):
             for currency in currencies:
                 alt = currency.split('_')[1]
                 if alt not in primary_balance.keys() or not primary_balance[alt]:
-                    self.log_signal.emit(logging.INFO,
-                                         "[거래불가] {} {} 잔고가 없습니다.".format(
-                                             alt, self.primary_exchange_str))
+                    self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.primary_exchange_str, alt=alt))
                     continue
                 if alt not in secondary_balance.keys() or not secondary_balance[alt]:
-                    self.log_signal.emit(logging.INFO,
-                                         "[거래불가] {} {} 잔고가 없습니다.".format(
-                                             alt, self.secondary_exchange_str))
+                    self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.secondary_exchange_str, alt=alt))
                     continue
 
                 if trade == 'm_to_s' and data[trade][currency] >= 0:
-                    self.log_signal.emit(logging.INFO,
-                                         '[{} {}->{}] 예상 차익: {} %'.format(currency, self.primary_exchange_str,
-                                                                          self.secondary_exchange_str,
-                                                                          data[trade][currency] * 100))
-                    self.log_signal.emit(logging.DEBUG,
-                                         '[{}] {} ask: {}, {} bids: {}'.format(currency, self.primary_exchange_str,
-                                                                               primary_orderbook[currency]['asks'],
-                                                                               self.secondary_exchange_str,
-                                                                               secondary_orderbook[currency]['bids']))
+                    self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
+                        from_exchange=self.primary_exchange_str,
+                        to_exchange=self.secondary_exchange_str,
+                        currency=currency,
+                        profit_per=data[trade][currency] * 100
+                    ))
+                    self.log.send_debug(Msg.Debug.ASK_BID.format(
+                        currency=currency,
+                        from_exchange=self.primary_exchange_str,
+                        from_asks=primary_orderbook[currency]['asks'],
+                        to_exchange=self.secondary_exchange_str,
+                        to_bids=secondary_orderbook[currency]['bids']
+                    ))
                 elif data[trade][currency] >= 0:
-                    self.log_signal.emit(logging.INFO,
-                                         '[{} {}->{}] 예상 차익: {} %'.format(currency,
-                                                                          self.secondary_exchange_str,
-                                                                          self.primary_exchange_str,
-                                                                          data[trade][currency] * 100))
-                    self.log_signal.emit(logging.DEBUG,
-                                         '[{}] {} ask: {}, {} bids: {}'.format(
-                                             currency, self.secondary_exchange_str,
-                                             secondary_orderbook[currency]['asks'],
-                                             self.primary_exchange_str,
-                                             primary_orderbook[currency]['bids']))
+                    self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
+                        from_exchange=self.secondary_exchange_str,
+                        to_exchange=self.primary_exchange_str,
+                        currency=currency,
+                        profit_per=data[trade][currency] * 100
+                    ))
+                    self.log.send_debug(Msg.Debug.ASK_BID.format(
+                            currency=currency,
+                            from_exchange=self.secondary_exchange_str,
+                            from_asks=primary_orderbook[currency]['asks'],
+                            to_exchange=self.primary_exchange_str,
+                            to_bids=secondary_orderbook[currency]['bids']
+                    ))
                 try:
                     if data[trade][currency] < self.min_profit_per:
                         #   예상 차익이 %를 넘지 못하는 경우
                         continue
                 except ValueError:
                     #   float() 이 에러가 난 경우
-                    self.log_signal.emit(logging.INFO, "예상 차익 퍼센트는 실수여야만 합니다.")
+                    self.log.send(Msg.Trade.MIN_PROFIT_ERROR)
                     return False
                 # TODO unit:coin = Decimal, unit:percent = float
                 # real_diff 부분은 원화마켓과 BTC마켓의 수수료가 부과되는 횟수가 달라서 거래소 별로 다르게 지정해줘야함

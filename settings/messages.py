@@ -24,12 +24,15 @@ class Logs(logging.Logger):
     # todo debug level에 대한 정의도 필요함
     def send(self, message):
         self.signal.emit(logging.INFO, message)
-
-    EXCEPT_ERROR = (logging.ERROR, '프로그램에 예기치 못한 문제가 발생하였습니다. 로그를 개발자에게 즉시 보내주세요.')
+    
+    def send_debug(self, message):
+        self.signal.emit(logging.DEBUG, message)
+    
+    def send_error(self, message):
+        self.signal.emit(logging.ERROR, message)
 
 
 class Messages(object):
-
     class Init(object):
         """
             프로그램 시작 이후부터 event가 loop돌면서 값을 찾기 전까지 message 집합
@@ -44,12 +47,31 @@ class Messages(object):
         FAIL_WITHDRAWAL_INFO = '출금 정보를 가져오지 못했습니다. 정보 확인 후 다시 시작해 주세요.'
         SUCCESS_WITHDRAWAL_INFO = '출금 정보를 가져왔습니다.'
 
-
     class Trade(object):
+        """
+            evt가 loop 돌기 시작하는 시점부터 xx전 까지의 message 집합
+        """
+        SUCCESS_FEE_INFO = '수수료 조회에 성공했습니다.'
         NO_AVAILABLE = '거래 가능한 코인이 없습니다. 잔고를 확인해 주세요.'
-        NO_BALANCE = 'BTC 잔고가 없습니다. 잔고를 확인해 주세요.'
+        NO_BALANCE_BTC = 'BTC 잔고가 없습니다. 잔고를 확인해 주세요.'
         NO_PROFIT = '만족하는 조건 값을 찾지 못했습니다. 조건을 재검색 합니다.'
 
         FAIL = '거래에 실패했습니다. 처음부터 다시 시도합니다.'
         SUCCESS = '차익 거래에 성공했습니다.'
-
+        
+        NO_BALANCE_ALT = '{exchange}: {alt} 잔고가 없습니다.'
+        
+        EXCEPT_PROFIT = '{from_exchange} -> {to_exchange}: {currency}, 예상 차익: {profit_per}'
+        
+        MIN_PROFIT_ERROR = '예상 차익 %는 실수여야만 합니다.'
+        
+    class Balance(object):
+        CURRENT = '{exchange}: 잔고 {balance}'
+    
+    class Debug(object):
+        TRADABLE = '거래 가능한 코인 종류: {}'
+        ASK_BID = '{currency}의 {from_exchange}의 매도가 {from_asks} ' \
+                  '{to_exchange}의 매수가{to_bids}'
+    
+    class Error(object):
+        EXCEPTION = '프로그램에 예기치 못한 문제가 발생하였습니다. 로그를 개발자에게 즉시 보내주세요.'
