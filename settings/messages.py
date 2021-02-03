@@ -37,7 +37,7 @@ class Messages(object):
         """
             프로그램 시작 이후부터 event가 loop돌면서 값을 찾기 전까지 message 집합
         """
-        START = '자동 차익매매 감지 시작'
+        START = '자동 차익매매 감지를 시작합니다.'
         MIN_PROFIT = '최소 %: {min_profit}%'
         MIN_BTC = '최소 BTC: {min_btc}'
         WRONG_INPUT = '잘못된 값이 설정되어 있습니다. 설정 값을 확인해 주세요.'
@@ -58,12 +58,16 @@ class Messages(object):
 
         FAIL = '거래에 실패했습니다. 처음부터 다시 시도합니다.'
         SUCCESS = '차익 거래에 성공했습니다.'
+
+        MIN_PROFIT_ERROR = '예상 차익 %는 실수여야만 합니다.'
+        
+        START_TRADE = '최대 이윤 계산 결과가 설정한 BTC보다 높습니다. 거래를 시작합니다.'
         
         NO_BALANCE_ALT = '{exchange}: {alt} 잔고가 없습니다.'
         
         EXCEPT_PROFIT = '{from_exchange} -> {to_exchange}: {currency}, 예상 차익: {profit_per}'
-        
-        MIN_PROFIT_ERROR = '예상 차익 %는 실수여야만 합니다.'
+        TRADABLE = '{from_exchange}: {alt}, {alt_amount} -> {to_exchange}: 거래 가능한 btc: {tradable_btc}'
+        BTC_PROFIT = '{from_exchange} -> {to_exchange}, alt: {alt}, 수익: {btc_profit} BTC ({btc_profit_per}%)'
         
     class Balance(object):
         CURRENT = '{exchange}: 잔고 {balance}'
@@ -72,6 +76,10 @@ class Messages(object):
         TRADABLE = '거래 가능한 코인 종류: {}'
         ASK_BID = '{currency}의 {from_exchange}의 매도가 {from_asks} ' \
                   '{to_exchange}의 매수가{to_bids}'
-    
+        
+        TRADABLE_BTC = '거래 가능한 BTC 수: {tradable_btc}'
+        TRADABLE_ASK_BID = '거래 가능한 매수/매도 오더북: {from_exchange}: {from_orderbook}' \
+                           '{to_exchange}: {to_orderbook}'
+        
     class Error(object):
         EXCEPTION = '프로그램에 예기치 못한 문제가 발생하였습니다. 로그를 개발자에게 즉시 보내주세요.'

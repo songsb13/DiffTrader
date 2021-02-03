@@ -449,19 +449,25 @@ class TradeThread(QThread):
                                                                          secondary_balance[alt],
                                                                          secondary_orderbook[currency], currency,
                                                                          btc_precision, alt_precision)
-                        self.log_signal.emit(logging.INFO,
-                                             '[{}] 거래 가능: {} {} {} / {} {} BTC'.format(
-                                                 alt, self.primary_exchange_str, alt_amount, alt,
-                                                 self.secondary_exchange_str, tradable_btc))
-
+                        self.log.send(Msg.Trade.TRADABLE.format(
+                            from_exchange=self.primary_exchange_str,
+                            to_exchange=self.secondary_exchange_str,
+                            alt=alt,
+                            alt_amount=alt_amount,
+                            tradable_btc=tradable_btc
+                        ))
                         btc_profit = (tradable_btc * Decimal(real_diff)) - (
                                 Decimal(primary_tx_fee[alt]) * primary_orderbook[currency]['asks']) - Decimal(
                             secondary_tx_fee['BTC'])
-                        self.log_signal.emit(logging.INFO,
-                                             '[{}] {} -> {} 수익: {} BTC / {} %'.format(
-                                                 alt, self.primary_exchange_str, self.secondary_exchange_str,
-                                                 btc_profit, real_diff * 100))
-
+                        
+                        self.log.send(Msg.Trade.BTC_PROFIT.format(
+                            from_exchange=self.primary_exchange_str,
+                            to_exchange=self.secondary_exchange_str,
+                            alt=alt,
+                            btc_profit=btc_profit,
+                            btc_profit_per=real_diff * 100
+                        ))
+                        
                         # alt_amount로 거래할 btc를 맞춰줌, BTC를 사고 ALT를 팔기때문에 bids가격을 곱해야함
                         # tradable_btc = alt_amount * data['s_o_b'][currency]['bids']
                     else:
@@ -469,31 +475,39 @@ class TradeThread(QThread):
                             secondary_balance['BTC'], primary_balance[alt], primary_orderbook[currency], currency,
                             btc_precision, alt_precision
                         )
-                        self.log_signal.emit(logging.INFO,
-                                             '[{}] 거래 가능: {} {} {} / {} {} BTC'.format(alt,
-                                                                                       self.secondary_exchange_str,
-                                                                                       alt_amount, alt,
-                                                                                       self.primary_exchange_str,
-                                                                                       tradable_btc))
-
+                        self.log.send(Msg.Trade.TRADABLE.format(
+                            from_exchange=self.secondary_exchange_str,
+                            to_exchange=self.primary_exchange_str,
+                            alt=alt,
+                            alt_amount=alt_amount,
+                            tradable_btc=tradable_btc
+                        ))
+                        
                         btc_profit = (tradable_btc * Decimal(real_diff)) - (
                                 Decimal(secondary_tx_fee[alt]) * secondary_orderbook[currency]['asks']) - Decimal(
                             primary_tx_fee['BTC'])
-                        self.log_signal.emit(logging.INFO,
-                                             '[{}] {} -> {} 수익: {} BTC / {} %'.format(
-                                                 alt, self.secondary_exchange_str, self.primary_exchange_str,
-                                                 btc_profit, real_diff * 100))
+                        
+                        self.log.send(Msg.Trade.BTC_PROFIT.format(
+                            from_exchange=self.secondary_exchange_str,
+                            to_exchange=self.primary_exchange_str,
+                            alt=alt,
+                            btc_profit=btc_profit,
+                            btc_profit_per=real_diff * 100
+                        ))
 
                         # alt_amount로 거래할 btc를 맞춰줌, ALT를 사고 BTC를 팔기때문에 asks가격을 곱해야함
                         # tradable_btc = alt_amount * data['s_o_b'][currency]['asks']
 
                     tradable_btc = tradable_btc.quantize(Decimal(10) ** -4, rounding=ROUND_DOWN)
-                    self.log_signal.emit(logging.DEBUG, 'actual trading btc: {}'.format(tradable_btc))
-                    self.log_signal.emit(logging.DEBUG,
-                                         'tradable bids/asks: {}: {} {}: {}'.format(self.secondary_exchange_str,
-                                                                                    secondary_orderbook[currency],
-                                                                                    self.primary_exchange_str,
-                                                                                    primary_orderbook[currency]))
+                    
+                    self.log.send_debug(Msg.Debug.TRADABLE_BTC.format(tradable_btc=tradable_btc))
+                    self.log.send_debug(Msg.Debug.TRADABLE_ASK_BID.format(
+                        from_exchange=self.secondary_exchange_str,
+                        from_orderbook=secondary_orderbook[currency],
+                        to_exchange=self.primary_exchange_str,
+                        to_orderbook=primary_orderbook[currency]
+                        
+                    ))
                 except:
                     debugger.exception("FATAL")
 
@@ -559,8 +573,8 @@ class TradeThread(QThread):
         :param fee:
         :return:
         """
-        self.log_signal.emit(logging.INFO, "최대 이윤 계산결과가 설정한 지정 BTC 보다 높습니다.")
-        self.log_signal.emit(logging.INFO, "거래를 시작합니다.")
+        
+        self.log.send(Msg.Trade.START_TRADE)
         btc_profit, tradable_btc, alt_amount, currency, trade = max_profit
         primary_trade_fee, secondary_trade_fee, primary_tx_fee, secondary_tx_fee = fee
         if self.auto_withdrawal:
