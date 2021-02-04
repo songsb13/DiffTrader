@@ -33,6 +33,10 @@ class Logs(logging.Logger):
 
 
 class Messages(object):
+    """
+        from_exchange: BTC를 매도하는 거래 exchange, => primary_exchange로도 표현됨.
+        to_exchange: ALT 매도 후 BTC를 매수하는 거래 exchange => secondary_exchange로도 표현됨.
+    """
     class Init(object):
         """
             프로그램 시작 이후부터 event가 loop돌면서 값을 찾기 전까지 message 집합
@@ -69,6 +73,20 @@ class Messages(object):
         TRADABLE = '{from_exchange}: {alt}, {alt_amount} -> {to_exchange}: 거래 가능한 btc: {tradable_btc}'
         BTC_PROFIT = '{from_exchange} -> {to_exchange}, alt: {alt}, 수익: {btc_profit} BTC ({btc_profit_per}%)'
         
+        NO_ADDRESS = '{to_exchange}: {alt}주소가 없습니다. 아래 안내대로 수동이체가 필요합니다.'
+        NO_BTC_ADDRESS = '{from_exchange}: BTC주소가 없습니다. 아래 안내대로 수동이체가 필요합니다.'
+        
+        ALT_WITHDRAW = '{from_exchange} -> {to_exchange}로 {alt}를 {unit}개수 만큼 이동합니다.'
+        BTC_WITHDRAW = '{to_exchange} -> {from_exchange}로 BTC를 {unit}개수 만큼 이동합니다.'
+        
+        FAIL_WITHDRAWAL = '{from_exchange} -> {to_exchange}로 {alt}를 이체하는데 실패했습니다.'
+        FAIL_BTC_WITHDRAWAL = '{to_exchange} -> {from_exchange}로 BTC를 이체하는데 실패했습니다.'
+        ERROR_CONTENTS = '에러 내용은 다음과 같습니다. [{error_string}]'
+        
+        REQUEST_MANUAL_STOP = '에러가 계속되면 수동정지를 해주세요.'
+        MANUAL_STOP = '수동정지 되었습니다. 아래 안내대로 수동 이체를 부탁드립니다.'
+        COMPLETE_MANUAL = '거래가 완료되었습니다. 수동이체 후 다시 시작해주세요.'
+        
     class Balance(object):
         CURRENT = '{exchange}: 잔고 {balance}'
     
@@ -81,5 +99,10 @@ class Messages(object):
         TRADABLE_ASK_BID = '거래 가능한 매수/매도 오더북: {from_exchange}: {from_orderbook}' \
                            '{to_exchange}: {to_orderbook}'
         
+        BUY_ALT = '{from_exchange}: BTC를 통해 {alt}를 매수 하였습니다.'
+        SELL_ALT = '{to_exchange}: {alt}를 매도 하였습니다.'
+
+        BUY_BTC = '{to_exchange}: BTC를 매수 하였습니다.'
+
     class Error(object):
         EXCEPTION = '프로그램에 예기치 못한 문제가 발생하였습니다. 로그를 개발자에게 즉시 보내주세요.'

@@ -590,15 +590,15 @@ class TradeThread(QThread):
                                                          primary_tx_fee)  # ,'buy')
             if not suc:
                 return False, '', msg, st
-
-            self.log_signal.emit(logging.DEBUG, "{}: BTC로 {} 구입".format(self.primary_exchange_str, alt))
+            
+            self.log.send_debug(Msg.Debug.BUY_ALT.format(from_exchange=self.primary_exchange_str, alt=alt))
             alt_amount = res
 
             # 무조건 성공해야하는 부분이기때문에 return값이 없다
             self.secondary.alt_to_base(currency, tradable_btc, alt_amount)
-            self.log_signal.emit(logging.DEBUG, '{}: {} 판매'.format(self.secondary_exchange_str, alt))
-
-            self.log_signal.emit(logging.DEBUG, '{}: BTC 구매'.format(self.secondary_exchange_str))
+            self.log.send_debug(Msg.Debug.SELL_ALT.format(to_exchange=self.secondary_exchange_str, alt=alt))
+            self.log.send_debug(Msg.Debug.BUY_BTC.format(to_exchange=self.secondary_exchange_str))
+            
             send_amount = alt_amount + Decimal(primary_tx_fee[alt]).quantize(
                 Decimal(10) ** alt_amount.as_tuple().exponent)
 
@@ -613,105 +613,121 @@ class TradeThread(QThread):
                                 or alt + 'TAG' not in secondary_deposit_addrs
                                 or not secondary_deposit_addrs[alt]
                                 or not secondary_deposit_addrs[alt + 'TAG']):
-                            self.log_signal.emit(logging.INFO,
-                                                 ("{}의 {} 주소가 없습니다. "
-                                                  "아래 안내대로 수동 이체해주세요."
-                                                  ).format(self.secondary_exchange_str, alt))
-                            self.log_signal.emit(logging.INFO,
-                                                 '{} -> {} {alt} {unit} 만큼 이동'.format(
-                                                     self.primary_exchange_str, self.secondary_exchange_str,
-                                                     alt=alt, unit=float(send_amount)))
+                            
+                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.secondary_exchange_str, alt=alt))
+                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
+                                from_exchange=self.primary_exchange_str,
+                                to_exchange=self.secondary_exchange_str,
+                                alt=alt,
+                                unit=float(send_amount)
+                            ))
                             send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
                                 Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            self.log_signal.emit(logging.INFO,
-                                                 '{} -> {} BTC {unit} 만큼 이동'.format(
-                                                     self.secondary_exchange_str, self.primary_exchange_str,
-                                                     unit=float(send_amount)))
+                            
+                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                                to_exchange=self.secondary_exchange_str,
+                                from_exchange=self.primary_exchange_str,
+                                unit=float(send_amount)
+                            ))
+                            
                             self.stop()
                             return True, '', '', 0
                         res = self.primary.withdraw(alt, float(send_amount), secondary_deposit_addrs[alt],
                                                     secondary_deposit_addrs[alt + 'TAG'])
                     else:
                         if alt not in secondary_deposit_addrs or not secondary_deposit_addrs[alt]:
-                            self.log_signal.emit(logging.INFO,
-                                                 "{}의 {} 주소가 없습니다. 아래 안내대로 수동 이체해주세요.".format(
-                                                     self.secondary_exchange_str, alt))
-                            self.log_signal.emit(logging.INFO,
-                                                 '{} -> {} {alt} {unit} 만큼 이동'.format(
-                                                     self.primary_exchange_str, self.secondary_exchange_str,
-                                                     alt=alt, unit=float(send_amount)))
+                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.secondary_exchange_str, alt=alt))
+                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
+                                from_exchange=self.primary_exchange_str,
+                                to_exchange=self.secondary_exchange_str,
+                                alt=alt,
+                                unit=float(send_amount)
+                            ))
                             send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
                                 Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            self.log_signal.emit(logging.INFO,
-                                                 '{} -> {} BTC {unit} 만큼 이동'.format(
-                                                     self.secondary_exchange_str, self.primary_exchange_str,
-                                                     unit=float(send_amount)))
+                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                                to_exchange=self.secondary_exchange_str,
+                                from_exchange=self.primary_exchange_str,
+                                unit=float(send_amount)
+                            ))
                             self.stop()
                             return True, '', '', 0
                         res = self.primary.withdraw(alt, send_amount, secondary_deposit_addrs[alt])
                     if not res[0]:  # success 여부
-                        self.log_signal.emit(logging.INFO,
-                                             "{}: {} 이체에 실패 했습니다.".format(self.primary_exchange_str, alt))
-                        self.log_signal.emit(logging.INFO, "에러내용: " + res[2])
-                        self.log_signal.emit(logging.INFO, "이체에러가 계속되면 수동정지 해주세요.")
+                        self.log.send(Msg.Trade.FAIL_WITHDRAWAL.format(
+                            from_exchange=self.primary_exchange_str,
+                            to_exchange=self.secondary_exchange_str,
+                            alt=alt
+                        ))
+                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
+                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
                         time.sleep(res[3])
                     else:
                         break
                 else:
-                    self.log_signal.emit(logging.INFO, "수동 정지 하였습니다. 아래 안내대로 수동 이체해주세요.")
-                    self.log_signal.emit(logging.INFO,
-                                         '{} -> {} {alt} {unit} 만큼 이동'.format(self.primary_exchange_str,
-                                                                              self.secondary_exchange_str,
-                                                                              alt=alt, unit=float(send_amount)))
+                    self.log.send(Msg.Trade.MANUAL_STOP)
+                    self.log.send(Msg.Trade.ALT_WITHDRAW.format(
+                        from_exchange=self.primary_exchange_str,
+                        to_exchange=self.secondary_exchange_str,
+                        alt=alt,
+                        unit=float(send_amount)
+                    ))
                     send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
                         Decimal(10) ** tradable_btc.as_tuple().exponent)
-                    self.log_signal.emit(logging.INFO,
-                                         '{} -> {} BTC {unit} 만큼 이동'.format(self.secondary_exchange_str,
-                                                                            self.primary_exchange_str,
-                                                                            unit=float(send_amount)))
+                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                        to_exchange=self.secondary_exchange_str,
+                        from_exchange=self.primary_exchange_str,
+                        unit=float(send_amount)
+                    ))
                     return True, '', '', 0
 
-                self.log_signal.emit(logging.INFO,
-                                     '{} -> {} {alt} {unit} 만큼 이동'.format(self.primary_exchange_str,
-                                                                          self.secondary_exchange_str,
-                                                                          alt=alt, unit=float(send_amount)))
+                self.log.send(Msg.Trade.ALT_WITHDRAW.format(
+                    from_exchange=self.primary_exchange_str,
+                    to_exchange=self.secondary_exchange_str,
+                    alt=alt,
+                    unit=float(send_amount)
+                ))
                 send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
                     Decimal(10) ** tradable_btc.as_tuple().exponent)
                 while not self.stop_flag:
                     #   거래소2 -> 거래소1 BTC 이체
                     if 'BTC' not in primary_deposit_addrs or not primary_deposit_addrs['BTC']:
-                        self.log_signal.emit(logging.INFO,
-                                             "{}의 BTC 주소가 없습니다. 아래 안내대로 수동 이체해주세요.".format(
-                                                 self.primary_exchange_str))
-                        self.log_signal.emit(logging.INFO,
-                                             '{} -> {} BTC {unit} 만큼 이동'.format(self.secondary_exchange_str,
-                                                                                self.primary_exchange_str,
-                                                                                unit=float(send_amount)))
+                        self.log.send(Msg.Trade.NO_BTC_ADDRESS.format(from_exchange=self.primary_exchange_str))
+                        self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                            to_exchange=self.secondary_exchange_str,
+                            from_exchange=self.primary_exchange_str,
+                            unit=float(send_amount)
+                        ))
                         self.stop()
                         return True, '', '', 0
                     res = self.secondary.withdraw('BTC', send_amount, primary_deposit_addrs['BTC'])
                     if res[0]:
                         break
                     else:
-                        self.log_signal.emit(logging.INFO,
-                                             "{}: BTC 이체에 실패 했습니다.".format(self.secondary_exchange_str))
-                        self.log_signal.emit(logging.INFO, "에러내용: " + res[2])
-                        self.log_signal.emit(logging.INFO, "이체에러가 계속되면 수동정지 해주세요.")
+                        self.log.send(Msg.Trade.FAIL_BTC_WITHDRAWAL.format(
+                            to_exchange=self.secondary_exchange_str,
+                            from_exchange=self.primary_exchange_str
+                        ))
+                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
+                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
+                        
                         time.sleep(res[3])
                 else:
-                    self.log_signal.emit(logging.INFO, "수동 정지 하였습니다. 아래 안내대로 수동 이체해주세요.")
-                    self.log_signal.emit(logging.INFO,
-                                         '{} -> {} BTC {unit} 만큼 이동'.format(self.secondary_exchange_str,
-                                                                            self.primary_exchange_str,
-                                                                            unit=float(send_amount)))
+                    self.log.send(Msg.Trade.MANUAL_STOP)
+                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                        to_exchange=self.secondary_exchange_str,
+                        from_exchange=self.primary_exchange_str,
+                        unit=float(send_amount)
+                    ))
                     return True, '', '', 0
 
-                self.log_signal.emit(logging.INFO,
-                                     '{} -> {} BTC {unit} 만큼 이동'.format(self.secondary_exchange_str,
-                                                                        self.primary_exchange_str,
-                                                                        unit=float(send_amount)))
+                self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                    to_exchange=self.secondary_exchange_str,
+                    from_exchange=self.primary_exchange_str,
+                    unit=float(send_amount)
+                ))
             else:
-                self.log_signal.emit(logging.INFO, "거래가 완료되었습니다. 수동이체 후 다시 시작해주세요.")
+                self.log.send(Msg.Trade.COMPLETE_MANUAL)
                 self.stop()
         else:
             #   거래소1 에서 BTC 를 사고 거래소2 에서 ALT 를 사서 교환함
@@ -719,12 +735,14 @@ class TradeThread(QThread):
                                                            secondary_tx_fee)
             if not suc:
                 return False, '', msg, st
+            
+            self.log.send_debug(Msg.Debug.BUY_ALT.format(from_exchange=self.secondary_exchange_str, alt=alt))
+            
             alt_amount = res
             self.primary.alt_to_base(currency, tradable_btc, alt_amount)
-
-            self.log_signal.emit(logging.DEBUG, '{}: {} 구매'.format(self.secondary_exchange_str, alt))
-
-            self.log_signal.emit(logging.DEBUG, '{}: {}로 BTC 구매'.format(self.primary_exchange_str, alt))
+            
+            self.log.send_debug(Msg.Debug.SELL_ALT.format(to_exchange=self.primary_exchange_str, alt=alt))
+            self.log.send_debug(Msg.Debug.BUY_BTC.format(to_exchange=self.primary_exchange_str))
             send_amount = alt_amount + Decimal(secondary_tx_fee[alt]).quantize(
                 Decimal(10) ** alt_amount.as_tuple().exponent)
 
@@ -739,107 +757,117 @@ class TradeThread(QThread):
                                 or alt + 'TAG' not in primary_deposit_addrs
                                 or not primary_deposit_addrs[alt]
                                 or not primary_deposit_addrs[alt + 'TAG']):
-                            self.log_signal.emit(logging.INFO,
-                                                 ("{}의 {} 주소가 없습니다. "
-                                                  "아래 안내대로 수동 이체해주세요.").format(
-                                                     self.primary_exchange_str, alt))
-                            self.log_signal.emit(logging.INFO,
-                                                 '{} -> {} {alt} {unit} 만큼 이동'.format(
-                                                     self.secondary_exchange_str, self.primary_exchange_str,
-                                                     alt=alt, unit=send_amount))
+                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.primary_exchange_str, alt=alt))
+                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
+                                from_exchange=self.secondary_exchange_str,
+                                to_exchange=self.primary_exchange_str,
+                                alt=alt,
+                                unit=float(send_amount)
+                            ))
                             send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
                                 Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            self.log_signal.emit(logging.INFO,
-                                                 '{} -> {} BTC {} 만큼 이동'.format(self.primary_exchange_str,
-                                                                                self.secondary_exchange_str,
-                                                                                send_amount))
+                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                                to_exchange=self.primary_exchange_str,
+                                from_exchange=self.secondary_exchange_str,
+                                unit=float(send_amount)
+                            ))
                             self.stop()
                             return True, '', '', 0
                         res = self.secondary.withdraw(alt, send_amount, primary_deposit_addrs[alt],
                                                       primary_deposit_addrs[alt + 'TAG'])
                     else:
                         if alt not in primary_deposit_addrs or not primary_deposit_addrs[alt]:
-                            self.log_signal.emit(logging.INFO,
-                                                 ("{}의 {} 주소가 없습니다. "
-                                                  "아래 안내대로 수동 이체해주세요.").format(
-                                                     self.primary_exchange_str, alt))
-                            self.log_signal.emit(logging.INFO,
-                                                 '{} -> {} {alt} {unit} 만큼 이동'.format(
-                                                     self.secondary_exchange_str, self.primary_exchange_str,
-                                                     alt=alt, unit=send_amount))
+                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.primary_exchange_str, alt=alt))
+                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
+                                from_exchange=self.secondary_exchange_str,
+                                to_exchange=self.primary_exchange_str,
+                                alt=alt,
+                                unit=float(send_amount)
+                            ))
                             send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
                                 Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            self.log_signal.emit(logging.INFO,
-                                                 '{} -> {} BTC {} 만큼 이동'.format(self.primary_exchange_str,
-                                                                                self.secondary_exchange_str,
-                                                                                send_amount))
+                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                                to_exchange=self.primary_exchange_str,
+                                from_exchange=self.secondary_exchange_str,
+                                unit=float(send_amount)
+                            ))
                             self.stop()
                             return True, '', '', 0
                         res = self.secondary.withdraw(alt, send_amount, primary_deposit_addrs[alt])
                     if res[0]:
                         break
                     else:
-                        self.log_signal.emit(logging.INFO,
-                                             "{}: {} 이체에 실패 했습니다.".format(
-                                                 self.secondary_exchange_str, alt))
-                        self.log_signal.emit(logging.INFO, "에러내용: " + res[2])
-                        self.log_signal.emit(logging.INFO, "이체에러가 계속되면 수동정지 해주세요.")
+                        self.log.send(Msg.Trade.FAIL_WITHDRAWAL.format(
+                            from_exchange=self.secondary_exchange_str,
+                            to_exchange=self.primary_exchange_str,
+                            alt=alt
+                        ))
+                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
+                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
                         time.sleep(res[3])
                 else:
-                    self.log_signal.emit(logging.INFO, "수동 정지 하였습니다. 아래 안내대로 수동 이체해주세요.")
-                    self.log_signal.emit(logging.INFO,
-                                         '{} -> {} {alt} {unit} 만큼 이동'.format(self.secondary_exchange_str,
-                                                                              self.primary_exchange_str,
-                                                                              alt=alt, unit=send_amount))
+                    self.log.send(Msg.Trade.MANUAL_STOP)
+                    self.log.send(Msg.Trade.ALT_WITHDRAW.format(
+                        from_exchange=self.secondary_exchange_str,
+                        to_exchange=self.primary_exchange_str,
+                        alt=alt,
+                        unit=float(send_amount)
+                    ))
                     send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
                         Decimal(10) ** tradable_btc.as_tuple().exponent)
-                    self.log_signal.emit(logging.INFO,
-                                         '{} -> {} BTC {} 만큼 이동'.format(self.primary_exchange_str,
-                                                                        self.secondary_exchange_str,
-                                                                        send_amount))
+                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                        to_exchange=self.primary_exchange_str,
+                        from_exchange=self.secondary_exchange_str,
+                        unit=float(send_amount)
+                    ))
                     return True, '', '', 0
 
-                self.log_signal.emit(logging.INFO,
-                                     '{} -> {} {alt} {unit} 만큼 이동'.format(self.secondary_exchange_str,
-                                                                                   self.primary_exchange_str,
-                                                                                   alt=alt, unit=send_amount))
+                self.log.send(Msg.Trade.ALT_WITHDRAW.format(
+                    from_exchange=self.secondary_exchange_str,
+                    to_exchange=self.primary_exchange_str,
+                    alt=alt,
+                    unit=float(send_amount)
+                ))
                 send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
                     Decimal(10) ** tradable_btc.as_tuple().exponent)
                 while not self.stop_flag:
                     #   Binance -> Bithumb BTC 이체
                     if 'BTC' not in secondary_deposit_addrs or not secondary_deposit_addrs['BTC']:
-                        self.log_signal.emit(logging.INFO,
-                                             "{}의 {} 주소가 없습니다. 아래 안내대로 수동 이체해주세요.".format(
-                                                 self.secondary_exchange_str, alt))
-                        self.log_signal.emit(logging.INFO,
-                                             '{} -> {} BTC {} 만큼 이동'.format(self.primary_exchange_str,
-                                                                            self.secondary_exchange_str,
-                                                                            send_amount))
+                        self.log.send(Msg.Trade.NO_BTC_ADDRESS.format(from_exchange=self.secondary_exchange_str))
+                        self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                            to_exchange=self.primary_exchange_str,
+                            from_exchange=self.secondary_exchange_str,
+                            unit=float(send_amount)
+                        ))
                         self.stop()
                         return True, '', '', 0
                     res = self.primary.withdraw('BTC', send_amount, secondary_deposit_addrs['BTC'])
                     if not res[0]:
-                        self.log_signal.emit(logging.INFO,
-                                             "{}: BTC 이체에 실패 했습니다.".format(self.primary_exchange_str))
-                        self.log_signal.emit(logging.INFO, "에러내용: " + res[2])
-                        self.log_signal.emit(logging.INFO, "이체에러가 계속되면 수동정지 해주세요.")
+                        self.log.send(Msg.Trade.FAIL_BTC_WITHDRAWAL.format(
+                            to_exchange=self.primary_exchange_str,
+                            from_exchange=self.secondary_exchange_str
+                        ))
+                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
+                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
                         time.sleep(res[3])
                     else:
                         break
                 else:
-                    self.log_signal.emit(logging.INFO, "수동 정지 하였습니다. 아래 안내대로 수동 이체해주세요.")
-                    self.log_signal.emit(logging.INFO,
-                                         '{} -> {} BTC {} 만큼 이동'.format(self.primary_exchange_str,
-                                                                        self.secondary_exchange_str,
-                                                                        send_amount))
+                    self.log.send(Msg.Trade.MANUAL_STOP)
+                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                        to_exchange=self.primary_exchange_str,
+                        from_exchange=self.secondary_exchange_str,
+                        unit=float(send_amount)
+                    ))
                     return True, '', '', 0
 
-                self.log_signal.emit(logging.INFO,
-                                     '{} -> {} BTC {} 만큼 이동'.format(self.primary_exchange_str,
-                                                                    self.secondary_exchange_str,
-                                                                    send_amount))
+                self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+                    to_exchange=self.primary_exchange_str,
+                    from_exchange=self.secondary_exchange_str,
+                    unit=float(send_amount)
+                ))
             else:
-                self.log_signal.emit(logging.INFO, "거래가 완료되었습니다. 수동이체 후 다시 시작해주세요.")
+                self.log.send(Msg.Trade.COMPLETE_MANUAL)
                 self.stop()
 
         return True, '', '', 0
