@@ -116,22 +116,18 @@ class TradeThread(QThread):
                     except:
                         self.log.send(Msg.Trade.NO_BALANCE_BTC)
                         continue
-
-                    self.log_signal.emit(logging.DEBUG, "orderbook 호출")
-
                     success, data, err, ts = await self.primary.compare_orderbook(
                         self.secondary, bal_n_crncy[2], default_btc
                     )
                     if not success:
-                        self.log_signal.emit(logging.INFO, err)
+                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=err))
                         time.sleep(ts)
                         continue
-                    self.log_signal.emit(logging.DEBUG, 'orderbook 수신완료')
 
                     # btc_profit, tradable_btc, alt_amount, currency, trade
                     max_profit = self.get_max_profit(data, bal_n_crncy, fee, fee_cnt)
                     if max_profit is None:
-                        self.log_signal.emit(logging.INFO, "만족하는 조건을 찾지 못하였습니다. 조건 재검색...")
+                        self.log.send(Msg.Trade.NO_PROFIT)
                         self.save_profit_expected(data, bal_n_crncy[2],
                                                   self.primary_exchange_str, self.secondary_exchange_str)
                         continue
@@ -141,7 +137,7 @@ class TradeThread(QThread):
                     btc_profit = max_profit[0]
 
                     if 'pydevd' in sys.modules:
-                        self.log_signal.emit(logging.INFO, "디버그 모드")
+                        # todo 차후 리팩토링에서 삭제 예정
                         try:
                             bot = Bot(token='607408701:AAGYRRnzUKTWRIdJvYzl8AQMlGz52vinoUA')
                             bot.get_chat('348748653')
@@ -172,27 +168,23 @@ class TradeThread(QThread):
 
                         except:
                             #   trade 함수 내에서 처리하지 못한 함수가 발견한 경우
-                            debugger.exception('FATAL')
                             self.log.send_error(Msg.Error.EXCEPTION)
                             self.save_profit_expected(data, bal_n_crncy[2],
                                                       self.primary_exchange_str, self.secondary_exchange_str)
                             return False
                     else:
                         #   사용자 지정 BTC 보다 적은경우
-                        self.log_signal.emit(logging.INFO,
-                                             "최고 이익이 사용자 지정 BTC 보다 작아 거래하지 않습니다.")
+                        self.log.send(Msg.Trade.NO_MIN_BTC)
                         self.save_profit_expected(data, bal_n_crncy[2],
                                                   self.primary_exchange_str, self.secondary_exchange_str)
 
                 except:
                     self.log.send_error(Msg.Error.EXCEPTION)
-                    debugger.exception("Trade Thread")
                     return False
 
             return True
         except:
             self.log.send_error(Msg.Error.EXCEPTION)
-            debugger.exception("FATAL")
             return False
 
     def get_exchange(self, exchange_str, cfg):
@@ -205,6 +197,7 @@ class TradeThread(QThread):
         elif exchange_str == 'Bitfinex':
             return Bitfinex(cfg['key'], cfg['secret'])
         elif exchange_str.startswith('Upbit'):
+            # todo 차후 리팩토링에서 수정 예정임
             if exchange_str == 'UpbitBTC':
                 exchange = UpbitBTC(cfg['id'], cfg['pw'], cfg['tkey'], cfg['tchatid'])
             elif exchange_str == 'UpbitUSDT':
@@ -509,7 +502,7 @@ class TradeThread(QThread):
                         
                     ))
                 except:
-                    debugger.exception("FATAL")
+                    self.log.send_error(Msg.Error.FATAL)
 
                 if max_profit is None and (tradable_btc != 0 or alt_amount != 0):
                     max_profit = [btc_profit, tradable_btc, alt_amount, currency, trade]
@@ -563,7 +556,7 @@ class TradeThread(QThread):
             else:
                 return False
         except:
-            debugger.exception("예상차익 저장에러!")
+            self.log.send_error(Msg.Error.FATAL)
             return False
 
     def trade(self, max_profit, deposit_addrs, fee):

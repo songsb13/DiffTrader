@@ -59,7 +59,8 @@ class Messages(object):
         NO_AVAILABLE = '거래 가능한 코인이 없습니다. 잔고를 확인해 주세요.'
         NO_BALANCE_BTC = 'BTC 잔고가 없습니다. 잔고를 확인해 주세요.'
         NO_PROFIT = '만족하는 조건 값을 찾지 못했습니다. 조건을 재검색 합니다.'
-
+        NO_MIN_BTC = '최고 이익이 사용자 지정 BTC 보다 작아 거래하지 않습니다'
+        
         FAIL = '거래에 실패했습니다. 처음부터 다시 시도합니다.'
         SUCCESS = '차익 거래에 성공했습니다.'
 
@@ -81,7 +82,7 @@ class Messages(object):
         
         FAIL_WITHDRAWAL = '{from_exchange} -> {to_exchange}로 {alt}를 이체하는데 실패했습니다.'
         FAIL_BTC_WITHDRAWAL = '{to_exchange} -> {from_exchange}로 BTC를 이체하는데 실패했습니다.'
-        ERROR_CONTENTS = '에러 내용은 다음과 같습니다. [{error_string}]'
+        ERROR_CONTENTS = '거래에 실패했습니다. 에러 내용은 다음과 같습니다. [{error_string}]'
         
         REQUEST_MANUAL_STOP = '에러가 계속되면 수동정지를 해주세요.'
         MANUAL_STOP = '수동정지 되었습니다. 아래 안내대로 수동 이체를 부탁드립니다.'
@@ -106,3 +107,4 @@ class Messages(object):
 
     class Error(object):
         EXCEPTION = '프로그램에 예기치 못한 문제가 발생하였습니다. 로그를 개발자에게 즉시 보내주세요.'
+        FATAL = 'FATAL, TradeThread'
