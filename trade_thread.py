@@ -12,6 +12,7 @@ from Upbit.upbit import UpbitBTC, UpbitUSDT, UpbitKRW
 from Huobi.huobi import Huobi
 from settings.messages import Logs
 from settings.messages import Messages as Msg
+import time
 
 
 class TradeThread(QThread):
