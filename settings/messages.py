@@ -25,12 +25,6 @@ class Logs(logging.Logger):
     def send(self, message):
         self.signal.emit(logging.INFO, message)
     
-    def send_debug(self, message):
-        self.signal.emit(logging.DEBUG, message)
-    
-    def send_error(self, message):
-        self.signal.emit(logging.ERROR, message)
-
 
 class Messages(object):
     """

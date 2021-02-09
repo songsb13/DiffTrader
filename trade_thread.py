@@ -169,7 +169,7 @@ class TradeThread(QThread):
 
                         except:
                             #   trade 함수 내에서 처리하지 못한 함수가 발견한 경우
-                            self.log.send_error(Msg.Error.EXCEPTION)
+                            debugger.exception(Msg.Error.EXCEPTION)
                             self.save_profit_expected(data, bal_n_crncy[2],
                                                       self.primary_exchange_str, self.secondary_exchange_str)
                             return False
@@ -180,12 +180,12 @@ class TradeThread(QThread):
                                                   self.primary_exchange_str, self.secondary_exchange_str)
 
                 except:
-                    self.log.send_error(Msg.Error.EXCEPTION)
+                    debugger.exception(Msg.Error.EXCEPTION)
                     return False
 
             return True
         except:
-            self.log.send_error(Msg.Error.EXCEPTION)
+            debugger.exception(Msg.Error.EXCEPTION)
             return False
 
     def get_exchange(self, exchange_str, cfg):
@@ -362,7 +362,7 @@ class TradeThread(QThread):
             self.log.send(Msg.Balance.CURRENT.format(exchange=self.secondary_exchange_str, balance=secondary_balance))
         currencies = list(set(secondary_balance).intersection(primary_balance))
         
-        self.log.send_debug(Msg.Debug.TRADABLE.format(currencies))
+        debugger.debug(Msg.Debug.TRADABLE.format(currencies))
         temp = []
         for c in currencies:  # Currency_pair의 필요성(BTC_xxx)
             if c == 'BTC':
@@ -396,7 +396,7 @@ class TradeThread(QThread):
                         currency=currency,
                         profit_per=data[trade][currency] * 100
                     ))
-                    self.log.send_debug(Msg.Debug.ASK_BID.format(
+                    debugger.debug(Msg.Debug.ASK_BID.format(
                         currency=currency,
                         from_exchange=self.primary_exchange_str,
                         from_asks=primary_orderbook[currency]['asks'],
@@ -410,7 +410,7 @@ class TradeThread(QThread):
                         currency=currency,
                         profit_per=data[trade][currency] * 100
                     ))
-                    self.log.send_debug(Msg.Debug.ASK_BID.format(
+                    debugger.debug(Msg.Debug.ASK_BID.format(
                             currency=currency,
                             from_exchange=self.secondary_exchange_str,
                             from_asks=primary_orderbook[currency]['asks'],
@@ -494,8 +494,8 @@ class TradeThread(QThread):
 
                     tradable_btc = tradable_btc.quantize(Decimal(10) ** -4, rounding=ROUND_DOWN)
                     
-                    self.log.send_debug(Msg.Debug.TRADABLE_BTC.format(tradable_btc=tradable_btc))
-                    self.log.send_debug(Msg.Debug.TRADABLE_ASK_BID.format(
+                    debugger.debug(Msg.Debug.TRADABLE_BTC.format(tradable_btc=tradable_btc))
+                    debugger.debug(Msg.Debug.TRADABLE_ASK_BID.format(
                         from_exchange=self.secondary_exchange_str,
                         from_orderbook=secondary_orderbook[currency],
                         to_exchange=self.primary_exchange_str,
@@ -503,7 +503,7 @@ class TradeThread(QThread):
                         
                     ))
                 except:
-                    self.log.send_error(Msg.Error.FATAL)
+                    debugger.exception(Msg.Error.FATAL)
 
                 if max_profit is None and (tradable_btc != 0 or alt_amount != 0):
                     max_profit = [btc_profit, tradable_btc, alt_amount, currency, trade]
@@ -557,7 +557,7 @@ class TradeThread(QThread):
             else:
                 return False
         except:
-            self.log.send_error(Msg.Error.FATAL)
+            debugger.exception(Msg.Error.FATAL)
             return False
 
     def trade(self, max_profit, deposit_addrs, fee):
@@ -585,13 +585,13 @@ class TradeThread(QThread):
             if not suc:
                 return False, '', msg, st
             
-            self.log.send_debug(Msg.Debug.BUY_ALT.format(from_exchange=self.primary_exchange_str, alt=alt))
+            debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=self.primary_exchange_str, alt=alt))
             alt_amount = res
 
             # 무조건 성공해야하는 부분이기때문에 return값이 없다
             self.secondary.alt_to_base(currency, tradable_btc, alt_amount)
-            self.log.send_debug(Msg.Debug.SELL_ALT.format(to_exchange=self.secondary_exchange_str, alt=alt))
-            self.log.send_debug(Msg.Debug.BUY_BTC.format(to_exchange=self.secondary_exchange_str))
+            debugger.debug(Msg.Debug.SELL_ALT.format(to_exchange=self.secondary_exchange_str, alt=alt))
+            debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=self.secondary_exchange_str))
             
             send_amount = alt_amount + Decimal(primary_tx_fee[alt]).quantize(
                 Decimal(10) ** alt_amount.as_tuple().exponent)
@@ -730,13 +730,13 @@ class TradeThread(QThread):
             if not suc:
                 return False, '', msg, st
             
-            self.log.send_debug(Msg.Debug.BUY_ALT.format(from_exchange=self.secondary_exchange_str, alt=alt))
+            debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=self.secondary_exchange_str, alt=alt))
             
             alt_amount = res
             self.primary.alt_to_base(currency, tradable_btc, alt_amount)
             
-            self.log.send_debug(Msg.Debug.SELL_ALT.format(to_exchange=self.primary_exchange_str, alt=alt))
-            self.log.send_debug(Msg.Debug.BUY_BTC.format(to_exchange=self.primary_exchange_str))
+            debugger.debug(Msg.Debug.SELL_ALT.format(to_exchange=self.primary_exchange_str, alt=alt))
+            debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=self.primary_exchange_str))
             send_amount = alt_amount + Decimal(secondary_tx_fee[alt]).quantize(
                 Decimal(10) ** alt_amount.as_tuple().exponent)
 
