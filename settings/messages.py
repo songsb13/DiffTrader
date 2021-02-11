@@ -24,7 +24,10 @@ class Logs(logging.Logger):
     # todo debug level에 대한 정의도 필요함
     def send(self, message):
         self.signal.emit(logging.INFO, message)
-    
+
+    def send_error(self, message):
+        self.signal.emit(logging.ERROR, message)
+
 
 class Messages(object):
     """

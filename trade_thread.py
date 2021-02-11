@@ -170,6 +170,7 @@ class TradeThread(QThread):
                         except:
                             #   trade 함수 내에서 처리하지 못한 함수가 발견한 경우
                             debugger.exception(Msg.Error.EXCEPTION)
+                            self.log.send_error(Msg.Error.EXCEPTION)
                             self.save_profit_expected(data, bal_n_crncy[2],
                                                       self.primary_exchange_str, self.secondary_exchange_str)
                             return False
@@ -181,11 +182,13 @@ class TradeThread(QThread):
 
                 except:
                     debugger.exception(Msg.Error.EXCEPTION)
+                    self.log.send_error(Msg.Error.EXCEPTION)
                     return False
 
             return True
         except:
             debugger.exception(Msg.Error.EXCEPTION)
+            self.log.send_error(Msg.Error.EXCEPTION)
             return False
 
     def get_exchange(self, exchange_str, cfg):
