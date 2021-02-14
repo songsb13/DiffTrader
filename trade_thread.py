@@ -13,10 +13,25 @@ from Huobi.huobi import Huobi
 from settings.messages import Logs
 from settings.messages import Messages as Msg
 import time
+import random
 
 
 # temp
 EXCHANGES = ['bithumb', 'binance']
+EXCLUDE_EXCHANGES = ['korbit']
+TEST_COINS = [
+    'BTC', 'ETH', 'BCC', 'XRP', 'ETC', 'QTUM', 'XMR', 'ZEC'
+]
+
+RANDOMLY_INT = (10, 100)
+
+# primary에서 BTC매도(ALT매수) -> secondary에서 ALT매도(BTC로 변환)
+PRIMARY_TO_SECONDARY = 'mts'
+
+# secondary에서 BTC매도(ALT매수) -> primary에서 ALT매도(BTC로 변환)
+SECONDARY_TO_PRIMARY = 'stm'
+
+
 
 """
     모든 함수 값에 self가 있으면, self를 우선순위로 둬야함
@@ -26,6 +41,17 @@ EXCHANGES = ['bithumb', 'binance']
     def send():
         self.primary_obj.exchange ... 로 처리
 """
+
+
+class MaxProfits(object):
+    def __init__(self, btc_profit, tradable_btc, alt_amount, currency, trade):
+        self.btc_profit = btc_profit
+        self.tradable_btc = tradable_btc
+        self.alt_amount = alt_amount,
+        self.currency = currency
+        self.trade = trade
+
+        self.information = None
 
 
 class ExchangeInfo(object):
@@ -448,160 +474,131 @@ class TradeThread(QThread):
                                                          to_object.orderbook[currency], currency,
                                                          btc_precision, alt_precision)
 
-    def get_max_profit(self, data, balance, fee, fee_cnt):
-        primary_balance, secondary_balance, currencies = balance
-        primary_trade_fee, secondary_trade_fee, primary_tx_fee, secondary_tx_fee = fee
-        primary_fee_cnt, secondary_fee_cnt = fee_cnt
-        max_profit = None
+        tradable_btc = tradable_btc.quantize(Decimal(10) ** -4, rounding=ROUND_DOWN)
+
+        self.log.send(Msg.Trade.TRADABLE.format(
+            from_exchange=from_object.name,
+            to_exchange=to_object.name,
+            alt=alt,
+            alt_amount=alt_amount,
+            tradable_btc=tradable_btc
+        ))
+        btc_profit = (tradable_btc * Decimal(real_diff)) - (
+                Decimal(primary_tx_fee[alt]) * primary_orderbook[currency]['asks']) - Decimal(
+            secondary_tx_fee['BTC'])
+
+        self.log.send(Msg.Trade.BTC_PROFIT.format(
+            from_exchange=from_object.name,
+            to_exchange=to_object.name,
+            alt=alt,
+            btc_profit=btc_profit,
+            btc_profit_per=real_diff * 100
+        ))
+
+        return tradable_btc, alt_amount, btc_profit
+
+    def get_max_profit(self, data):
+        profit_obj = None
         primary_orderbook, secondary_orderbook, data = data
-        for trade in ['m_to_s', 's_to_m']:
-            if self.primary_exchange_str == 'Korbit' and trade == 'm_to_s':
-                # 코빗은 s_to_m만 가능
+        for trade in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
+            if self.primary_exchange_str == 'Korbit' and trade == PRIMARY_TO_SECONDARY:
                 continue
-            for currency in currencies:
+            for currency in self.currencies:
                 alt = currency.split('_')[1]
-                if alt not in primary_balance.keys() or not primary_balance[alt]:
+                if not self.primary_obj.balance.get(alt):
                     self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.primary_exchange_str, alt=alt))
                     continue
-                if alt not in secondary_balance.keys() or not secondary_balance[alt]:
+                elif not self.secondary_obj.balance.get(alt):
                     self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.secondary_exchange_str, alt=alt))
                     continue
 
-                if trade == 'm_to_s' and data[trade][currency] >= 0:
-                    self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
-                        from_exchange=self.primary_exchange_str,
-                        to_exchange=self.secondary_exchange_str,
-                        currency=currency,
-                        profit_per=data[trade][currency] * 100
-                    ))
-                    debugger.debug(Msg.Debug.ASK_BID.format(
-                        currency=currency,
-                        from_exchange=self.primary_exchange_str,
-                        from_asks=primary_orderbook[currency]['asks'],
-                        to_exchange=self.secondary_exchange_str,
-                        to_bids=secondary_orderbook[currency]['bids']
-                    ))
-                elif data[trade][currency] >= 0:
-                    self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
-                        from_exchange=self.secondary_exchange_str,
-                        to_exchange=self.primary_exchange_str,
-                        currency=currency,
-                        profit_per=data[trade][currency] * 100
-                    ))
-                    debugger.debug(Msg.Debug.ASK_BID.format(
-                            currency=currency,
-                            from_exchange=self.secondary_exchange_str,
-                            from_asks=primary_orderbook[currency]['asks'],
-                            to_exchange=self.primary_exchange_str,
-                            to_bids=secondary_orderbook[currency]['bids']
-                    ))
-                try:
-                    if data[trade][currency] < self.min_profit_per:
-                        #   예상 차익이 %를 넘지 못하는 경우
-                        continue
-                except ValueError:
-                    #   float() 이 에러가 난 경우
-                    self.log.send(Msg.Trade.MIN_PROFIT_ERROR)
-                    return False
+                if trade == PRIMARY_TO_SECONDARY and data[trade][currency] >= 0:
+                    from_, to, asks, bids, profit_per = self.primary_exchange_str, self.secondary_exchange_str, \
+                                                        primary_orderbook[currency]['asks'], \
+                                                        secondary_orderbook[currency]['bids'], \
+                                                        data[trade][currency] * 100,
+                else:  # trade == SECONDARY_TO_PRIMARY and data[trade][currency] >= 0:
+                    from_, to, asks, bids, profit_per = self.secondary_exchange_str, self.primary_exchange_str, \
+                                                        secondary_orderbook[currency]['asks'], \
+                                                        primary_orderbook[currency]['bids'], \
+                                                        data[trade][currency] * 100
+
+                self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
+                    from_exchange=from_,
+                    to_exchange=to,
+                    currency=currency,
+                    profit_per=profit_per
+                ))
+                debugger.debug(Msg.Debug.ASK_BID.format(
+                    currency=currency,
+                    from_exchange=from_,
+                    from_asks=asks,
+                    to_exchange=to,
+                    to_bids=bids
+                ))
+
+                expect_profit_percent = data.get(trade, dict()).get(currency, int())
+
+                if expect_profit_percent < self.min_profit_per:
+                    continue
+
                 # TODO unit:coin = Decimal, unit:percent = float
                 # real_diff 부분은 원화마켓과 BTC마켓의 수수료가 부과되는 횟수가 달라서 거래소 별로 다르게 지정해줘야함
                 # 내부에서 부과회수(함수로 만듬 fee_count)까지 리턴해서 받아오는걸로 처리한다.
-                real_diff = ((1 + data[trade][currency]) * ((1 - primary_trade_fee) ** primary_fee_cnt) * (
-                        (1 - secondary_trade_fee) ** secondary_fee_cnt)) - 1
+
+                primary_trade_fee_percent = (1 - self.primary_obj.fee) ** self.primary_obj.fee_cnt
+                secondary_trade_fee_percent = (1 - self.secondary_obj.fee) ** self.secondary_obj.fee_cnt
+
+                real_diff = ((1 + data[trade[currency]]) * primary_trade_fee_percent * secondary_trade_fee_percent) - 1
 
                 # get precision of BTC and ALT
-                ret = self.get_precision(self.primary, self.secondary, currency)
+                ret = self.get_precision(currency)
                 if not ret:
                     return False
                 btc_precision, alt_precision = ret
 
                 try:
-                    if trade == 'm_to_s':
-                        tradable_btc, alt_amount = self.find_min_balance(primary_balance['BTC'],
-                                                                         secondary_balance[alt],
-                                                                         secondary_orderbook[currency], currency,
-                                                                         btc_precision, alt_precision)
-                        self.log.send(Msg.Trade.TRADABLE.format(
-                            from_exchange=self.primary_exchange_str,
-                            to_exchange=self.secondary_exchange_str,
-                            alt=alt,
-                            alt_amount=alt_amount,
-                            tradable_btc=tradable_btc
-                        ))
-                        btc_profit = (tradable_btc * Decimal(real_diff)) - (
-                                Decimal(primary_tx_fee[alt]) * primary_orderbook[currency]['asks']) - Decimal(
-                            secondary_tx_fee['BTC'])
-                        
-                        self.log.send(Msg.Trade.BTC_PROFIT.format(
-                            from_exchange=self.primary_exchange_str,
-                            to_exchange=self.secondary_exchange_str,
-                            alt=alt,
-                            btc_profit=btc_profit,
-                            btc_profit_per=real_diff * 100
-                        ))
-                        
+                    if trade == PRIMARY_TO_SECONDARY:
+                        tradable_btc, alt_amount, btc_profit = self.get_expectation_by_balance(
+                            self.primary_obj, self.secondary_obj, currency, alt, btc_precision, alt_precision
+                        )
                         # alt_amount로 거래할 btc를 맞춰줌, BTC를 사고 ALT를 팔기때문에 bids가격을 곱해야함
                         # tradable_btc = alt_amount * data['s_o_b'][currency]['bids']
                     else:
-                        tradable_btc, alt_amount = self.find_min_balance(
-                            secondary_balance['BTC'], primary_balance[alt], primary_orderbook[currency], currency,
-                            btc_precision, alt_precision
+                        tradable_btc, alt_amount, btc_profit = self.get_expectation_by_balance(
+                            self.secondary_obj, self.primary_obj, currency, alt, btc_precision, alt_precision
                         )
-                        self.log.send(Msg.Trade.TRADABLE.format(
-                            from_exchange=self.secondary_exchange_str,
-                            to_exchange=self.primary_exchange_str,
-                            alt=alt,
-                            alt_amount=alt_amount,
-                            tradable_btc=tradable_btc
-                        ))
-                        
-                        btc_profit = (tradable_btc * Decimal(real_diff)) - (
-                                Decimal(secondary_tx_fee[alt]) * secondary_orderbook[currency]['asks']) - Decimal(
-                            primary_tx_fee['BTC'])
-                        
-                        self.log.send(Msg.Trade.BTC_PROFIT.format(
-                            from_exchange=self.secondary_exchange_str,
-                            to_exchange=self.primary_exchange_str,
-                            alt=alt,
-                            btc_profit=btc_profit,
-                            btc_profit_per=real_diff * 100
-                        ))
 
-                        # alt_amount로 거래할 btc를 맞춰줌, ALT를 사고 BTC를 팔기때문에 asks가격을 곱해야함
-                        # tradable_btc = alt_amount * data['s_o_b'][currency]['asks']
-
-                    tradable_btc = tradable_btc.quantize(Decimal(10) ** -4, rounding=ROUND_DOWN)
-                    
                     debugger.debug(Msg.Debug.TRADABLE_BTC.format(tradable_btc=tradable_btc))
                     debugger.debug(Msg.Debug.TRADABLE_ASK_BID.format(
                         from_exchange=self.secondary_exchange_str,
                         from_orderbook=secondary_orderbook[currency],
                         to_exchange=self.primary_exchange_str,
                         to_orderbook=primary_orderbook[currency]
-                        
+
                     ))
                 except:
                     debugger.exception(Msg.Error.FATAL)
-
-                if max_profit is None and (tradable_btc != 0 or alt_amount != 0):
-                    max_profit = [btc_profit, tradable_btc, alt_amount, currency, trade]
-                elif max_profit is None:
                     continue
-                elif max_profit[0] < btc_profit:
-                    max_profit = [btc_profit, tradable_btc, alt_amount, currency, trade]
-                    #  최고 이익일 경우, 저장함
 
-                self.collected_data = {
-                    'user_id': self.email,
-                    'profit_percent': real_diff,
-                    'profit_btc': btc_profit,
-                    'current_time': datetime.now().strftime('%d-%m-%Y %H:%M:%S'),
-                    'primary_market': self.primary_exchange_str,
-                    'secondary_market': self.secondary_exchange_str,
-                    'coin_name': currency  # currency
-                }
+                if profit_obj is None and (tradable_btc and alt_amount):
+                    profit_obj = MaxProfits(btc_profit, tradable_btc, alt_amount, currency, trade)
+                elif profit_obj is None:
+                    continue
+                elif profit_obj.btc_profit < btc_profit:
+                    profit_obj = MaxProfits(btc_profit, tradable_btc, alt_amount, currency, trade)
 
-        return max_profit
+                profit_obj.information = dict(
+                    user_id=self.email,
+                    profit_percent=real_diff,
+                    profit_btc=btc_profit,
+                    currency_time=datetime.now().strftime('%d-%m-%Y %H:%M:%S'),
+                    primary_market=self.primary_exchange_str,
+                    secondary_market=self.secondary_exchange_str,
+                    currency_name=currency
+                )
+
+        return profit_obj
 
     @staticmethod
     def find_min_balance(btc_amount, alt_amount, btc_alt, symbol, btc_precision, alt_precision):
