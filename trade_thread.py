@@ -15,7 +15,105 @@ from settings.messages import Messages as Msg
 import time
 
 
+# temp
+EXCHANGES = ['bithumb', 'binance']
+
+"""
+    모든 함수 값에 self가 있으면, self를 우선순위로 둬야함
+    def send(primary, secondary)
+        --> 이 경우 이미 self.primary_obj.exchange가 있으므로 
+    
+    def send():
+        self.primary_obj.exchange ... 로 처리
+"""
+
+
+class ExchangeInfo(object):
+
+    # todo primary_info는 diff_trader에 받고있는데, 하나의 DICT에 하나의 거래소만 받는데 왜 dict처리하는지 확인 필요함.
+    #  이유가 없으면 삭제하기
+    def __init__(self, cfg, name, log_signal):
+        # todo property, setter의 사용성에 대해 재고가 필요, 만약에 변수들에 대한 처리가 많아야 하는 경우에는 필요할듯.
+        self._log_signal = log_signal
+        self.__cfg = cfg
+        self.__name = None
+        if EXCHANGES in name:
+            self.__name = name
+
+        self.__exchange = None
+
+        self.__balance = None
+        self.__fee = None
+        self.__deposit = None
+
+        self.__fee_cnt = None
+
+    @property
+    def cfg(self):
+        return self.__cfg
+
+    @cfg.setter
+    def cfg(self, val):
+        self.__cfg = val
+
+    @property
+    def name(self):
+        return self.__name
+
+    @name.setter
+    def name(self, val):
+        if EXCHANGES in val:
+            # name값이 정상인 경우에만 insert
+            self.__name = val
+
+    @property
+    def exchange(self):
+        return self.__exchange
+
+    @exchange.setter
+    def exchange(self, val):
+        # todo 정상 여부 확인, 정상인 경우 insert
+        self.__exchange = val
+
+    @property
+    def balance(self):
+        return self.__balance
+
+    @balance.setter
+    def balance(self, val):
+        self.__balance = val
+
+    @property
+    def fee(self):
+        return self.__fee
+
+    @fee.setter
+    def fee(self, val):
+        self.__fee = val
+
+    @property
+    def fee_cnt(self):
+        return self.__fee_cnt
+
+    @fee_cnt.setter
+    def fee_cnt(self, val):
+        self.__fee_cnt = val
+
+    @property
+    def deposit(self):
+        return self.__deposit
+
+    @deposit.setter
+    def deposit(self, val):
+        self.__deposit = val
+
+
 class TradeThread(QThread):
+    """
+        TradeThread
+        That for calculate the profit between primary exchange and secondary exchange, trading, withdrawal, etc
+        TradeThread, 첫번째, 두번째 거래소의 차익 계산, 거래 등 전체적인 트레이딩 로직
+    """
     log_signal = pyqtSignal(int, str)
     stopped = pyqtSignal()
     profit_signal = pyqtSignal(str, float)
@@ -29,35 +127,29 @@ class TradeThread(QThread):
         self.min_profit_btc = min_profit_btc
         self.auto_withdrawal = auto_withdrawal
 
-        self.primary_exchange_str = list(primary_info.keys())[0]
-        self.secondary_exchange_str = list(secondary_info.keys())[0]
+        self.primary_obj = ExchangeInfo(cfg=primary_info, name=list(primary_info.keys())[0])
+        self.secondary_obj = ExchangeInfo(cfg=secondary_info, name=list(secondary_info.keys())[0])
+        # todo 없애고 exchange_info로 통합할지 생각.
+        self.primary_exchange_str = self.exchange_info['primary']['name']
+        self.secondary_exchange_str = self.exchange_info['secondary']['name']
 
-        self.primary_cfg = primary_info[self.primary_exchange_str]
-        self.secondary_cfg = secondary_info[self.secondary_exchange_str]
-
-        self.primary = None
-        self.secondary = None
-        self.primary_balance = None
-        self.secondary_balance = None
-        self.collected_data = {}
+        self.collected_data = dict()
 
     def stop(self):
         self.stop_flag = True
 
     def run(self):
-        self.primary = self.get_exchange(self.primary_exchange_str, self.primary_cfg)
-        if not self.primary:
-            self.stop()
-            self.stopped.emit()
-            return
-        self.secondary = self.get_exchange(self.secondary_exchange_str, self.secondary_cfg)
-        if not self.secondary:
+        for info in [self.primary_obj, self.secondary_obj]:
+            info.exchange = self.get_exchange(info.name, info.cfg)
+
+        if not self.primary_obj.exchange or not self.secondary_obj.exchange:
             self.stop()
             self.stopped.emit()
             return
 
         self.stop_flag = False
         try:
+            # todo 이 부분에 대해서 별도 object로 검증을 미리 해놓을지 학인 필요함.
             self.min_profit_per /= 100.0
             self.log.send(Msg.Init.MIN_PROFIT.format(min_profit=self.min_profit_per))
             self.log.send(Msg.Init.MIN_BTC.format(min_btc=self.min_profit_btc))
@@ -81,14 +173,13 @@ class TradeThread(QThread):
         try:
             if self.auto_withdrawal:
                 self.log.send(Msg.Init.GET_WITHDRAWAL_INFO)
-                deposit = await self.deposits(self.primary, self.secondary)
+                deposit = await self.deposits()
                 if not deposit:
                     self.log.send(Msg.Init.FAIL_WITHDRAWAL_INFO)
                     return False
                 self.log.send(Msg.Init.SUCCESS_WITHDRAWAL_INFO)
             else:
                 deposit = None
-            # primary_deposit_addrs, secondary_deposit_addrs 가 온다.
             t = 0
             fee = []
             fee_cnt = (self.primary.fee_count(), self.secondary.fee_count())
@@ -96,7 +187,7 @@ class TradeThread(QThread):
             while evt.is_set() and not self.stop_flag:
                 try:
                     if time.time() >= t + 600:
-                        fee = await self.fees(self.primary, self.secondary)
+                        fee = await self.fees()
                         if not fee:
                             #   실패 했을 경우 다시 요청
                             continue
@@ -251,40 +342,29 @@ class TradeThread(QThread):
 
             return exchange
 
-    async def deposits(self, primary, secondary):
-        result1, result2 = await asyncio.gather(primary.get_deposit_addrs(), secondary.get_deposit_addrs())
+    async def deposits(self):
+        primary_res, secondary_res = await asyncio.gather(
+            self.primary_obj.exchange.get_deposit_addrs(), self.secondary_obj.exchange.get_deposit_addrs()
+        )
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
-        ts = 0
-        err = False
-        if not result1[0]:
-            self.log.send(result1[2])
-            ts = result1[3]
-            err = True
-        if not result2[0]:
-            self.log.send(result2[2])
-            if ts < result2[3]:
-                ts = result2[3]
-            err = True
-        time.sleep(ts)
+        if not primary_res.success or not secondary_res.success:
+            raise
 
-        if err:
-            return False
-        else:
-            result = (result1[1], result2[1])
-            return result
-
-    async def fees(self, primary, secondary):
+    async def fees(self):
         fut = [
-            primary.get_trading_fee(),
-            secondary.get_trading_fee(),
-            primary.get_transaction_fee(),
-            secondary.get_transaction_fee()
+            self.primary_obj.exchange.get_trading_fee(),
+            self.secondary_obj.exchange.get_trading_fee(),
+            self.primary_obj.exchange.get_transaction_fee(),
+            self.secondary_obj.exchange.get_transaction_fee()
         ]
         ret = await asyncio.gather(*fut)
         ts = 0
         err = False
         if not ret[0][0]:
-            self.log.send( ret[0][2])
+            self.log.send(ret[0][2])
             ts = ret[0][3]
             err = True
         if not ret[1][0]:
@@ -326,7 +406,7 @@ class TradeThread(QThread):
 
         return btc_precision, alt_precision
 
-    async def balance_and_currencies(self, primary, secondary, deposit):
+    async def balance_and_currencies(self):
         result = await asyncio.gather(primary.balance(), secondary.balance())
 
         if False and 'pydevd' in sys.modules:
