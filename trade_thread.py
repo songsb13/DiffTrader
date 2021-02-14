@@ -439,20 +439,14 @@ class TradeThread(QThread):
                 time.sleep(ts)
                 return False
 
-        if self.primary_balance != primary_balance or self.secondary_balance != secondary_balance:
-            self.primary_balance = primary_balance
-            self.secondary_balance = secondary_balance
-            self.log.send(Msg.Balance.CURRENT.format(exchange=self.primary_exchange_str, balance=primary_balance))
-            self.log.send(Msg.Balance.CURRENT.format(exchange=self.secondary_exchange_str, balance=secondary_balance))
-        currencies = list(set(secondary_balance).intersection(primary_balance))
-        
-        debugger.debug(Msg.Debug.TRADABLE.format(currencies))
-        temp = []
-        for c in currencies:  # Currency_pair의 필요성(BTC_xxx)
-            if c == 'BTC':
-                continue
-            temp.append('BTC_' + c)
-        return [primary_balance, secondary_balance, temp]
+    def get_expectation_by_balance(self, from_object, to_object, currency, alt, btc_precision, alt_precision):
+        """
+
+        """
+        tradable_btc, alt_amount = self.find_min_balance(from_object.balance['BTC'],
+                                                         to_object.balance[alt],
+                                                         to_object.orderbook[currency], currency,
+                                                         btc_precision, alt_precision)
 
     def get_max_profit(self, data, balance, fee, fee_cnt):
         primary_balance, secondary_balance, currencies = balance
