@@ -388,21 +388,22 @@ class TradeThread(QThread):
         else:
             return ret[0][1], ret[1][1], ret[2][1], ret[3][1]
 
-    def get_precision(self, primary, secondary, currency):
-        primary_ret = primary.get_precision(currency)
-        secondary_ret = secondary.get_precision(currency)
+    def get_precision(self, currency):
+        primary_res = self.primary_obj.exchange.get_precision(currency)
+        secondary_res = self.secondary_obj.exchange.get_precision(currency)
 
-        if not primary_ret[0]:
-            self.log.send(primary_ret[2])
-            time.sleep(primary_ret[3])
-            return False
-        elif not secondary_ret[0]:
-            self.log.send(secondary_ret[2])
-            time.sleep(secondary_ret[3])
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
+
+        if not primary_res.success or not secondary_res.success:
             return False
 
-        btc_precision = primary_ret[1][0] if primary_ret[1][0] >= secondary_ret[1][0] else secondary_ret[1][0]
-        alt_precision = primary_ret[1][1] if primary_ret[1][1] >= secondary_ret[1][1] else secondary_ret[1][1]
+        primary_btc_precision, primary_alt_precision = primary_res.data
+        secondary_btc_precision, secondary_alt_precision = secondary_res.data
+
+        btc_precision = max(primary_btc_precision, secondary_btc_precision)
+        alt_precision = max(secondary_btc_precision, secondary_alt_precision)
 
         return btc_precision, alt_precision
 
