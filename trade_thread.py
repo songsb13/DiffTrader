@@ -55,12 +55,11 @@ class MaxProfits(object):
 
 
 class ExchangeInfo(object):
-
     # todo primary_info는 diff_trader에 받고있는데, 하나의 DICT에 하나의 거래소만 받는데 왜 dict처리하는지 확인 필요함.
     #  이유가 없으면 삭제하기
-    def __init__(self, cfg, name, log_signal):
+    def __init__(self, cfg, name, log):
         # todo property, setter의 사용성에 대해 재고가 필요, 만약에 변수들에 대한 처리가 많아야 하는 경우에는 필요할듯.
-        self._log_signal = log_signal
+        self._log = log
         self.__cfg = cfg
         self.__name = None
         if EXCHANGES in name:
@@ -68,7 +67,10 @@ class ExchangeInfo(object):
 
         self.__exchange = None
 
+        if 'pydevd' in sys.modules:
+            self.__balance = {x: random.randint(*RANDOMLY_INT) for x in TEST_COINS}
         self.__balance = None
+        self.__orderbook = None
         self.__fee = None
         self.__deposit = None
 
@@ -108,6 +110,14 @@ class ExchangeInfo(object):
     @balance.setter
     def balance(self, val):
         self.__balance = val
+
+    @property
+    def orderbook(self):
+        return self.__orderbook
+
+    @orderbook.setter
+    def orderbook(self, val):
+        self.__orderbook = val
 
     @property
     def fee(self):
@@ -153,13 +163,14 @@ class TradeThread(QThread):
         self.min_profit_btc = min_profit_btc
         self.auto_withdrawal = auto_withdrawal
 
-        self.primary_obj = ExchangeInfo(cfg=primary_info, name=list(primary_info.keys())[0])
-        self.secondary_obj = ExchangeInfo(cfg=secondary_info, name=list(secondary_info.keys())[0])
+        self.primary_obj = ExchangeInfo(cfg=primary_info, name=list(primary_info.keys())[0], log=self.log)
+        self.secondary_obj = ExchangeInfo(cfg=secondary_info, name=list(secondary_info.keys())[0], log=self.log)
         # todo 없애고 exchange_info로 통합할지 생각.
         self.primary_exchange_str = self.exchange_info['primary']['name']
         self.secondary_exchange_str = self.exchange_info['secondary']['name']
 
         self.collected_data = dict()
+        self.currencies = None
 
     def stop(self):
         self.stop_flag = True
@@ -199,47 +210,48 @@ class TradeThread(QThread):
         try:
             if self.auto_withdrawal:
                 self.log.send(Msg.Init.GET_WITHDRAWAL_INFO)
-                deposit = await self.deposits()
-                if not deposit:
-                    self.log.send(Msg.Init.FAIL_WITHDRAWAL_INFO)
-                    return False
+                await self.deposits()
                 self.log.send(Msg.Init.SUCCESS_WITHDRAWAL_INFO)
             else:
                 deposit = None
-            t = 0
-            fee = []
+            fee_refresh_time = int()
             fee_cnt = (self.primary.fee_count(), self.secondary.fee_count())
 
             while evt.is_set() and not self.stop_flag:
                 try:
-                    if time.time() >= t + 600:
-                        fee = await self.fees()
-                        if not fee:
-                            #   실패 했을 경우 다시 요청
+                    if time.time() >= fee_refresh_time + 600:
+                        res = await self.fees()
+
+                        if not res:
                             continue
+
                         self.log.send(Msg.Trade.SUCCESS_FEE_INFO)
-                        t = time.time()
-                    bal_n_crncy = await self.balance_and_currencies(self.primary, self.secondary, deposit)
-                    if not bal_n_crncy:
+                        fee_refresh_time = time.time()
+                    is_success = await self.balance_and_currencies()
+                    if not is_success:
                         continue
-                    if not bal_n_crncy[2]:
+                    if not self.currencies:
                         # Intersection 결과가 비어있는 경우
                         self.log.send(Msg.Trade.NO_AVAILABLE)
                         continue
-                    try:
-                        if bal_n_crncy[0]['BTC'] > bal_n_crncy[1]['BTC']:
-                            default_btc = bal_n_crncy[0]['BTC'] * 1.5
-                        else:
-                            default_btc = bal_n_crncy[1]['BTC'] * 1.5
-                    except:
+
+                    primary_btc = self.primary_obj.balance.get('BTC', 0)
+                    secondary_btc = self.secondary_obj.balance.get('BTC', 0)
+
+                    default_btc = max(primary_btc, secondary_btc) * 1.5
+
+                    if not default_btc:
+                        # balance 없는 경우
                         self.log.send(Msg.Trade.NO_BALANCE_BTC)
                         continue
-                    success, data, err, ts = await self.primary.compare_orderbook(
-                        self.secondary, bal_n_crncy[2], default_btc
+
+                    # todo orderbook은 뭘 리턴받지? 확인필요함
+                    success, data, error, time_ = await self.primary_obj.exchange.compare_orderbook(
+                        self.secondary_obj.exchange, self.currencies, default_btc
                     )
                     if not success:
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=err))
-                        time.sleep(ts)
+                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=error))
+                        time.sleep(time_)
                         continue
 
                     # btc_profit, tradable_btc, alt_amount, currency, trade
@@ -379,6 +391,11 @@ class TradeThread(QThread):
         if not primary_res.success or not secondary_res.success:
             raise
 
+        self.primary_obj.deposit = primary_res.data
+        self.secondary_obj.deposit = secondary_res.data
+
+        return True
+
     async def fees(self):
         fut = [
             self.primary_obj.exchange.get_trading_fee(),
@@ -434,36 +451,27 @@ class TradeThread(QThread):
         return btc_precision, alt_precision
 
     async def balance_and_currencies(self):
-        result = await asyncio.gather(primary.balance(), secondary.balance())
+        """
+            balance 값은 모두 int, float의 값이어야 함 ( string값은 리턴받아선 안됨 )
+        """
+        primary_res, secondary_res = await asyncio.gather(
+            self.primary_obj.exchange.balance(),
+            self.secondary_obj.exchange.balance()
+        )
 
-        if False and 'pydevd' in sys.modules:
-            primary_balance = {'BTC': 0.4, 'ETH': 10, 'BCC': 7, 'LTC': 55, 'XRP': 10000,
-                               'ETC': 262, 'OMG': 1000, 'DASH': 1.5, 'XMR': 37, 'ADA': 55000,
-                               'QTUM': 500, 'ZEC': 19, 'EOS': 1000, 'BTG': 200}
-            secondary_balance = {'BTC': 0.4, 'ETH': 10, 'BCH': 7, 'LTC': 55, 'XRP': 10000,
-                                 'ETC': 262, 'OMG': 1000, 'DASH': 1.5, 'XMR': 37,
-                                 'QTUM': 500, 'ZEC': 19, 'BTG': 200}
-        else:
-            primary_balance, secondary_balance = result
-            ts = 0
-            err = False
-            if not primary_balance[0]:
-                self.log.send(primary_balance[2])
-                ts = primary_balance[3]
-                err = True
-            else:
-                primary_balance = primary_balance[1]
-            if not secondary_balance[0]:
-                self.log.send(secondary_balance[2])
-                if ts < secondary_balance[3]:
-                    ts = secondary_balance[3]
-                err = True
-            else:
-                secondary_balance = secondary_balance[1]
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
-            if err:
-                time.sleep(ts)
-                return False
+        if not primary_res.success or not secondary_res.success:
+            raise
+
+        self.primary_obj.balance = primary_res.data
+        self.secondary_obj.balance = secondary_res.data
+
+        self.currencies = list(set(self.secondary_obj.balance).intersection(self.primary_obj.balance))
+
+        return True
 
     def get_expectation_by_balance(self, from_object, to_object, currency, alt, btc_precision, alt_precision):
         """
