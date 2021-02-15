@@ -271,7 +271,7 @@ class TradeThread(QThread):
                     if profit_object.btc_profit >= self.min_profit_btc:
                         #   사용자 지정 BTC 보다 많은경우
                         try:
-                            success, res, msg, st = self.trade(max_profit, deposit, fee)
+                            success, res, msg, st = self.trade(profit_object)
 
                             # profit 수집
                             sai_url = 'http://www.saiblockchain.com/api/pft_data'
@@ -633,45 +633,53 @@ class TradeThread(QThread):
         except:
             debugger.exception(Msg.Error.FATAL)
             return False
-
-    def trade(self, max_profit, deposit_addrs, fee):
+    
+    def _send_amount_calculator(self, alt_amount, alt_tx_fee):
         """
-        :param max_profit:
-        :param deposit_addrs:
-        :param fee:
-        :return:
+            :param alt_amount: amount of alt from selling BTC
+            :param alt_tx_fee: transaction fee from from_object's exchange.
+            :return: send amount include the transaction fee.
         """
+        return alt_amount + Decimal(alt_tx_fee).quantize(
+                Decimal(10) ** alt_amount.as_tuple().exponent)
+    def coin_exchanging(self, from_object, to_object, max_profit):
+        # from object 에서 ALT를 사고, to object에서 ALT를 팔아서 서로 교환함
         
+        alt = max_profit.currency.split('_')[1]
+        
+        res_object = from_object.exchange.base_to_alt(max_profit.currency, max_profit.tradable_btc,
+                                                      max_profit.alt_amount, from_object.fee, to_object.fee)
+        
+        from_object_alt_amount = res_object.data
+        
+        debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=from_object.name, alt=alt))
+
+        self.secondary.alt_to_base(max_profit.currency, max_profit.tradable_btc, from_object_alt_amount)
+        debugger.debug(Msg.Debug.SELL_ALT.format(to_exchange=to_object.name, alt=alt))
+        debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=to_object.name))
+
+        if not res_object.success:
+            raise
+        
+        send_amount = self._send_amount_calculator(from_object_alt_amount, from_object.transaction_fee[alt])
+        # if self.primary_exchange_str.startswith("Upbit") and self.secondary_exchange_str.startswith("Upbit"):
+        #     return True, '', '', 0
+
+    def trade(self, max_profit):
         self.log.send(Msg.Trade.START_TRADE)
         btc_profit, tradable_btc, alt_amount, currency, trade = max_profit
-        primary_trade_fee, secondary_trade_fee, primary_tx_fee, secondary_tx_fee = fee
         if self.auto_withdrawal:
-            primary_deposit_addrs, secondary_deposit_addrs = deposit_addrs
-            if not primary_deposit_addrs or not secondary_deposit_addrs:
-                return False, '', '메인 또는 서브 거래소 입금주소가 존재하지 않습니다', 0
-
+            if not self.primary_obj.deposit or not self.secondary_obj.deposit:
+                # 입금 주소 없음
+                raise
         alt = currency.split('_')[1]
-
+        
+        if max_profit.trade == PRIMARY_TO_SECONDARY:
+            self.coin_exchanging(self.primary_obj, self.secondary_obj, max_profit)
+        else:
+            self.coin_exchanging(self.secondary_obj, self.primary_obj, max_profit)
+        
         if trade == 'm_to_s':
-            #   거래소1 에서 ALT 를 사고(btc를팔고) 거래소2 에서 BTC 를 사서(ALT를팔고) 교환함
-            suc, res, msg, st = self.primary.base_to_alt(currency, tradable_btc, alt_amount, primary_trade_fee,
-                                                         primary_tx_fee)  # ,'buy')
-            if not suc:
-                return False, '', msg, st
-            
-            debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=self.primary_exchange_str, alt=alt))
-            alt_amount = res
-
-            # 무조건 성공해야하는 부분이기때문에 return값이 없다
-            self.secondary.alt_to_base(currency, tradable_btc, alt_amount)
-            debugger.debug(Msg.Debug.SELL_ALT.format(to_exchange=self.secondary_exchange_str, alt=alt))
-            debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=self.secondary_exchange_str))
-            
-            send_amount = alt_amount + Decimal(primary_tx_fee[alt]).quantize(
-                Decimal(10) ** alt_amount.as_tuple().exponent)
-
-            if self.primary_exchange_str.startswith("Upbit") and self.secondary_exchange_str.startswith("Upbit"):
-                return True, '', '', 0
 
             if self.auto_withdrawal:
                 while not self.stop_flag:
