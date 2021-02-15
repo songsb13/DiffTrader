@@ -12,6 +12,10 @@ from Upbit.upbit import UpbitBTC, UpbitUSDT, UpbitKRW
 from Huobi.huobi import Huobi
 from settings.messages import Logs
 from settings.messages import Messages as Msg
+from settings.defaults import TAG_COINS
+
+from trade_utils import send_amount_calculator, expect_profit_sender, is_exists_deposit_addrs
+
 import time
 import random
 
@@ -611,37 +615,25 @@ class TradeThread(QThread):
         else:
             alt_amount = Decimal(float(alt_amount)).quantize(Decimal(10) ** alt_precision, rounding=ROUND_DOWN)
             return alt_btc, alt_amount
-
-    def save_profit_expected(self, profits, currencies, primary_name: str, secondary_name: str):
-        """
-        :param profits: 예상차익
-        :param currencies: 거래될 코인종류
-        :param primary_name: 주 거래소 이름
-        :param secondary_name: 보조 거래소 이름
-        :return: Boolean
-        """
-        #   m_to_s, s_to_m 정보가 담긴 딕셔너리만 보낸다. 0: primary orderbook, 1: secondary orderbook
-        profit = profits[2]
-        try:
-            r = requests.get("http://saiblockchain.com/api/expected_profit",
-                             json={'profit': profit, 'currencies': currencies, 'primary': primary_name,
-                                   'secondary': secondary_name})
-            if r.status_code == 200:
-                return True
-            else:
-                return False
-        except:
-            debugger.exception(Msg.Error.FATAL)
-            return False
     
-    def _send_amount_calculator(self, alt_amount, alt_tx_fee):
-        """
-            :param alt_amount: amount of alt from selling BTC
-            :param alt_tx_fee: transaction fee from from_object's exchange.
-            :return: send amount include the transaction fee.
-        """
-        return alt_amount + Decimal(alt_tx_fee).quantize(
-                Decimal(10) ** alt_amount.as_tuple().exponent)
+    def manually_withdraw(self, from_object, to_object, max_profit, send_amount, alt):
+        self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=to_object.name, alt=alt))
+        self.log.send(Msg.Trade.ALT_WITHDRAW.format(
+            from_exchange=from_object.name,
+            to_exchange=to_object.name,
+            alt=alt,
+            unit=float(send_amount)
+        ))
+        btc_send_amount = send_amount_calculator(max_profit.tradable_btc, self.secondary_obj.transaction_fee['BTC'])
+        self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+            to_exchange=to_object.name,
+            from_exchange=from_object.name,
+            unit=float(btc_send_amount)
+        ))
+    
+        self.stop()
+        return True, '', '', 0
+
     def coin_exchanging(self, from_object, to_object, max_profit):
         # from object 에서 ALT를 사고, to object에서 ALT를 팔아서 서로 교환함
         
@@ -665,6 +657,22 @@ class TradeThread(QThread):
         # if self.primary_exchange_str.startswith("Upbit") and self.secondary_exchange_str.startswith("Upbit"):
         #     return True, '', '', 0
 
+        if self.auto_withdrawal:
+            while not self.stop_flag:
+                if is_exists_deposit_addrs(alt, self.secondary_obj.deposit):
+                    if alt in TAG_COINS:
+                        res = self.primary_obj.exchange.withdraw(alt, send_amount, self.secondary_obj.deposit[alt],
+                                                           self.secondary_obj.deposit[alt+'TAG'])
+                    else:
+                        res = self.primary_obj.exchange.withdraw(alt, send_amount, self.secondary_obj.deposit[alt])
+
+                else:
+                    self.manually_withdraw(from_object, to_object, max_profit, send_amount, alt)
+
+        else:
+            pass
+            
+
     def trade(self, max_profit):
         self.log.send(Msg.Trade.START_TRADE)
         btc_profit, tradable_btc, alt_amount, currency, trade = max_profit
@@ -680,7 +688,6 @@ class TradeThread(QThread):
             self.coin_exchanging(self.secondary_obj, self.primary_obj, max_profit)
         
         if trade == 'm_to_s':
-
             if self.auto_withdrawal:
                 while not self.stop_flag:
                     #   거래소1 -> 거래소2 ALT 이체
