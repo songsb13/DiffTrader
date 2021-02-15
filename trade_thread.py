@@ -49,7 +49,7 @@ class MaxProfits(object):
         self.tradable_btc = tradable_btc
         self.alt_amount = alt_amount,
         self.currency = currency
-        self.trade = trade
+        self.trade_type = trade
 
         self.information = None
 
@@ -72,6 +72,7 @@ class ExchangeInfo(object):
         self.__balance = None
         self.__orderbook = None
         self.__fee = None
+        self.__tx_fee = None
         self.__deposit = None
 
         self.__fee_cnt = None
@@ -126,6 +127,14 @@ class ExchangeInfo(object):
     @fee.setter
     def fee(self, val):
         self.__fee = val
+        
+    @property
+    def transaction_fee(self):
+        return self.__tx_fee
+
+    @transaction_fee.setter
+    def transaction_fee(self, val):
+        self.__tx_fee = val
 
     @property
     def fee_cnt(self):
