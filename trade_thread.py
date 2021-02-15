@@ -215,8 +215,6 @@ class TradeThread(QThread):
             else:
                 deposit = None
             fee_refresh_time = int()
-            fee_cnt = (self.primary.fee_count(), self.secondary.fee_count())
-
             while evt.is_set() and not self.stop_flag:
                 try:
                     if time.time() >= fee_refresh_time + 600:
@@ -255,29 +253,13 @@ class TradeThread(QThread):
                         continue
 
                     # btc_profit, tradable_btc, alt_amount, currency, trade
-                    max_profit = self.get_max_profit(data, bal_n_crncy, fee, fee_cnt)
-                    if max_profit is None:
+                    profit_object = self.get_max_profit(data)
+                    if not profit_object:
                         self.log.send(Msg.Trade.NO_PROFIT)
-                        self.save_profit_expected(data, bal_n_crncy[2],
+                        self.save_profit_expected(data, self.currencies,
                                                   self.primary_exchange_str, self.secondary_exchange_str)
                         continue
-                    if max_profit is False:
-                        # 예상차익이 실수가 아닌경우
-                        continue
-                    btc_profit = max_profit[0]
-
-                    if 'pydevd' in sys.modules:
-                        # todo 차후 리팩토링에서 삭제 예정
-                        try:
-                            bot = Bot(token='607408701:AAGYRRnzUKTWRIdJvYzl8AQMlGz52vinoUA')
-                            bot.get_chat('348748653')
-                            bot.sendMessage('348748653',
-                                            '[{}] {} - {}: {}'.format(bal_n_crncy[2], self.primary_exchange_str,
-                                                                      self.secondary_exchange_str, data))
-                        except:
-                            self.log_signal.emit(logging.INFO, "텔레그램 메세지 전송 실패")
-
-                    if btc_profit >= self.min_profit_btc:
+                    if profit_object.btc_profit >= self.min_profit_btc:
                         #   사용자 지정 BTC 보다 많은경우
                         try:
                             success, res, msg, st = self.trade(max_profit, deposit, fee)
@@ -506,10 +488,10 @@ class TradeThread(QThread):
         return tradable_btc, alt_amount, btc_profit
 
     def get_max_profit(self, data):
-        profit_obj = None
+        profit_object = None
         primary_orderbook, secondary_orderbook, data = data
         for trade in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
-            if self.primary_exchange_str == 'Korbit' and trade == PRIMARY_TO_SECONDARY:
+            if self.primary_exchange_str == 'korbit' and trade == PRIMARY_TO_SECONDARY:
                 continue
             for currency in self.currencies:
                 alt = currency.split('_')[1]
@@ -557,13 +539,13 @@ class TradeThread(QThread):
                 primary_trade_fee_percent = (1 - self.primary_obj.fee) ** self.primary_obj.fee_cnt
                 secondary_trade_fee_percent = (1 - self.secondary_obj.fee) ** self.secondary_obj.fee_cnt
 
-                real_diff = ((1 + data[trade[currency]]) * primary_trade_fee_percent * secondary_trade_fee_percent) - 1
+                real_diff = ((1 + data[trade][currency]) * primary_trade_fee_percent * secondary_trade_fee_percent) - 1
 
                 # get precision of BTC and ALT
-                ret = self.get_precision(currency)
-                if not ret:
+                precision_set = self.get_precision(currency)
+                if not precision_set:
                     return False
-                btc_precision, alt_precision = ret
+                btc_precision, alt_precision = precision_set
 
                 try:
                     if trade == PRIMARY_TO_SECONDARY:
@@ -589,14 +571,14 @@ class TradeThread(QThread):
                     debugger.exception(Msg.Error.FATAL)
                     continue
 
-                if profit_obj is None and (tradable_btc and alt_amount):
-                    profit_obj = MaxProfits(btc_profit, tradable_btc, alt_amount, currency, trade)
-                elif profit_obj is None:
+                if profit_object is None and (tradable_btc and alt_amount):
+                    profit_object = MaxProfits(btc_profit, tradable_btc, alt_amount, currency, trade)
+                elif profit_object is None:
                     continue
-                elif profit_obj.btc_profit < btc_profit:
-                    profit_obj = MaxProfits(btc_profit, tradable_btc, alt_amount, currency, trade)
+                elif profit_object.btc_profit < btc_profit:
+                    profit_object = MaxProfits(btc_profit, tradable_btc, alt_amount, currency, trade)
 
-                profit_obj.information = dict(
+                profit_object.information = dict(
                     user_id=self.email,
                     profit_percent=real_diff,
                     profit_btc=btc_profit,
@@ -606,7 +588,7 @@ class TradeThread(QThread):
                     currency_name=currency
                 )
 
-        return profit_obj
+        return profit_object
 
     @staticmethod
     def find_min_balance(btc_amount, alt_amount, btc_alt, symbol, btc_precision, alt_precision):
