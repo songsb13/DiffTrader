@@ -624,7 +624,7 @@ class TradeThread(QThread):
             alt=alt,
             unit=float(send_amount)
         ))
-        btc_send_amount = send_amount_calculator(max_profit.tradable_btc, self.secondary_obj.transaction_fee['BTC'])
+        btc_send_amount = send_amount_calculator(max_profit.tradable_btc, to_object.transaction_fee['BTC'])
         self.log.send(Msg.Trade.BTC_WITHDRAW.format(
             to_exchange=to_object.name,
             from_exchange=from_object.name,
@@ -632,325 +632,85 @@ class TradeThread(QThread):
         ))
     
         self.stop()
-        return True, '', '', 0
+        return True
 
-    def coin_exchanging(self, from_object, to_object, max_profit):
-        # from object 에서 ALT를 사고, to object에서 ALT를 팔아서 서로 교환함
+    def coin_trader(self, sender_object, receiver_object, profit_object, send_amount, coin):
+        """
+            sender_object: 이 거래소에서 coin 값을 send_amount만큼 보낸다.
+            receiver_object: 이 거래소에서 coin 값을 send_amount만큼 받는다.
+        """
+        if self.auto_withdrawal:
+            while not self.stop_flag:
+                if is_exists_deposit_addrs(coin, receiver_object.deposit):
+                    if coin in TAG_COINS:
+                        res_object = sender_object.exchange.withdraw(coin, send_amount, receiver_object.deposit[coin],
+                                                                   receiver_object.deposit[coin + 'TAG'])
+                    else:
+                        res_object = sender_object.exchange.withdraw(coin, send_amount, receiver_object.deposit[coin])
+
+                    if res_object.success:
+                        return True
+                    else:
+                        self.log.send(Msg.Trade.FAIL_WITHDRAWAL.format(
+                            from_exchange=sender_object.name,
+                            to_exchange=receiver_object.name,
+                            alt=coin
+                        ))
+                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res_object.message))
+                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
+                        time.sleep(res_object.time)
+                        continue
+                else:
+                    self.manually_withdraw(sender_object, receiver_object, profit_object, send_amount, coin)
+                    return
+            else:
+                self.manually_withdraw(sender_object, receiver_object, profit_object, send_amount, coin)
+                return
+        else:
+            self.manually_withdraw(sender_object, receiver_object, profit_object, send_amount, coin)
+            return
+
+    def trade_controller(self, from_object, to_object, profit_object):
+        """
+            from_object: ALT를 사게되는 거래소
+            to_object: ALT를 팔게되는 거래소
+            profit_object: from_object에서 to_object에서 수익관련 object
+        """
+
+        alt = profit_object.currency.split('_')[1]
         
-        alt = max_profit.currency.split('_')[1]
-        
-        res_object = from_object.exchange.base_to_alt(max_profit.currency, max_profit.tradable_btc,
-                                                      max_profit.alt_amount, from_object.fee, to_object.fee)
+        res_object = from_object.exchange.base_to_alt(profit_object.currency, profit_object.tradable_btc,
+                                                      profit_object.alt_amount, from_object.fee, to_object.fee)
         
         from_object_alt_amount = res_object.data
         
         debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=from_object.name, alt=alt))
 
-        self.secondary.alt_to_base(max_profit.currency, max_profit.tradable_btc, from_object_alt_amount)
+        self.secondary.alt_to_base(profit_object.currency, profit_object.tradable_btc, from_object_alt_amount)
         debugger.debug(Msg.Debug.SELL_ALT.format(to_exchange=to_object.name, alt=alt))
         debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=to_object.name))
 
         if not res_object.success:
             raise
         
-        send_amount = self._send_amount_calculator(from_object_alt_amount, from_object.transaction_fee[alt])
-        # if self.primary_exchange_str.startswith("Upbit") and self.secondary_exchange_str.startswith("Upbit"):
-        #     return True, '', '', 0
+        # from_object -> to_object 로 ALT 보냄
+        send_amount = send_amount_calculator(from_object_alt_amount, from_object.transaction_fee[alt])
+        self.coin_trader(from_object, to_object, profit_object, send_amount, alt)
 
-        if self.auto_withdrawal:
-            while not self.stop_flag:
-                if is_exists_deposit_addrs(alt, self.secondary_obj.deposit):
-                    if alt in TAG_COINS:
-                        res = self.primary_obj.exchange.withdraw(alt, send_amount, self.secondary_obj.deposit[alt],
-                                                           self.secondary_obj.deposit[alt+'TAG'])
-                    else:
-                        res = self.primary_obj.exchange.withdraw(alt, send_amount, self.secondary_obj.deposit[alt])
+        # to_object -> from_object 로 BTC 보냄
+        btc_send_amount = send_amount_calculator(profit_object.tradable_btc, to_object.transaction_fee['BTC'])
+        self.coin_trader(to_object, from_object, profit_object, btc_send_amount, 'BTC')
 
-                else:
-                    self.manually_withdraw(from_object, to_object, max_profit, send_amount, alt)
-
-        else:
-            pass
-            
-
-    def trade(self, max_profit):
+    def trade(self, profit_object):
         self.log.send(Msg.Trade.START_TRADE)
-        btc_profit, tradable_btc, alt_amount, currency, trade = max_profit
         if self.auto_withdrawal:
             if not self.primary_obj.deposit or not self.secondary_obj.deposit:
                 # 입금 주소 없음
                 raise
-        alt = currency.split('_')[1]
-        
-        if max_profit.trade == PRIMARY_TO_SECONDARY:
-            self.coin_exchanging(self.primary_obj, self.secondary_obj, max_profit)
+
+        if profit_object.trade == PRIMARY_TO_SECONDARY:
+            self.trade_controller(self.primary_obj, self.secondary_obj, profit_object)
         else:
-            self.coin_exchanging(self.secondary_obj, self.primary_obj, max_profit)
-        
-        if trade == 'm_to_s':
-            if self.auto_withdrawal:
-                while not self.stop_flag:
-                    #   거래소1 -> 거래소2 ALT 이체
-                    if alt == 'XRP' or alt == 'XMR':
-                        if (alt not in secondary_deposit_addrs
-                                or alt + 'TAG' not in secondary_deposit_addrs
-                                or not secondary_deposit_addrs[alt]
-                                or not secondary_deposit_addrs[alt + 'TAG']):
-                            
-                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.secondary_exchange_str, alt=alt))
-                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                                from_exchange=self.primary_exchange_str,
-                                to_exchange=self.secondary_exchange_str,
-                                alt=alt,
-                                unit=float(send_amount)
-                            ))
-                            send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
-                                Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            
-                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                                to_exchange=self.secondary_exchange_str,
-                                from_exchange=self.primary_exchange_str,
-                                unit=float(send_amount)
-                            ))
-                            
-                            self.stop()
-                            return True, '', '', 0
-                        res = self.primary.withdraw(alt, float(send_amount), secondary_deposit_addrs[alt],
-                                                    secondary_deposit_addrs[alt + 'TAG'])
-                    else:
-                        if alt not in secondary_deposit_addrs or not secondary_deposit_addrs[alt]:
-                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.secondary_exchange_str, alt=alt))
-                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                                from_exchange=self.primary_exchange_str,
-                                to_exchange=self.secondary_exchange_str,
-                                alt=alt,
-                                unit=float(send_amount)
-                            ))
-                            send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
-                                Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                                to_exchange=self.secondary_exchange_str,
-                                from_exchange=self.primary_exchange_str,
-                                unit=float(send_amount)
-                            ))
-                            self.stop()
-                            return True, '', '', 0
-                        res = self.primary.withdraw(alt, send_amount, secondary_deposit_addrs[alt])
-                    if not res[0]:  # success 여부
-                        self.log.send(Msg.Trade.FAIL_WITHDRAWAL.format(
-                            from_exchange=self.primary_exchange_str,
-                            to_exchange=self.secondary_exchange_str,
-                            alt=alt
-                        ))
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
-                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
-                        time.sleep(res[3])
-                    else:
-                        break
-                else:
-                    self.log.send(Msg.Trade.MANUAL_STOP)
-                    self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                        from_exchange=self.primary_exchange_str,
-                        to_exchange=self.secondary_exchange_str,
-                        alt=alt,
-                        unit=float(send_amount)
-                    ))
-                    send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
-                        Decimal(10) ** tradable_btc.as_tuple().exponent)
-                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                        to_exchange=self.secondary_exchange_str,
-                        from_exchange=self.primary_exchange_str,
-                        unit=float(send_amount)
-                    ))
-                    return True, '', '', 0
-
-                self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                    from_exchange=self.primary_exchange_str,
-                    to_exchange=self.secondary_exchange_str,
-                    alt=alt,
-                    unit=float(send_amount)
-                ))
-                send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
-                    Decimal(10) ** tradable_btc.as_tuple().exponent)
-                while not self.stop_flag:
-                    #   거래소2 -> 거래소1 BTC 이체
-                    if 'BTC' not in primary_deposit_addrs or not primary_deposit_addrs['BTC']:
-                        self.log.send(Msg.Trade.NO_BTC_ADDRESS.format(from_exchange=self.primary_exchange_str))
-                        self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                            to_exchange=self.secondary_exchange_str,
-                            from_exchange=self.primary_exchange_str,
-                            unit=float(send_amount)
-                        ))
-                        self.stop()
-                        return True, '', '', 0
-                    res = self.secondary.withdraw('BTC', send_amount, primary_deposit_addrs['BTC'])
-                    if res[0]:
-                        break
-                    else:
-                        self.log.send(Msg.Trade.FAIL_BTC_WITHDRAWAL.format(
-                            to_exchange=self.secondary_exchange_str,
-                            from_exchange=self.primary_exchange_str
-                        ))
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
-                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
-                        
-                        time.sleep(res[3])
-                else:
-                    self.log.send(Msg.Trade.MANUAL_STOP)
-                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                        to_exchange=self.secondary_exchange_str,
-                        from_exchange=self.primary_exchange_str,
-                        unit=float(send_amount)
-                    ))
-                    return True, '', '', 0
-
-                self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                    to_exchange=self.secondary_exchange_str,
-                    from_exchange=self.primary_exchange_str,
-                    unit=float(send_amount)
-                ))
-            else:
-                self.log.send(Msg.Trade.COMPLETE_MANUAL)
-                self.stop()
-        else:
-            #   거래소1 에서 BTC 를 사고 거래소2 에서 ALT 를 사서 교환함
-            suc, res, msg, st = self.secondary.base_to_alt(currency, tradable_btc, alt_amount, secondary_trade_fee,
-                                                           secondary_tx_fee)
-            if not suc:
-                return False, '', msg, st
-            
-            debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=self.secondary_exchange_str, alt=alt))
-            
-            alt_amount = res
-            self.primary.alt_to_base(currency, tradable_btc, alt_amount)
-            
-            debugger.debug(Msg.Debug.SELL_ALT.format(to_exchange=self.primary_exchange_str, alt=alt))
-            debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=self.primary_exchange_str))
-            send_amount = alt_amount + Decimal(secondary_tx_fee[alt]).quantize(
-                Decimal(10) ** alt_amount.as_tuple().exponent)
-
-            if self.primary_exchange_str.startswith("Upbit") and self.secondary_exchange_str.startswith("Upbit"):
-                return True, '', '', 0
-
-            if self.auto_withdrawal:
-                while not self.stop_flag:
-                    #   Bithumb -> Binance ALT 이체
-                    if alt == 'XRP' or alt == 'XMR':
-                        if (alt not in primary_deposit_addrs
-                                or alt + 'TAG' not in primary_deposit_addrs
-                                or not primary_deposit_addrs[alt]
-                                or not primary_deposit_addrs[alt + 'TAG']):
-                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.primary_exchange_str, alt=alt))
-                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                                from_exchange=self.secondary_exchange_str,
-                                to_exchange=self.primary_exchange_str,
-                                alt=alt,
-                                unit=float(send_amount)
-                            ))
-                            send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
-                                Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                                to_exchange=self.primary_exchange_str,
-                                from_exchange=self.secondary_exchange_str,
-                                unit=float(send_amount)
-                            ))
-                            self.stop()
-                            return True, '', '', 0
-                        res = self.secondary.withdraw(alt, send_amount, primary_deposit_addrs[alt],
-                                                      primary_deposit_addrs[alt + 'TAG'])
-                    else:
-                        if alt not in primary_deposit_addrs or not primary_deposit_addrs[alt]:
-                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.primary_exchange_str, alt=alt))
-                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                                from_exchange=self.secondary_exchange_str,
-                                to_exchange=self.primary_exchange_str,
-                                alt=alt,
-                                unit=float(send_amount)
-                            ))
-                            send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
-                                Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                                to_exchange=self.primary_exchange_str,
-                                from_exchange=self.secondary_exchange_str,
-                                unit=float(send_amount)
-                            ))
-                            self.stop()
-                            return True, '', '', 0
-                        res = self.secondary.withdraw(alt, send_amount, primary_deposit_addrs[alt])
-                    if res[0]:
-                        break
-                    else:
-                        self.log.send(Msg.Trade.FAIL_WITHDRAWAL.format(
-                            from_exchange=self.secondary_exchange_str,
-                            to_exchange=self.primary_exchange_str,
-                            alt=alt
-                        ))
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
-                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
-                        time.sleep(res[3])
-                else:
-                    self.log.send(Msg.Trade.MANUAL_STOP)
-                    self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                        from_exchange=self.secondary_exchange_str,
-                        to_exchange=self.primary_exchange_str,
-                        alt=alt,
-                        unit=float(send_amount)
-                    ))
-                    send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
-                        Decimal(10) ** tradable_btc.as_tuple().exponent)
-                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                        to_exchange=self.primary_exchange_str,
-                        from_exchange=self.secondary_exchange_str,
-                        unit=float(send_amount)
-                    ))
-                    return True, '', '', 0
-
-                self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                    from_exchange=self.secondary_exchange_str,
-                    to_exchange=self.primary_exchange_str,
-                    alt=alt,
-                    unit=float(send_amount)
-                ))
-                send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
-                    Decimal(10) ** tradable_btc.as_tuple().exponent)
-                while not self.stop_flag:
-                    #   Binance -> Bithumb BTC 이체
-                    if 'BTC' not in secondary_deposit_addrs or not secondary_deposit_addrs['BTC']:
-                        self.log.send(Msg.Trade.NO_BTC_ADDRESS.format(from_exchange=self.secondary_exchange_str))
-                        self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                            to_exchange=self.primary_exchange_str,
-                            from_exchange=self.secondary_exchange_str,
-                            unit=float(send_amount)
-                        ))
-                        self.stop()
-                        return True, '', '', 0
-                    res = self.primary.withdraw('BTC', send_amount, secondary_deposit_addrs['BTC'])
-                    if not res[0]:
-                        self.log.send(Msg.Trade.FAIL_BTC_WITHDRAWAL.format(
-                            to_exchange=self.primary_exchange_str,
-                            from_exchange=self.secondary_exchange_str
-                        ))
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
-                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
-                        time.sleep(res[3])
-                    else:
-                        break
-                else:
-                    self.log.send(Msg.Trade.MANUAL_STOP)
-                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                        to_exchange=self.primary_exchange_str,
-                        from_exchange=self.secondary_exchange_str,
-                        unit=float(send_amount)
-                    ))
-                    return True, '', '', 0
-
-                self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                    to_exchange=self.primary_exchange_str,
-                    from_exchange=self.secondary_exchange_str,
-                    unit=float(send_amount)
-                ))
-            else:
-                self.log.send(Msg.Trade.COMPLETE_MANUAL)
-                self.stop()
+            self.trade_controller(self.secondary_obj, self.primary_obj, profit_object)
 
         return True, '', '', 0
