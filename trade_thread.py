@@ -1,23 +1,32 @@
-from pyinstaller_patch import *
-from PyQt5.QtCore import pyqtSignal, QThread
+# Python Inner parties
+import time
+import random
+import asyncio
+
 from decimal import Decimal, ROUND_DOWN
 from datetime import datetime
-import asyncio
-from telegram import Bot
 
+# SAI parties
 from Bithumb.bithumb import Bithumb
 from Binance.binance import Binance
 from Bitfinex.bitfinex import Bitfinex
 from Upbit.upbit import UpbitBTC, UpbitUSDT, UpbitKRW
 from Huobi.huobi import Huobi
+
+from pyinstaller_patch import *
+# END
+
+# Domain parties
 from settings.messages import Logs
 from settings.messages import Messages as Msg
 from settings.defaults import TAG_COINS
+from trade_utils import send_amount_calculator, expect_profit_sender, \
+    is_exists_deposit_addrs
 
-from trade_utils import send_amount_calculator, expect_profit_sender, is_exists_deposit_addrs
 
-import time
-import random
+# Third parties
+import requests
+from PyQt5.QtCore import pyqtSignal, QThread
 
 
 # temp
