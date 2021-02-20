@@ -228,8 +228,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Init.GET_WITHDRAWAL_INFO)
                 await self.deposits()
                 self.log.send(Msg.Init.SUCCESS_WITHDRAWAL_INFO)
-            else:
-                deposit = None
+
             fee_refresh_time = int()
             while evt.is_set() and not self.stop_flag:
                 try:
@@ -238,6 +237,7 @@ class TradeThread(QThread):
                         td_res = await self.get_td_fees()
 
                         if not (tx_res and td_res):
+                            # need fail logs
                             continue
 
                         self.log.send(Msg.Trade.SUCCESS_FEE_INFO)
@@ -256,14 +256,12 @@ class TradeThread(QThread):
                     default_btc = max(primary_btc, secondary_btc) * 1.5
 
                     if not default_btc:
-                        # balance 없는 경우
+                        # BTC가 balance에 없는 경우
                         self.log.send(Msg.Trade.NO_BALANCE_BTC)
                         continue
 
                     # todo orderbook은 뭘 리턴받지? 확인필요함
-                    success, data, error, time_ = await self.primary_obj.exchange.compare_orderbook(
-                        self.secondary_obj.exchange, self.currencies, default_btc
-                    )
+                    success, data, error, time_ = await self.compare_orderbook(default_btc)
                     if not success:
                         self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=error))
                         time.sleep(time_)
@@ -279,12 +277,12 @@ class TradeThread(QThread):
                     if profit_object.btc_profit >= self.min_profit_btc:
                         #   사용자 지정 BTC 보다 많은경우
                         try:
-                            success, res, msg, st = self.trade(profit_object)
+                            trade_success = self.trade(profit_object)
 
                             # profit 수집
                             expect_profit_sender(profit_object)
 
-                            if not success:
+                            if not trade_success:
                                 self.log.send(Msg.Trade.FAIL)
                                 continue
                             self.log.send(Msg.Trade.SUCCESS)
@@ -422,6 +420,35 @@ class TradeThread(QThread):
         self.currencies = list(set(self.secondary_obj.balance).intersection(self.primary_obj.balance))
 
         return True
+
+    async def compare_orderbook(self, default_btc=1.0):
+        primary_res, secondary_res = await asyncio.gather(
+            self.primary_obj.exchange.get_curr_avg_orderbook(self.currencies, default_btc),
+            self.secondary_obj.exchange.get_curr_avg_orderbook(self.currencies, default_btc)
+        )
+
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
+
+        if not primary_res.success or not secondary_res.success:
+            return False
+
+        m_to_s = dict()
+        for currency_pair in self.currencies:
+            m_ask = primary_res.data[currency_pair]['asks']
+            s_bid = secondary_res.data[currency_pair]['bids']
+            m_to_s[currency_pair] = float(((s_bid - m_ask) / m_ask))
+
+        s_to_m = dict()
+        for currency_pair in self.currencies:
+            m_bid = primary_res.data[currency_pair]['bids']
+            s_ask = secondary_res.data[currency_pair]['asks']
+            s_to_m[currency_pair] = float(((m_bid - s_ask) / s_ask))
+
+        res = primary_res.data, secondary_res.data, {'m_to_s': m_to_s, 's_to_m': s_to_m}
+
+        return res
 
     def get_expectation_by_balance(self, from_object, to_object, currency, alt, btc_precision, alt_precision, real_diff):
         """
@@ -662,11 +689,11 @@ class TradeThread(QThread):
         if self.auto_withdrawal:
             if not self.primary_obj.deposit or not self.secondary_obj.deposit:
                 # 입금 주소 없음
-                raise
+                False
 
         if profit_object.trade == PRIMARY_TO_SECONDARY:
             self.trade_controller(self.primary_obj, self.secondary_obj, profit_object)
         else:
             self.trade_controller(self.secondary_obj, self.primary_obj, profit_object)
 
-        return True, '', '', 0
+        return True
