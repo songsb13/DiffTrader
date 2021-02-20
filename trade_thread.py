@@ -19,7 +19,7 @@ from pyinstaller_patch import *
 # Domain parties
 from settings.messages import Logs
 from settings.messages import Messages as Msg
-from settings.defaults import TAG_COINS
+from settings.defaults import TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY
 from trade_utils import send_amount_calculator, expect_profit_sender, \
     is_exists_deposit_addrs
 
@@ -37,12 +37,6 @@ TEST_COINS = [
 ]
 
 RANDOMLY_INT = (10, 100)
-
-# primary에서 BTC매도(ALT매수) -> secondary에서 ALT매도(BTC로 변환)
-PRIMARY_TO_SECONDARY = 'mts'
-
-# secondary에서 BTC매도(ALT매수) -> primary에서 ALT매도(BTC로 변환)
-SECONDARY_TO_PRIMARY = 'stm'
 
 
 
