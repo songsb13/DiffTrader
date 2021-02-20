@@ -336,38 +336,7 @@ class TradeThread(QThread):
                 exchange = UpbitKRW(cfg['id'], cfg['pw'], cfg['tkey'], cfg['tchatid'])
             else:
                 return False
-            try:
-                exchange.bot = Bot(token=exchange.token)
-            except:
-                self.log_signal.emit(logging.INFO, "잘못된 텔레그램 봇 토큰입니다.")
-                return False
-            try:
-                exchange.bot.get_chat(exchange.chat_id)
-            except:
-                self.log_signal.emit(logging.INFO,
-                                     ("존재하지 않는 채팅 아이디 입니다.\n"
-                                      "채팅 아이디가 올바르다면 봇에게 메세지를 보낸 후 다시 시도해 주세요."))
-                return False
 
-            self.log_signal.emit(logging.INFO, "[{}] 업비트 인증을 시작합니다.".format(exchange_str))
-            if 'pydevd' in sys.modules:
-                exchange.chrome(headless=False)
-            else:
-                exchange.chrome(headless=True)
-            while True:
-                success, tokens, msg, st = exchange.sign_in(cfg['id'], cfg['pw'])
-                if not tokens:
-                    self.log_signal.emit(logging.INFO, msg)
-                    exchange.off()
-                    if '비밀번호' in msg:
-                        return False
-                    time.sleep(st)
-                    exchange.chrome(headless=True)
-                else:
-                    exchange.decrypt_token(tokens)
-                    exchange.off()
-                    break
-            return exchange
         elif exchange_str == 'Huobi':
             exchange = Huobi(cfg['key'], cfg['secret'])
             suc, data, msg, st = exchange.get_account_id()
