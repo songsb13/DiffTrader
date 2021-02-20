@@ -10,7 +10,7 @@ from datetime import datetime
 from Bithumb.bithumb import Bithumb
 from Binance.binance import Binance
 from Bitfinex.bitfinex import Bitfinex
-from Upbit.upbit import UpbitBTC, UpbitUSDT, UpbitKRW
+from Upbit.upbit import BaseUpbit
 from Huobi.huobi import Huobi
 
 from pyinstaller_patch import *
@@ -84,7 +84,7 @@ class ExchangeInfo(object):
             self.__balance = {x: random.randint(*RANDOMLY_INT) for x in TEST_COINS}
         self.__balance = None
         self.__orderbook = None
-        self.__fee = None
+        self.__td_fee = None
         self.__tx_fee = None
         self.__deposit = None
 
@@ -134,12 +134,12 @@ class ExchangeInfo(object):
         self.__orderbook = val
 
     @property
-    def fee(self):
-        return self.__fee
+    def trading_fee(self):
+        return self.__td_fee
 
-    @fee.setter
-    def fee(self, val):
-        self.__fee = val
+    @trading_fee.setter
+    def trading_fee(self, val):
+        self.__td_fee = val
         
     @property
     def transaction_fee(self):
@@ -240,9 +240,10 @@ class TradeThread(QThread):
             while evt.is_set() and not self.stop_flag:
                 try:
                     if time.time() >= fee_refresh_time + 600:
-                        res = await self.fees()
+                        tx_res = await self.get_tx_fees()
+                        td_res = await self.get_td_fees()
 
-                        if not res:
+                        if not (tx_res and td_res):
                             continue
 
                         self.log.send(Msg.Trade.SUCCESS_FEE_INFO)
@@ -278,7 +279,7 @@ class TradeThread(QThread):
                     profit_object = self.get_max_profit(data)
                     if not profit_object:
                         self.log.send(Msg.Trade.NO_PROFIT)
-                        expect_profit_sender(profit_object, self.primary_obj, self.secondary_obj)
+                        expect_profit_sender(profit_object)
 
                         continue
                     if profit_object.btc_profit >= self.min_profit_btc:
@@ -287,7 +288,7 @@ class TradeThread(QThread):
                             success, res, msg, st = self.trade(profit_object)
 
                             # profit 수집
-                            expect_profit_sender(profit_object, self.primary_obj, self.secondary_obj)
+                            expect_profit_sender(profit_object)
 
                             if not success:
                                 self.log.send(Msg.Trade.FAIL)
@@ -298,13 +299,13 @@ class TradeThread(QThread):
                             #   trade 함수 내에서 처리하지 못한 함수가 발견한 경우
                             debugger.exception(Msg.Error.EXCEPTION)
                             self.log.send_error(Msg.Error.EXCEPTION)
-                            expect_profit_sender(profit_object, self.primary_obj, self.secondary_obj)
+                            expect_profit_sender(profit_object)
 
                             return False
                     else:
                         #   사용자 지정 BTC 보다 적은경우
                         self.log.send(Msg.Trade.NO_MIN_BTC)
-                        expect_profit_sender(profit_object, self.primary_obj, self.secondary_obj)
+                        expect_profit_sender(profit_object)
 
                 except:
                     debugger.exception(Msg.Error.EXCEPTION)
@@ -328,15 +329,7 @@ class TradeThread(QThread):
             return Bitfinex(cfg['key'], cfg['secret'])
         elif exchange_str.startswith('Upbit'):
             # todo 차후 리팩토링에서 수정 예정임
-            if exchange_str == 'UpbitBTC':
-                exchange = UpbitBTC(cfg['id'], cfg['pw'], cfg['tkey'], cfg['tchatid'])
-            elif exchange_str == 'UpbitUSDT':
-                exchange = UpbitUSDT(cfg['id'], cfg['pw'], cfg['tkey'], cfg['tchatid'])
-            elif exchange_str == 'UpbitKRW':
-                exchange = UpbitKRW(cfg['id'], cfg['pw'], cfg['tkey'], cfg['tchatid'])
-            else:
-                return False
-
+            return BaseUpbit(cfg['key'], cfg['secret'])
         elif exchange_str == 'Huobi':
             exchange = Huobi(cfg['key'], cfg['secret'])
             suc, data, msg, st = exchange.get_account_id()
@@ -362,40 +355,37 @@ class TradeThread(QThread):
 
         return True
 
-    async def fees(self):
-        fut = [
+    async def get_tx_fees(self):
+        primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_trading_fee(),
             self.secondary_obj.exchange.get_trading_fee(),
+        )
+
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
+
+        if not primary_res.success or not secondary_res.success:
+            raise
+
+        self.primary_obj.trading_fee = primary_res.data
+        self.secondary_obj.trading_fee = secondary_res.data
+
+    async def get_td_fees(self):
+        primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_transaction_fee(),
             self.secondary_obj.exchange.get_transaction_fee()
-        ]
-        ret = await asyncio.gather(*fut)
-        ts = 0
-        err = False
-        if not ret[0][0]:
-            self.log.send(ret[0][2])
-            ts = ret[0][3]
-            err = True
-        if not ret[1][0]:
-            self.log.send(ret[1][2])
-            if ts < ret[1][3]:
-                ts = ret[1][3]
-            err = True
-        if not ret[2][0]:
-            self.log.send(ret[2][2])
-            if ts < ret[2][3]:
-                ts = ret[2][3]
-            err = True
-        if not ret[3][0]:
-            self.log.send(ret[3][2])
-            if ts < ret[3][3]:
-                ts = ret[3][3]
-            err = True
-        if err:
-            time.sleep(ts)
-            return False
-        else:
-            return ret[0][1], ret[1][1], ret[2][1], ret[3][1]
+        )
+
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
+
+        if not primary_res.success or not secondary_res.success:
+            raise
+
+        self.primary_obj.transaction_fee = primary_res.data
+        self.secondary_obj.transaction_fee = secondary_res.data
 
     def get_precision(self, currency):
         primary_res = self.primary_obj.exchange.get_precision(currency)
@@ -439,7 +429,7 @@ class TradeThread(QThread):
 
         return True
 
-    def get_expectation_by_balance(self, from_object, to_object, currency, alt, btc_precision, alt_precision):
+    def get_expectation_by_balance(self, from_object, to_object, currency, alt, btc_precision, alt_precision, real_diff):
         """
 
         """
@@ -458,8 +448,8 @@ class TradeThread(QThread):
             tradable_btc=tradable_btc
         ))
         btc_profit = (tradable_btc * Decimal(real_diff)) - (
-                Decimal(primary_tx_fee[alt]) * primary_orderbook[currency]['asks']) - Decimal(
-            secondary_tx_fee['BTC'])
+                Decimal(from_object.transaction_fee[alt]) * from_object.orderbook[currency]['asks']) - Decimal(
+            to_object.transaction_fee['BTC'])
 
         self.log.send(Msg.Trade.BTC_PROFIT.format(
             from_exchange=from_object.name,
@@ -520,8 +510,8 @@ class TradeThread(QThread):
                 # real_diff 부분은 원화마켓과 BTC마켓의 수수료가 부과되는 횟수가 달라서 거래소 별로 다르게 지정해줘야함
                 # 내부에서 부과회수(함수로 만듬 fee_count)까지 리턴해서 받아오는걸로 처리한다.
 
-                primary_trade_fee_percent = (1 - self.primary_obj.fee) ** self.primary_obj.fee_cnt
-                secondary_trade_fee_percent = (1 - self.secondary_obj.fee) ** self.secondary_obj.fee_cnt
+                primary_trade_fee_percent = (1 - self.primary_obj.trading_fee) ** self.primary_obj.fee_cnt
+                secondary_trade_fee_percent = (1 - self.secondary_obj.trading_fee) ** self.secondary_obj.fee_cnt
 
                 real_diff = ((1 + data[trade][currency]) * primary_trade_fee_percent * secondary_trade_fee_percent) - 1
 
@@ -534,7 +524,7 @@ class TradeThread(QThread):
                 try:
                     if trade == PRIMARY_TO_SECONDARY:
                         tradable_btc, alt_amount, btc_profit = self.get_expectation_by_balance(
-                            self.primary_obj, self.secondary_obj, currency, alt, btc_precision, alt_precision
+                            self.primary_obj, self.secondary_obj, currency, alt, btc_precision, alt_precision, real_diff
                         )
                         # alt_amount로 거래할 btc를 맞춰줌, BTC를 사고 ALT를 팔기때문에 bids가격을 곱해야함
                         # tradable_btc = alt_amount * data['s_o_b'][currency]['bids']
@@ -567,8 +557,8 @@ class TradeThread(QThread):
                     profit_percent=real_diff,
                     profit_btc=btc_profit,
                     currency_time=datetime.now().strftime('%d-%m-%Y %H:%M:%S'),
-                    primary_market=self.primary_exchange_str,
-                    secondary_market=self.secondary_exchange_str,
+                    primary_market=self.primary_obj.name,
+                    secondary_market=self.secondary_obj.name,
                     currency_name=currency
                 )
 
@@ -651,7 +641,8 @@ class TradeThread(QThread):
         alt = profit_object.currency.split('_')[1]
         
         res_object = from_object.exchange.base_to_alt(profit_object.currency, profit_object.tradable_btc,
-                                                      profit_object.alt_amount, from_object.fee, to_object.fee)
+                                                      profit_object.alt_amount, from_object.trading_fee,
+                                                      to_object.trading_fee)
         
         from_object_alt_amount = res_object.data
         
