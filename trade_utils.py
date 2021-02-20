@@ -4,7 +4,9 @@
 """
 
 from decimal import Decimal
-from settings.defaults import TAG_COINS
+from settings.defaults import TAG_COINS, SAI_URL
+
+import requests
 
 
 def send_amount_calculator(amount_of_coin, tx_fee):
@@ -17,14 +19,16 @@ def send_amount_calculator(amount_of_coin, tx_fee):
         Decimal(10) ** amount_of_coin.as_tuple().exponent)
 
 
-def expect_profit_sender(max_profit_object, from_object, secondary_object):
+def expect_profit_sender(profit_object, primary_object, secondary_object):
     """
-        todo 차후 조정
-        :param max_profit_object:
-        :param from_object:
-        :param secondary_object:
-        :return:
     """
+    data = {'profit': profit_object.btc_profit., 'currency': profit_object.currency, 'primary': primary_object.name,
+            'secondary': secondary_object.name,}
+
+    res = requests.post(SAI_URL, data=data)
+
+    return True if res.status_code == 200 else False
+
 
 
 def is_exists_deposit_addrs(coin, deposit_dic):

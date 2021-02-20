@@ -278,8 +278,8 @@ class TradeThread(QThread):
                     profit_object = self.get_max_profit(data)
                     if not profit_object:
                         self.log.send(Msg.Trade.NO_PROFIT)
-                        self.save_profit_expected(data, self.currencies,
-                                                  self.primary_exchange_str, self.secondary_exchange_str)
+                        expect_profit_sender(profit_object, self.primary_obj, self.secondary_obj)
+
                         continue
                     if profit_object.btc_profit >= self.min_profit_btc:
                         #   사용자 지정 BTC 보다 많은경우
@@ -287,13 +287,7 @@ class TradeThread(QThread):
                             success, res, msg, st = self.trade(profit_object)
 
                             # profit 수집
-                            sai_url = 'http://www.saiblockchain.com/api/pft_data'
-                            try:
-                                requests.post(sai_url, data=self.collected_data)
-                                success = self.save_profit_expected(data, bal_n_crncy[2], self.primary_exchange_str,
-                                                                    self.secondary_exchange_str)
-                            except:
-                                pass
+                            expect_profit_sender(profit_object, self.primary_obj, self.secondary_obj)
 
                             if not success:
                                 self.log.send(Msg.Trade.FAIL)
@@ -304,14 +298,13 @@ class TradeThread(QThread):
                             #   trade 함수 내에서 처리하지 못한 함수가 발견한 경우
                             debugger.exception(Msg.Error.EXCEPTION)
                             self.log.send_error(Msg.Error.EXCEPTION)
-                            self.save_profit_expected(data, bal_n_crncy[2],
-                                                      self.primary_exchange_str, self.secondary_exchange_str)
+                            expect_profit_sender(profit_object, self.primary_obj, self.secondary_obj)
+
                             return False
                     else:
                         #   사용자 지정 BTC 보다 적은경우
                         self.log.send(Msg.Trade.NO_MIN_BTC)
-                        self.save_profit_expected(data, bal_n_crncy[2],
-                                                  self.primary_exchange_str, self.secondary_exchange_str)
+                        expect_profit_sender(profit_object, self.primary_obj, self.secondary_obj)
 
                 except:
                     debugger.exception(Msg.Error.EXCEPTION)
