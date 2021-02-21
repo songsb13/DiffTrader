@@ -27,7 +27,6 @@ def expect_profit_sender(profit_object):
     return True if res.status_code == 200 else False
 
 
-
 def is_exists_deposit_addrs(coin, deposit_dic):
     has_deposit = deposit_dic.get(coin, None)
     has_tag_deposit = deposit_dic.get(coin + 'TAG', None) if coin in TAG_COINS else None

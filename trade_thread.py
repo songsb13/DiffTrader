@@ -27,6 +27,8 @@ from settings.defaults import TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIM
 from trade_utils import send_amount_calculator, expect_profit_sender, \
     is_exists_deposit_addrs
 
+from wrapper import loop_wrapper
+
 
 # Third parties
 from PyQt5.QtCore import pyqtSignal, QThread
@@ -353,6 +355,7 @@ class TradeThread(QThread):
         self.primary_obj.trading_fee = primary_res.data
         self.secondary_obj.trading_fee = secondary_res.data
 
+    @
     async def get_tx_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_transaction_fee(),
