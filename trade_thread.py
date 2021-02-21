@@ -51,7 +51,19 @@ RANDOMLY_INT = (10, 100)
 
 
 class MaxProfits(object):
+    """
+        Profit object for comparing
+    """
     def __init__(self, btc_profit, tradable_btc, alt_amount, currency, trade):
+        """
+            Args:
+                btc_profit: Decimal, Arbitrage profit of btc from two exchanges
+                tradable_btc: Decimal, It can be btc amount from_object or able to convert ALT to BTC from to_object
+                alt_amount: Decimal, to_object's Alt amount
+                currency: String, It can be changed dependency of SAI symbol like {MARKET}_{COIN} ( BTC_ETH )
+                trade: string, Trade type for primary to secondary.
+                information: It is profit data and sending to SAI server for collecting it
+        """
         self.btc_profit = btc_profit
         self.tradable_btc = tradable_btc
         self.alt_amount = alt_amount,
@@ -64,7 +76,11 @@ class MaxProfits(object):
 class ExchangeInfo(object):
     # todo primary_info는 diff_trader에 받고있는데, 하나의 DICT에 하나의 거래소만 받는데 왜 dict처리하는지 확인 필요함.
     #  이유가 없으면 삭제하기
+    """
+        This object is used to get various exchange's info name, balance, fee and etc.
+    """
     def __init__(self, cfg, name, log):
+
         # todo property, setter의 사용성에 대해 재고가 필요, 만약에 변수들에 대한 처리가 많아야 하는 경우에는 필요할듯.
         self._log = log
         self.__cfg = cfg
@@ -260,14 +276,12 @@ class TradeThread(QThread):
                         self.log.send(Msg.Trade.NO_BALANCE_BTC)
                         continue
 
-                    # todo orderbook은 뭘 리턴받지? 확인필요함
                     success, data, error, time_ = await self.compare_orderbook(default_btc)
                     if not success:
                         self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=error))
                         time.sleep(time_)
                         continue
 
-                    # btc_profit, tradable_btc, alt_amount, currency, trade
                     profit_object = self.get_max_profit(data)
                     if not profit_object:
                         self.log.send(Msg.Trade.NO_PROFIT)
@@ -275,11 +289,8 @@ class TradeThread(QThread):
 
                         continue
                     if profit_object.btc_profit >= self.min_profit_btc:
-                        #   사용자 지정 BTC 보다 많은경우
                         try:
                             trade_success = self.trade(profit_object)
-
-                            # profit 수집
                             expect_profit_sender(profit_object)
 
                             if not trade_success:
@@ -288,14 +299,12 @@ class TradeThread(QThread):
                             self.log.send(Msg.Trade.SUCCESS)
 
                         except:
-                            #   trade 함수 내에서 처리하지 못한 함수가 발견한 경우
                             debugger.exception(Msg.Error.EXCEPTION)
                             self.log.send_error(Msg.Error.EXCEPTION)
                             expect_profit_sender(profit_object)
 
                             return False
                     else:
-                        #   사용자 지정 BTC 보다 적은경우
                         self.log.send(Msg.Trade.NO_MIN_BTC)
                         expect_profit_sender(profit_object)
 
@@ -324,11 +333,7 @@ class TradeThread(QThread):
             return BaseUpbit(cfg['key'], cfg['secret'])
         elif exchange_str == 'Huobi':
             exchange = Huobi(cfg['key'], cfg['secret'])
-            suc, data, msg, st = exchange.get_account_id()
-            if not suc:
-                self.log.send(msg)
-                return False
-
+            exchange.get_account_id()
             return exchange
 
     async def deposits(self):
@@ -400,7 +405,7 @@ class TradeThread(QThread):
 
     async def balance_and_currencies(self):
         """
-            balance 값은 모두 int, float의 값이어야 함 ( string값은 리턴받아선 안됨 )
+            all balance values are need to int, float type
         """
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.balance(),
@@ -422,6 +427,11 @@ class TradeThread(QThread):
         return True
 
     async def compare_orderbook(self, default_btc=1.0):
+        """
+            primary_object
+            secondary_object
+            현재 ordebook 값 계산하여 어떤식으로 차익거래가 이루어져야하는지 m_to_s, s_to_m으로 확인
+        """
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_curr_avg_orderbook(self.currencies, default_btc),
             self.secondary_obj.exchange.get_curr_avg_orderbook(self.currencies, default_btc)
@@ -436,6 +446,8 @@ class TradeThread(QThread):
 
         m_to_s = dict()
         for currency_pair in self.currencies:
+            # s = binance, m = upbit
+            # 0.50, 0.45 / 0.45
             m_ask = primary_res.data[currency_pair]['asks']
             s_bid = secondary_res.data[currency_pair]['bids']
             m_to_s[currency_pair] = float(((s_bid - m_ask) / m_ask))
@@ -446,20 +458,27 @@ class TradeThread(QThread):
             s_ask = secondary_res.data[currency_pair]['asks']
             s_to_m[currency_pair] = float(((m_bid - s_ask) / s_ask))
 
-        res = primary_res.data, secondary_res.data, {'m_to_s': m_to_s, 's_to_m': s_to_m}
+        res = primary_res.data, secondary_res.data, dict(m_to_s=m_to_s, s_to_m=s_to_m)
 
         return res
 
     def get_expectation_by_balance(self, from_object, to_object, currency, alt, btc_precision, alt_precision, real_diff):
         """
+            from_object: ALT를 사게되는 거래소
+            to_object: ALT를 팔게되는 거래소
 
+            Args:
+                from_object: Exchange that buying the ALT
+                to_object: Exchange that selling the BTC
+                currency: SAI symbol, {MARKET}_{COIN}
+                btc_precision: precision of BTC
+                alt_precision: precision of ALT
+                real_diff:
         """
         tradable_btc, alt_amount = self.find_min_balance(from_object.balance['BTC'],
                                                          to_object.balance[alt],
                                                          to_object.orderbook[currency], currency,
                                                          btc_precision, alt_precision)
-
-        tradable_btc = tradable_btc.quantize(Decimal(10) ** -4, rounding=ROUND_DOWN)
 
         self.log.send(Msg.Trade.TRADABLE.format(
             from_exchange=from_object.name,
@@ -483,10 +502,18 @@ class TradeThread(QThread):
         return tradable_btc, alt_amount, btc_profit
 
     def get_max_profit(self, data):
+        """
+            Args:
+                data:
+                    - primary_orderbook:
+                    - secondary_orderbook:
+                    - exchanges_coin_profit_set:
+        """
         profit_object = None
-        primary_orderbook, secondary_orderbook, data = data
+        primary_orderbook, secondary_orderbook, exchanges_coin_profit_set = data
         for trade in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
-            if self.primary_exchange_str == 'korbit' and trade == PRIMARY_TO_SECONDARY:
+            if self.primary_exchange_str in EXCLUDE_EXCHANGES and trade == PRIMARY_TO_SECONDARY:
+                # 특정 거래소의 경우 한 방향에서의 거래밖에 적용되지 않음.
                 continue
             for currency in self.currencies:
                 alt = currency.split('_')[1]
@@ -497,16 +524,18 @@ class TradeThread(QThread):
                     self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.secondary_exchange_str, alt=alt))
                     continue
 
-                if trade == PRIMARY_TO_SECONDARY and data[trade][currency] >= 0:
+                expect_profit_percent = data.get(trade, dict()).get(currency, int())
+
+                if trade == PRIMARY_TO_SECONDARY and expect_profit_percent >= 0:
                     from_, to, asks, bids, profit_per = self.primary_exchange_str, self.secondary_exchange_str, \
                                                         primary_orderbook[currency]['asks'], \
                                                         secondary_orderbook[currency]['bids'], \
-                                                        data[trade][currency] * 100,
-                else:  # trade == SECONDARY_TO_PRIMARY and data[trade][currency] >= 0:
+                                                        expect_profit_percent * 100,
+                else:  # trade == SECONDARY_TO_PRIMARY and expect_profit_percent >= 0:
                     from_, to, asks, bids, profit_per = self.secondary_exchange_str, self.primary_exchange_str, \
                                                         secondary_orderbook[currency]['asks'], \
                                                         primary_orderbook[currency]['bids'], \
-                                                        data[trade][currency] * 100
+                                                        expect_profit_percent * 100
 
                 self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
                     from_exchange=from_,
@@ -522,19 +551,13 @@ class TradeThread(QThread):
                     to_bids=bids
                 ))
 
-                expect_profit_percent = data.get(trade, dict()).get(currency, int())
-
                 if expect_profit_percent < self.min_profit_per:
                     continue
-
-                # TODO unit:coin = Decimal, unit:percent = float
-                # real_diff 부분은 원화마켓과 BTC마켓의 수수료가 부과되는 횟수가 달라서 거래소 별로 다르게 지정해줘야함
-                # 내부에서 부과회수(함수로 만듬 fee_count)까지 리턴해서 받아오는걸로 처리한다.
 
                 primary_trade_fee_percent = (1 - self.primary_obj.trading_fee) ** self.primary_obj.fee_cnt
                 secondary_trade_fee_percent = (1 - self.secondary_obj.trading_fee) ** self.secondary_obj.fee_cnt
 
-                real_diff = ((1 + data[trade][currency]) * primary_trade_fee_percent * secondary_trade_fee_percent) - 1
+                real_diff = ((1 + expect_profit_percent) * primary_trade_fee_percent * secondary_trade_fee_percent) - 1
 
                 # get precision of BTC and ALT
                 precision_set = self.get_precision(currency)
@@ -547,11 +570,9 @@ class TradeThread(QThread):
                         tradable_btc, alt_amount, btc_profit = self.get_expectation_by_balance(
                             self.primary_obj, self.secondary_obj, currency, alt, btc_precision, alt_precision, real_diff
                         )
-                        # alt_amount로 거래할 btc를 맞춰줌, BTC를 사고 ALT를 팔기때문에 bids가격을 곱해야함
-                        # tradable_btc = alt_amount * data['s_o_b'][currency]['bids']
                     else:
                         tradable_btc, alt_amount, btc_profit = self.get_expectation_by_balance(
-                            self.secondary_obj, self.primary_obj, currency, alt, btc_precision, alt_precision
+                            self.secondary_obj, self.primary_obj, currency, alt, btc_precision, alt_precision, real_diff
                         )
 
                     debugger.debug(Msg.Debug.TRADABLE_BTC.format(tradable_btc=tradable_btc))
@@ -587,14 +608,22 @@ class TradeThread(QThread):
 
     @staticmethod
     def find_min_balance(btc_amount, alt_amount, btc_alt, symbol, btc_precision, alt_precision):
+        """
+            from object로부터의 btc_amount 수량 계산,
+            to object로부터의 alt amount 수량으로 살 수 있는 btc의 수량 계산
+
+        """
         btc_amount = Decimal(float(btc_amount)).quantize(Decimal(10) ** btc_precision, rounding=ROUND_DOWN)
         alt_btc = Decimal(float(alt_amount) * float(btc_alt['bids'])).quantize(Decimal(10) ** -8,
                                                                                rounding=ROUND_DOWN)
+
         if btc_amount < alt_btc:
+            # from_object에 있는 BTC보다 to_object에서 alt를 판매할 때 나오는 btc의 수량이 더 높은경우
             alt_amount = Decimal(float(btc_amount) / float(btc_alt['bids'])).quantize(Decimal(10) ** alt_precision,
                                                                                       rounding=ROUND_DOWN)
             return btc_amount, alt_amount
         else:
+            # from_object에 있는 BTC의 수량이 to_object에서 alt를 판매할 때 나오는 btc의 수량보다 더 높은경우
             alt_amount = Decimal(float(alt_amount)).quantize(Decimal(10) ** alt_precision, rounding=ROUND_DOWN)
             return alt_btc, alt_amount
     
@@ -689,7 +718,7 @@ class TradeThread(QThread):
         if self.auto_withdrawal:
             if not self.primary_obj.deposit or not self.secondary_obj.deposit:
                 # 입금 주소 없음
-                False
+                return False
 
         if profit_object.trade == PRIMARY_TO_SECONDARY:
             self.trade_controller(self.primary_obj, self.secondary_obj, profit_object)
