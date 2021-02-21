@@ -1,6 +1,9 @@
+"""
+    thread for calculating & trading & withdrawing two exchanges
+"""
+
 # Python Inner parties
 import time
-import random
 import asyncio
 
 from decimal import Decimal, ROUND_DOWN
@@ -19,25 +22,14 @@ from pyinstaller_patch import *
 # Domain parties
 from settings.messages import Logs
 from settings.messages import Messages as Msg
-from settings.defaults import TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY
+from settings.defaults import TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, ONE_WAY_EXCHANGES, \
+    AVAILABLE_EXCHANGES
 from trade_utils import send_amount_calculator, expect_profit_sender, \
     is_exists_deposit_addrs
 
 
 # Third parties
-import requests
 from PyQt5.QtCore import pyqtSignal, QThread
-
-
-# temp
-EXCHANGES = ['bithumb', 'binance']
-EXCLUDE_EXCHANGES = ['korbit']
-TEST_COINS = [
-    'BTC', 'ETH', 'BCC', 'XRP', 'ETC', 'QTUM', 'XMR', 'ZEC'
-]
-
-RANDOMLY_INT = (10, 100)
-
 
 
 """
@@ -85,13 +77,10 @@ class ExchangeInfo(object):
         self._log = log
         self.__cfg = cfg
         self.__name = None
-        if EXCHANGES in name:
-            self.__name = name
+        self.__name = name
 
         self.__exchange = None
 
-        if 'pydevd' in sys.modules:
-            self.__balance = {x: random.randint(*RANDOMLY_INT) for x in TEST_COINS}
         self.__balance = None
         self.__orderbook = None
         self.__td_fee = None
@@ -114,9 +103,7 @@ class ExchangeInfo(object):
 
     @name.setter
     def name(self, val):
-        if EXCHANGES in val:
-            # name값이 정상인 경우에만 insert
-            self.__name = val
+        self.__name = val
 
     @property
     def exchange(self):
@@ -124,7 +111,6 @@ class ExchangeInfo(object):
 
     @exchange.setter
     def exchange(self, val):
-        # todo 정상 여부 확인, 정상인 경우 insert
         self.__exchange = val
 
     @property
@@ -208,8 +194,11 @@ class TradeThread(QThread):
         self.stop_flag = True
 
     def run(self):
+        list_ = list()
         for info in [self.primary_obj, self.secondary_obj]:
-            info.exchange = self.get_exchange(info.name, info.cfg)
+            list_.append(self.get_exchange(info.name, info.cfg))
+        else:
+            self.primary_obj.exchange, self.secondary_obj.exchange = list_
 
         if not self.primary_obj.exchange or not self.secondary_obj.exchange:
             self.stop()
@@ -218,7 +207,6 @@ class TradeThread(QThread):
 
         self.stop_flag = False
         try:
-            # todo 이 부분에 대해서 별도 object로 검증을 미리 해놓을지 학인 필요함.
             self.min_profit_per /= 100.0
             self.log.send(Msg.Init.MIN_PROFIT.format(min_profit=self.min_profit_per))
             self.log.send(Msg.Init.MIN_BTC.format(min_btc=self.min_profit_btc))
@@ -253,7 +241,6 @@ class TradeThread(QThread):
                         td_res = await self.get_td_fees()
 
                         if not (tx_res and td_res):
-                            # need fail logs
                             continue
 
                         self.log.send(Msg.Trade.SUCCESS_FEE_INFO)
@@ -285,8 +272,6 @@ class TradeThread(QThread):
                     profit_object = self.get_max_profit(data)
                     if not profit_object:
                         self.log.send(Msg.Trade.NO_PROFIT)
-                        expect_profit_sender(profit_object)
-
                         continue
                     if profit_object.btc_profit >= self.min_profit_btc:
                         try:
@@ -352,7 +337,7 @@ class TradeThread(QThread):
 
         return True
 
-    async def get_tx_fees(self):
+    async def get_td_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_trading_fee(),
             self.secondary_obj.exchange.get_trading_fee(),
@@ -368,7 +353,7 @@ class TradeThread(QThread):
         self.primary_obj.trading_fee = primary_res.data
         self.secondary_obj.trading_fee = secondary_res.data
 
-    async def get_td_fees(self):
+    async def get_tx_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_transaction_fee(),
             self.secondary_obj.exchange.get_transaction_fee()
@@ -446,8 +431,6 @@ class TradeThread(QThread):
 
         m_to_s = dict()
         for currency_pair in self.currencies:
-            # s = binance, m = upbit
-            # 0.50, 0.45 / 0.45
             m_ask = primary_res.data[currency_pair]['asks']
             s_bid = secondary_res.data[currency_pair]['bids']
             m_to_s[currency_pair] = float(((s_bid - m_ask) / m_ask))
@@ -505,14 +488,14 @@ class TradeThread(QThread):
         """
             Args:
                 data:
-                    - primary_orderbook:
-                    - secondary_orderbook:
-                    - exchanges_coin_profit_set:
+                    - primary_orderbook: dict, priamry orderbook for checking profit
+                    - secondary_orderbook: dict, secondary orderbook for checking profit
+                    - exchanges_coin_profit_set: dict, profit percent by currencies
         """
         profit_object = None
         primary_orderbook, secondary_orderbook, exchanges_coin_profit_set = data
         for trade in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
-            if self.primary_exchange_str in EXCLUDE_EXCHANGES and trade == PRIMARY_TO_SECONDARY:
+            if self.primary_exchange_str in ONE_WAY_EXCHANGES and trade == PRIMARY_TO_SECONDARY:
                 # 특정 거래소의 경우 한 방향에서의 거래밖에 적용되지 않음.
                 continue
             for currency in self.currencies:
