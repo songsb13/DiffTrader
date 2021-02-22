@@ -323,6 +323,7 @@ class TradeThread(QThread):
             exchange.get_account_id()
             return exchange
 
+    @loop_wrapper(debugger=debugger)
     async def deposits(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_deposit_addrs(), self.secondary_obj.exchange.get_deposit_addrs()
@@ -332,13 +333,14 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            raise
+            return None
 
         self.primary_obj.deposit = primary_res.data
         self.secondary_obj.deposit = secondary_res.data
 
         return True
 
+    @loop_wrapper(debugger=debugger)
     async def get_td_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_trading_fee(),
@@ -350,12 +352,14 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            raise
+            return None
 
         self.primary_obj.trading_fee = primary_res.data
         self.secondary_obj.trading_fee = secondary_res.data
 
-    @
+        return True
+
+    @loop_wrapper(debugger=debugger)
     async def get_tx_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_transaction_fee(),
@@ -367,10 +371,12 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            raise
+            return None
 
         self.primary_obj.transaction_fee = primary_res.data
         self.secondary_obj.transaction_fee = secondary_res.data
+
+        return True
 
     def get_precision(self, currency):
         primary_res = self.primary_obj.exchange.get_precision(currency)
@@ -381,7 +387,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return False
+            return None
 
         primary_btc_precision, primary_alt_precision = primary_res.data
         secondary_btc_precision, secondary_alt_precision = secondary_res.data
@@ -391,6 +397,7 @@ class TradeThread(QThread):
 
         return btc_precision, alt_precision
 
+    @loop_wrapper(debugger=debugger)
     async def balance_and_currencies(self):
         """
             all balance values are need to int, float type
@@ -405,7 +412,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            raise
+            return None
 
         self.primary_obj.balance = primary_res.data
         self.secondary_obj.balance = secondary_res.data
@@ -414,6 +421,7 @@ class TradeThread(QThread):
 
         return True
 
+    @loop_wrapper(debugger=debugger)
     async def compare_orderbook(self, default_btc=1.0):
         """
             primary_object
@@ -430,7 +438,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return False
+            return None
 
         m_to_s = dict()
         for currency_pair in self.currencies:
@@ -679,7 +687,10 @@ class TradeThread(QThread):
         res_object = from_object.exchange.base_to_alt(profit_object.currency, profit_object.tradable_btc,
                                                       profit_object.alt_amount, from_object.trading_fee,
                                                       to_object.trading_fee)
-        
+
+        if not res_object.success:
+            raise
+
         from_object_alt_amount = res_object.data
         
         debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=from_object.name, alt=alt))
@@ -688,9 +699,6 @@ class TradeThread(QThread):
         debugger.debug(Msg.Debug.SELL_ALT.format(to_exchange=to_object.name, alt=alt))
         debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=to_object.name))
 
-        if not res_object.success:
-            raise
-        
         # from_object -> to_object 로 ALT 보냄
         send_amount = send_amount_calculator(from_object_alt_amount, from_object.transaction_fee[alt])
         self.coin_trader(from_object, to_object, profit_object, send_amount, alt)
