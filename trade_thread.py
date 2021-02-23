@@ -183,9 +183,6 @@ class TradeThread(QThread):
 
         self.primary_obj = ExchangeInfo(cfg=primary_info, name=list(primary_info.keys())[0], log=self.log)
         self.secondary_obj = ExchangeInfo(cfg=secondary_info, name=list(secondary_info.keys())[0], log=self.log)
-        # todo 없애고 exchange_info로 통합할지 생각.
-        self.primary_exchange_str = self.exchange_info['primary']['name']
-        self.secondary_exchange_str = self.exchange_info['secondary']['name']
 
         self.collected_data = dict()
         self.currencies = None
@@ -499,27 +496,27 @@ class TradeThread(QThread):
         profit_object = None
         primary_orderbook, secondary_orderbook, exchanges_coin_profit_set = data
         for trade in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
-            if self.primary_exchange_str in ONE_WAY_EXCHANGES and trade == PRIMARY_TO_SECONDARY:
+            if self.primary_obj.name in ONE_WAY_EXCHANGES and trade == PRIMARY_TO_SECONDARY:
                 # 특정 거래소의 경우 한 방향에서의 거래밖에 적용되지 않음.
                 continue
             for currency in self.currencies:
                 alt = currency.split('_')[1]
                 if not self.primary_obj.balance.get(alt):
-                    self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.primary_exchange_str, alt=alt))
+                    self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.primary_obj.name, alt=alt))
                     continue
                 elif not self.secondary_obj.balance.get(alt):
-                    self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.secondary_exchange_str, alt=alt))
+                    self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.secondary_obj.name, alt=alt))
                     continue
 
                 expect_profit_percent = data.get(trade, dict()).get(currency, int())
 
                 if trade == PRIMARY_TO_SECONDARY and expect_profit_percent >= 0:
-                    from_, to, asks, bids, profit_per = self.primary_exchange_str, self.secondary_exchange_str, \
+                    from_, to, asks, bids, profit_per = self.primary_obj.name, self.secondary_obj.name, \
                                                         primary_orderbook[currency]['asks'], \
                                                         secondary_orderbook[currency]['bids'], \
                                                         expect_profit_percent * 100,
                 else:  # trade == SECONDARY_TO_PRIMARY and expect_profit_percent >= 0:
-                    from_, to, asks, bids, profit_per = self.secondary_exchange_str, self.primary_exchange_str, \
+                    from_, to, asks, bids, profit_per = self.secondary_obj.name, self.primary_obj.name, \
                                                         secondary_orderbook[currency]['asks'], \
                                                         primary_orderbook[currency]['bids'], \
                                                         expect_profit_percent * 100
@@ -564,9 +561,9 @@ class TradeThread(QThread):
 
                     debugger.debug(Msg.Debug.TRADABLE_BTC.format(tradable_btc=tradable_btc))
                     debugger.debug(Msg.Debug.TRADABLE_ASK_BID.format(
-                        from_exchange=self.secondary_exchange_str,
+                        from_exchange=self.secondary_obj.name,
                         from_orderbook=secondary_orderbook[currency],
-                        to_exchange=self.primary_exchange_str,
+                        to_exchange=self.primary_obj.name,
                         to_orderbook=primary_orderbook[currency]
 
                     ))
