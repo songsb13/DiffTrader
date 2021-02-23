@@ -45,17 +45,15 @@ from PyQt5.QtCore import pyqtSignal, QThread
 
 
 class MaxProfits(object):
-    """
-        Profit object for comparing
-    """
     def __init__(self, btc_profit, tradable_btc, alt_amount, currency, trade):
         """
+            Profit object for comparing numerous currencies
             Args:
-                btc_profit: Decimal, Arbitrage profit of btc from two exchanges
-                tradable_btc: Decimal, It can be btc amount from_object or able to convert ALT to BTC from to_object
-                alt_amount: Decimal, to_object's Alt amount
-                currency: String, It can be changed dependency of SAI symbol like {MARKET}_{COIN} ( BTC_ETH )
-                trade: string, Trade type for primary to secondary.
+                btc_profit: Decimal, Arbitrage profit of BTC on both exchanges
+                tradable_btc: Decimal, It can be BTC amount at from_object or convertible amount that ALT to BTC at to_object
+                alt_amount: Decimal, to_object's ALT amount
+                currency: String, It will be a customize symbol like {MARKET}_{COIN} ( BTC_ETH )
+                trade: string, Trade type that primary to secondary or secondary to primary.
                 information: It is profit data and sending to SAI server for collecting it
         """
         self.btc_profit = btc_profit
@@ -69,12 +67,10 @@ class MaxProfits(object):
 
 class ExchangeInfo(object):
     # todo primary_info는 diff_trader에 받고있는데, 하나의 DICT에 하나의 거래소만 받는데 왜 dict처리하는지 확인 필요함.
-    #  이유가 없으면 삭제하기
     """
-        This object is used to get various exchange's info name, balance, fee and etc.
+        Exchange object for setting exchange's information like name, balance, fee and etc.
     """
     def __init__(self, cfg, name, log):
-
         # todo property, setter의 사용성에 대해 재고가 필요, 만약에 변수들에 대한 처리가 많아야 하는 경우에는 필요할듯.
         self._log = log
         self.__cfg = cfg
@@ -165,16 +161,18 @@ class ExchangeInfo(object):
 
 
 class TradeThread(QThread):
-    """
-        TradeThread
-        That for calculate the profit between primary exchange and secondary exchange, trading, withdrawal, etc
-        TradeThread, 첫번째, 두번째 거래소의 차익 계산, 거래 등 전체적인 트레이딩 로직
-    """
     log_signal = pyqtSignal(int, str)
     stopped = pyqtSignal()
     profit_signal = pyqtSignal(str, float)
 
     def __init__(self, email, primary_info, secondary_info, min_profit_per, min_profit_btc, auto_withdrawal):
+        """
+            Thread for calculating the profit and sending coins between primary exchange and secondary exchange.
+            Args:
+                email: user's email
+                primary_info: primary exchange's information, key, secret and etc
+                secondary_info: secondary exchange's information, key, secret and etc
+        """
         super().__init__()
         self.stop_flag = True
         self.log = Logs(self.log_signal)
@@ -400,7 +398,7 @@ class TradeThread(QThread):
     @loop_wrapper(debugger=debugger)
     async def balance_and_currencies(self):
         """
-            all balance values are need to int, float type
+            All balance values require type int, float.
         """
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.balance(),
@@ -424,9 +422,7 @@ class TradeThread(QThread):
     @loop_wrapper(debugger=debugger)
     async def compare_orderbook(self, default_btc=1.0):
         """
-            primary_object
-            secondary_object
-            현재 ordebook 값 계산하여 어떤식으로 차익거래가 이루어져야하는지 m_to_s, s_to_m으로 확인
+            It is for getting arbitrage profit primary to secondary or secondary to primary.
         """
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_curr_avg_orderbook(self.currencies, default_btc),
@@ -458,9 +454,6 @@ class TradeThread(QThread):
 
     def get_expectation_by_balance(self, from_object, to_object, currency, alt, btc_precision, alt_precision, real_diff):
         """
-            from_object: ALT를 사게되는 거래소
-            to_object: ALT를 팔게되는 거래소
-
             Args:
                 from_object: Exchange that buying the ALT
                 to_object: Exchange that selling the BTC
@@ -499,9 +492,9 @@ class TradeThread(QThread):
         """
             Args:
                 data:
-                    - primary_orderbook: dict, priamry orderbook for checking profit
-                    - secondary_orderbook: dict, secondary orderbook for checking profit
-                    - exchanges_coin_profit_set: dict, profit percent by currencies
+                    primary_orderbook: dict, primary orderbook for checking profit
+                    secondary_orderbook: dict, secondary orderbook for checking profit
+                    exchanges_coin_profit_set: dict, profit percent by currencies
         """
         profit_object = None
         primary_orderbook, secondary_orderbook, exchanges_coin_profit_set = data
@@ -603,9 +596,15 @@ class TradeThread(QThread):
     @staticmethod
     def find_min_balance(btc_amount, alt_amount, btc_alt, symbol, btc_precision, alt_precision):
         """
-            from object로부터의 btc_amount 수량 계산,
-            to object로부터의 alt amount 수량으로 살 수 있는 btc의 수량 계산
-
+            calculating amount to btc_amount from from_object
+            calculating amount to alt_amount from to_object
+            
+            Args:
+                btc_amount: BTC amount from from_object
+                alt_amount: ALT amount from to_object
+                btc_alt: symbol's bids
+                btc_precision: precision of BTC
+                alt_precision: precision of ALT
         """
         btc_amount = Decimal(float(btc_amount)).quantize(Decimal(10) ** btc_precision, rounding=ROUND_DOWN)
         alt_btc = Decimal(float(alt_amount) * float(btc_alt['bids'])).quantize(Decimal(10) ** -8,
@@ -641,6 +640,12 @@ class TradeThread(QThread):
 
     def coin_trader(self, sender_object, receiver_object, profit_object, send_amount, coin):
         """
+            Function for sending profit
+            Args:
+                sender_object: It is a object to send the profit amount to receiver_object
+                receiver_object: It is a object to receive the profit amount
+                profit_object: information of profit
+                
             sender_object: 이 거래소에서 coin 값을 send_amount만큼 보낸다.
             receiver_object: 이 거래소에서 coin 값을 send_amount만큼 받는다.
         """
@@ -677,9 +682,10 @@ class TradeThread(QThread):
 
     def trade_controller(self, from_object, to_object, profit_object):
         """
-            from_object: ALT를 사게되는 거래소
-            to_object: ALT를 팔게되는 거래소
-            profit_object: from_object에서 to_object에서 수익관련 object
+            Function for trading coins
+            from_object: A object that will be buying the ALT coin
+            to_object: A object that will be selling the ALT coin
+            profit_object: information of profit
         """
 
         alt = profit_object.currency.split('_')[1]
