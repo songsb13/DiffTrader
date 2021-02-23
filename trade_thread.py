@@ -49,11 +49,11 @@ class MaxProfits(object):
         """
             Profit object for comparing numerous currencies
             Args:
-                btc_profit: Decimal, Arbitrage profit of BTC on both exchanges
-                tradable_btc: Decimal, It can be BTC amount at from_object or convertible amount that ALT to BTC at to_object
-                alt_amount: Decimal, to_object's ALT amount
-                currency: String, It will be a customize symbol like {MARKET}_{COIN} ( BTC_ETH )
-                trade: string, Trade type that primary to secondary or secondary to primary.
+                btc_profit: Arbitrage profit of BTC on both exchanges
+                tradable_btc: It can be BTC amount at from_object or convertible amount that ALT to BTC at to_object
+                alt_amount: to_object's ALT amount
+                currency: It will be a customize symbol like {MARKET}_{COIN} ( BTC_ETH )
+                trade: Trade type that primary to secondary or secondary to primary.
                 information: It is profit data and sending to SAI server for collecting it
         """
         self.btc_profit = btc_profit
@@ -170,8 +170,11 @@ class TradeThread(QThread):
             Thread for calculating the profit and sending coins between primary exchange and secondary exchange.
             Args:
                 email: user's email
-                primary_info: primary exchange's information, key, secret and etc
-                secondary_info: secondary exchange's information, key, secret and etc
+                primary_info: Primary exchange's information, key, secret and etc
+                secondary_info: Secondary exchange's information, key, secret and etc
+                min_profit_btc: Minimum BTC profit config
+                min_profit_per: Minimum profit percent config
+                auto_withdrawal: auto withdrawal config
         """
         super().__init__()
         self.stop_flag = True
