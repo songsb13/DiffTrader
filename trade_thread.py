@@ -60,7 +60,7 @@ class MaxProfits(object):
         """
         self.btc_profit = btc_profit
         self.tradable_btc = tradable_btc
-        self.alt_amount = alt_amount,
+        self.alt_amount = alt_amount
         self.currency = currency
         self.trade_type = trade
 
