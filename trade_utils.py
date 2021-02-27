@@ -9,7 +9,7 @@ from settings.defaults import TAG_COINS, SAI_URL
 import requests
 
 
-def send_amount_calculator(amount_of_coin, tx_fee):
+def calculate_withdraw_amount(amount_of_coin, tx_fee):
     """
         :param amount_of_coin: amount of coin, BTC and ALT.
         :param tx_fee: transaction fee from exchanges.
@@ -19,7 +19,7 @@ def send_amount_calculator(amount_of_coin, tx_fee):
         Decimal(10) ** amount_of_coin.as_tuple().exponent)
 
 
-def expect_profit_sender(profit_object):
+def send_expected_profit(profit_object):
     """
     """
     res = requests.post(SAI_URL, data=profit_object.information)
@@ -27,7 +27,7 @@ def expect_profit_sender(profit_object):
     return True if res.status_code == 200 else False
 
 
-def is_exists_deposit_addrs(coin, deposit_dic):
+def check_deposit_addrs(coin, deposit_dic):
     has_deposit = deposit_dic.get(coin, None)
     has_tag_deposit = deposit_dic.get(coin + 'TAG', None) if coin in TAG_COINS else None
     

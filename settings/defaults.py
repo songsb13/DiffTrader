@@ -2,10 +2,10 @@ TAG_COINS = ['XRP', 'XMR']
 SAI_URL = 'http://www.saiblockchain.com/api/pft_data'
 
 # Selling the BTC from primary, Selling the ALT from secondary
-PRIMARY_TO_SECONDARY = 'mts'
+PRIMARY_TO_SECONDARY = 'primary_to_secondary'
 
 # Selling the ALT from primary, Selling the BTc from secondary
-SECONDARY_TO_PRIMARY = 'stm'
+SECONDARY_TO_PRIMARY = 'secondary_to_primary'
 
 # Exchange list of available trading in SAI programs.
 AVAILABLE_EXCHANGES = ['korbit', 'binance', 'huobi', 'upbit', 'bithumb']
