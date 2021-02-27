@@ -23,15 +23,3 @@ def loop_wrapper(debugger):
                 raise
         return _wrap_func
     return _except_wrapper
-
-
-
-@loop_wrapper(debugger=logging)
-def test(self, data):
-    print('hi!')
-    return 'testcode'
-
-
-ret = test('', 'datacode')
-
-print(ret)
