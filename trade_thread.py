@@ -521,27 +521,27 @@ class TradeThread(QThread):
                 expect_profit_percent = data.get(trade, dict()).get(currency, int())
 
                 if trade == PRIMARY_TO_SECONDARY and expect_profit_percent >= 0:
-                    from_, to, asks, bids, profit_per = self.primary_exchange_str, self.secondary_exchange_str, \
+                    sender, receiver, asks, bids, profit_per = self.primary_exchange_str, self.secondary_exchange_str, \
                                                         primary_orderbook[currency]['asks'], \
                                                         secondary_orderbook[currency]['bids'], \
                                                         expect_profit_percent * 100,
                 else:  # trade == SECONDARY_TO_PRIMARY and expect_profit_percent >= 0:
-                    from_, to, asks, bids, profit_per = self.secondary_exchange_str, self.primary_exchange_str, \
+                    sender, receiver, asks, bids, profit_per = self.secondary_exchange_str, self.primary_exchange_str, \
                                                         secondary_orderbook[currency]['asks'], \
                                                         primary_orderbook[currency]['bids'], \
                                                         expect_profit_percent * 100
 
                 self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
-                    from_exchange=from_,
-                    to_exchange=to,
+                    from_exchange=sender,
+                    to_exchange=receiver,
                     currency=currency,
                     profit_per=profit_per
                 ))
                 debugger.debug(Msg.Debug.ASK_BID.format(
                     currency=currency,
-                    from_exchange=from_,
+                    from_exchange=sender,
                     from_asks=asks,
-                    to_exchange=to,
+                    to_exchange=receiver,
                     to_bids=bids
                 ))
 
@@ -607,9 +607,8 @@ class TradeThread(QThread):
             to object로부터의 alt amount 수량으로 살 수 있는 btc의 수량 계산
 
         """
-        btc_amount = Decimal(float(btc_amount)).quantize(Decimal(10) ** btc_precision, rounding=ROUND_DOWN)
-        alt_btc = Decimal(float(alt_amount) * float(btc_alt['bids'])).quantize(Decimal(10) ** -8,
-                                                                               rounding=ROUND_DOWN)
+        btc_amount = float(btc_amount)
+        alt_btc = float(alt_amount) * float(btc_alt['bids'])
 
         if btc_amount < alt_btc:
             # from_object에 있는 BTC보다 to_object에서 alt를 판매할 때 나오는 btc의 수량이 더 높은경우
