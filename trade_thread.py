@@ -22,10 +22,9 @@ from pyinstaller_patch import *
 # Domain parties
 from settings.messages import Logs
 from settings.messages import Messages as Msg
-from settings.defaults import TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, ONE_WAY_EXCHANGES, \
-    AVAILABLE_EXCHANGES
-from trade_utils import send_amount_calculator, expect_profit_sender, \
-    is_exists_deposit_addrs
+from settings.defaults import TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, ONE_WAY_EXCHANGES
+from trade_utils import calculate_withdraw_amount, send_expected_profit, \
+    check_deposit_addrs
 
 from wrapper import loop_wrapper
 
@@ -58,7 +57,7 @@ class MaxProfits(object):
         """
         self.btc_profit = btc_profit
         self.tradable_btc = tradable_btc
-        self.alt_amount = alt_amount,
+        self.alt_amount = alt_amount
         self.currency = currency
         self.trade_type = trade
 
@@ -134,7 +133,7 @@ class ExchangeInfo(object):
     @trading_fee.setter
     def trading_fee(self, val):
         self.__td_fee = val
-        
+
     @property
     def transaction_fee(self):
         return self.__tx_fee
@@ -216,9 +215,9 @@ class TradeThread(QThread):
             self.stop()
             self.stopped.emit()
             return
-        
+
         self.log.send(Msg.Init.START)
-        
+
         loop = asyncio.new_event_loop()
         loop.run_until_complete(self.trader())
         loop.close()
@@ -237,8 +236,8 @@ class TradeThread(QThread):
             while evt.is_set() and not self.stop_flag:
                 try:
                     if time.time() >= fee_refresh_time + 600:
-                        tx_res = await self.get_tx_fees()
-                        td_res = await self.get_td_fees()
+                        tx_res = await self.get_transaciton_fees()
+                        td_res = await self.get_trading_fees()
 
                         if not (tx_res and td_res):
                             continue
@@ -276,7 +275,7 @@ class TradeThread(QThread):
                     if profit_object.btc_profit >= self.min_profit_btc:
                         try:
                             trade_success = self.trade(profit_object)
-                            expect_profit_sender(profit_object)
+                            send_expected_profit(profit_object)
 
                             if not trade_success:
                                 self.log.send(Msg.Trade.FAIL)
@@ -286,12 +285,12 @@ class TradeThread(QThread):
                         except:
                             debugger.exception(Msg.Error.EXCEPTION)
                             self.log.send_error(Msg.Error.EXCEPTION)
-                            expect_profit_sender(profit_object)
+                            send_expected_profit(profit_object)
 
                             return False
                     else:
                         self.log.send(Msg.Trade.NO_MIN_BTC)
-                        expect_profit_sender(profit_object)
+                        send_expected_profit(profit_object)
 
                 except:
                     debugger.exception(Msg.Error.EXCEPTION)
@@ -339,7 +338,7 @@ class TradeThread(QThread):
         return True
 
     @loop_wrapper(debugger=debugger)
-    async def get_td_fees(self):
+    async def get_trading_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_trading_fee(),
             self.secondary_obj.exchange.get_trading_fee(),
@@ -358,7 +357,7 @@ class TradeThread(QThread):
         return True
 
     @loop_wrapper(debugger=debugger)
-    async def get_tx_fees(self):
+    async def get_transaciton_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_transaction_fee(),
             self.secondary_obj.exchange.get_transaction_fee()
@@ -436,19 +435,20 @@ class TradeThread(QThread):
         if not primary_res.success or not secondary_res.success:
             return None
 
-        m_to_s = dict()
+        primary_to_secondary = dict()
         for currency_pair in self.currencies:
-            m_ask = primary_res.data[currency_pair]['asks']
-            s_bid = secondary_res.data[currency_pair]['bids']
-            m_to_s[currency_pair] = float(((s_bid - m_ask) / m_ask))
+            primary_ask = primary_res.data[currency_pair]['asks']
+            secondary_bid = secondary_res.data[currency_pair]['bids']
+            primary_to_secondary[currency_pair] = float(((secondary_bid - primary_ask) / primary_ask))
 
-        s_to_m = dict()
+        secondary_to_primary = dict()
         for currency_pair in self.currencies:
-            m_bid = primary_res.data[currency_pair]['bids']
-            s_ask = secondary_res.data[currency_pair]['asks']
-            s_to_m[currency_pair] = float(((m_bid - s_ask) / s_ask))
+            primary_bid= primary_res.data[currency_pair]['bids']
+            secondary_ask = secondary_res.data[currency_pair]['asks']
+            secondary_to_primary[currency_pair] = float(((primary_bid- secondary_ask) / secondary_ask))
 
-        res = primary_res.data, secondary_res.data, dict(m_to_s=m_to_s, s_to_m=s_to_m)
+        res = primary_res.data, secondary_res.data, {PRIMARY_TO_SECONDARY: primary_to_secondary,
+                                                     SECONDARY_TO_PRIMARY: secondary_to_primary}
 
         return res
 
@@ -514,27 +514,27 @@ class TradeThread(QThread):
                 expect_profit_percent = data.get(trade, dict()).get(currency, int())
 
                 if trade == PRIMARY_TO_SECONDARY and expect_profit_percent >= 0:
-                    from_, to, asks, bids, profit_per = self.primary_obj.name, self.secondary_obj.name, \
+                    sender, receiver, asks, bids, profit_per = self.primary_obj.name, self.secondary_obj.name, \
                                                         primary_orderbook[currency]['asks'], \
                                                         secondary_orderbook[currency]['bids'], \
                                                         expect_profit_percent * 100,
                 else:  # trade == SECONDARY_TO_PRIMARY and expect_profit_percent >= 0:
-                    from_, to, asks, bids, profit_per = self.secondary_obj.name, self.primary_obj.name, \
+                    sender, receiver, asks, bids, profit_per = self.secondary_obj.name, self.primary_obj.name, \
                                                         secondary_orderbook[currency]['asks'], \
                                                         primary_orderbook[currency]['bids'], \
                                                         expect_profit_percent * 100
 
                 self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
-                    from_exchange=from_,
-                    to_exchange=to,
+                    from_exchange=sender,
+                    to_exchange=receiver,
                     currency=currency,
                     profit_per=profit_per
                 ))
                 debugger.debug(Msg.Debug.ASK_BID.format(
                     currency=currency,
-                    from_exchange=from_,
+                    from_exchange=sender,
                     from_asks=asks,
-                    to_exchange=to,
+                    to_exchange=receiver,
                     to_bids=bids
                 ))
 
@@ -598,7 +598,7 @@ class TradeThread(QThread):
         """
             calculating amount to btc_amount from from_object
             calculating amount to alt_amount from to_object
-            
+
             Args:
                 btc_amount: BTC amount from from_object
                 alt_amount: ALT amount from to_object
@@ -606,9 +606,8 @@ class TradeThread(QThread):
                 btc_precision: precision of BTC
                 alt_precision: precision of ALT
         """
-        btc_amount = Decimal(float(btc_amount)).quantize(Decimal(10) ** btc_precision, rounding=ROUND_DOWN)
-        alt_btc = Decimal(float(alt_amount) * float(btc_alt['bids'])).quantize(Decimal(10) ** -8,
-                                                                               rounding=ROUND_DOWN)
+        btc_amount = float(btc_amount)
+        alt_btc = float(alt_amount) * float(btc_alt['bids'])
 
         if btc_amount < alt_btc:
             # from_object에 있는 BTC보다 to_object에서 alt를 판매할 때 나오는 btc의 수량이 더 높은경우
@@ -619,7 +618,7 @@ class TradeThread(QThread):
             # from_object에 있는 BTC의 수량이 to_object에서 alt를 판매할 때 나오는 btc의 수량보다 더 높은경우
             alt_amount = Decimal(float(alt_amount)).quantize(Decimal(10) ** alt_precision, rounding=ROUND_DOWN)
             return alt_btc, alt_amount
-    
+
     def manually_withdraw(self, from_object, to_object, max_profit, send_amount, alt):
         self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=to_object.name, alt=alt))
         self.log.send(Msg.Trade.ALT_WITHDRAW.format(
@@ -628,30 +627,30 @@ class TradeThread(QThread):
             alt=alt,
             unit=float(send_amount)
         ))
-        btc_send_amount = send_amount_calculator(max_profit.tradable_btc, to_object.transaction_fee['BTC'])
+        btc_send_amount = calculate_withdraw_amount(max_profit.tradable_btc, to_object.transaction_fee['BTC'])
         self.log.send(Msg.Trade.BTC_WITHDRAW.format(
             to_exchange=to_object.name,
             from_exchange=from_object.name,
             unit=float(btc_send_amount)
         ))
-    
+
         self.stop()
         return True
 
-    def coin_trader(self, sender_object, receiver_object, profit_object, send_amount, coin):
+    def _withdraw(self, sender_object, receiver_object, profit_object, send_amount, coin):
         """
             Function for sending profit
             Args:
                 sender_object: It is a object to send the profit amount to receiver_object
                 receiver_object: It is a object to receive the profit amount
                 profit_object: information of profit
-                
+
             sender_object: 이 거래소에서 coin 값을 send_amount만큼 보낸다.
             receiver_object: 이 거래소에서 coin 값을 send_amount만큼 받는다.
         """
         if self.auto_withdrawal:
             while not self.stop_flag:
-                if is_exists_deposit_addrs(coin, receiver_object.deposit):
+                if check_deposit_addrs(coin, receiver_object.deposit):
                     if coin in TAG_COINS:
                         res_object = sender_object.exchange.withdraw(coin, send_amount, receiver_object.deposit[coin],
                                                                    receiver_object.deposit[coin + 'TAG'])
@@ -680,7 +679,7 @@ class TradeThread(QThread):
             self.manually_withdraw(sender_object, receiver_object, profit_object, send_amount, coin)
             return
 
-    def trade_controller(self, from_object, to_object, profit_object):
+    def _trade(self, from_object, to_object, profit_object):
         """
             Function for trading coins
             from_object: A object that will be buying the ALT coin
@@ -689,7 +688,7 @@ class TradeThread(QThread):
         """
 
         alt = profit_object.currency.split('_')[1]
-        
+
         res_object = from_object.exchange.base_to_alt(profit_object.currency, profit_object.tradable_btc,
                                                       profit_object.alt_amount, from_object.trading_fee,
                                                       to_object.trading_fee)
@@ -698,7 +697,7 @@ class TradeThread(QThread):
             raise
 
         from_object_alt_amount = res_object.data
-        
+
         debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=from_object.name, alt=alt))
 
         self.secondary.alt_to_base(profit_object.currency, profit_object.tradable_btc, from_object_alt_amount)
@@ -706,12 +705,12 @@ class TradeThread(QThread):
         debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=to_object.name))
 
         # from_object -> to_object 로 ALT 보냄
-        send_amount = send_amount_calculator(from_object_alt_amount, from_object.transaction_fee[alt])
-        self.coin_trader(from_object, to_object, profit_object, send_amount, alt)
+        send_amount = calculate_withdraw_amount(from_object_alt_amount, from_object.transaction_fee[alt])
+        self._withdraw(from_object, to_object, profit_object, send_amount, alt)
 
         # to_object -> from_object 로 BTC 보냄
-        btc_send_amount = send_amount_calculator(profit_object.tradable_btc, to_object.transaction_fee['BTC'])
-        self.coin_trader(to_object, from_object, profit_object, btc_send_amount, 'BTC')
+        btc_send_amount = calculate_withdraw_amount(profit_object.tradable_btc, to_object.transaction_fee['BTC'])
+        self._withdraw(to_object, from_object, profit_object, btc_send_amount, 'BTC')
 
     def trade(self, profit_object):
         self.log.send(Msg.Trade.START_TRADE)
@@ -721,8 +720,8 @@ class TradeThread(QThread):
                 return False
 
         if profit_object.trade == PRIMARY_TO_SECONDARY:
-            self.trade_controller(self.primary_obj, self.secondary_obj, profit_object)
+            self._trade(self.primary_obj, self.secondary_obj, profit_object)
         else:
-            self.trade_controller(self.secondary_obj, self.primary_obj, profit_object)
+            self._trade(self.secondary_obj, self.primary_obj, profit_object)
 
         return True
