@@ -19,4 +19,4 @@ class ProgramSettingWidgets(object):
 
 
 class FirstPageWidgets(object):
-    CONFIRM_DIALOG_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/DifferentKeyInputDialog.ui'))[0]
+    EXCHANGE_SELECTOR_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/ExchangeSelectorWidget.ui'))[0]

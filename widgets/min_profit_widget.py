@@ -1,8 +1,11 @@
 from pyinstaller_patch import *
+from PyQt5 import QtWidgets
 import requests
 
+from settings.widget_paths import ProgramSettingWidgets as widgets
 
-class MinProfitWidget(QtWidgets.QWidget, widget):
+
+class MinProfitWidget(QtWidgets.QWidget, widgets.PROFIT_SETTING_WIDGET):
     def __init__(self, id_key):
         super().__init__()
         self.setupUi(self)
