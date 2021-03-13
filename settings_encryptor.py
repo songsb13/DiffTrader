@@ -1,18 +1,12 @@
 from pyinstaller_patch import *
 from save_settings import save, load
-from PyQt5 import QtWidgets, uic
-
-import sys
+from PyQt5 import QtWidgets
 import os
 
-KEY_DIALOG_PATH = os.path.join(sys._MEIPASS, 'ui/SettingEncryptKeyDialog.ui')
-CONFIRM_DIALOG_PATH = os.path.join(sys._MEIPASS, 'ui/DifferentKeyInputDialog.ui')
-
-key_dialog = uic.loadUiType(KEY_DIALOG_PATH)[0]
-confirm_dialog = uic.loadUiType(CONFIRM_DIALOG_PATH)[0]
+from settings.widget_paths import DialogWidgets as widgets
 
 
-class SettingEncryptKeyDialog(QtWidgets.QDialog, key_dialog):
+class SettingEncryptKeyDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
@@ -30,7 +24,7 @@ class SettingEncryptKeyDialog(QtWidgets.QDialog, key_dialog):
             self.close()
 
 
-class DifferentKeyInputDialog(QtWidgets.QDialog, confirm_dialog):
+class DifferentKeyInputDialog(QtWidgets.QDialog, widgets.CONFIRM_DIALOG_WIDGET):
     def __init__(self, exchange, password, **kwargs):
         super().__init__()
         self.setupUi(self)
@@ -50,7 +44,7 @@ class DifferentKeyInputDialog(QtWidgets.QDialog, confirm_dialog):
         self.close()
 
 
-class LoadSettingsDialog(QtWidgets.QDialog, key_dialog):
+class LoadSettingsDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):
     def __init__(self):
         super().__init__()
         self.setupUi(self)

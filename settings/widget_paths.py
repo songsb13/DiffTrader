@@ -1,0 +1,14 @@
+import os
+import sys
+from PyQt5 import uic
+
+
+class ExchangeWidgets(object):
+    UPBIT_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/UpbitWidget.ui'))[0]
+    BINANCE_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/BinanceWidget.ui'))[0]
+    BITHUMB_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/BithumbWidget.ui'))[0]
+
+
+class DialogWidgets(object):
+    KEY_DIALOG_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/SettingEncryptKeyDialog.ui'))[0]
+    CONFIRM_DIALOG_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/DifferentKeyInputDialog.ui'))[0]
