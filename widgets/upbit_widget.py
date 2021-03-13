@@ -1,10 +1,9 @@
 from pyinstaller_patch import *
-from PyQt5 import QtWidgets
-from settings_encryptor import SettingEncryptKeyDialog
+from widgets.base_widget import BaseWidgets
 from settings.widget_paths import ExchangeWidgets as widgets
 
 
-class UpbitWidget(QtWidgets.QWidget, widgets.UPBIT_WIDGET):
+class UpbitWidget(BaseWidgets, widgets.UPBIT_WIDGET):
     def __init__(self, data):
         super().__init__()
         self.setupUi(self)

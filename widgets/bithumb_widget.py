@@ -1,13 +1,9 @@
 from pyinstaller_patch import *
-from PyQt5 import QtWidgets, uic
-from settings_encryptor import SettingEncryptKeyDialog
-
-WIDGET_PATH = os.path.join(sys._MEIPASS, 'ui/BithumbWidget.ui')
-
-widget = uic.loadUiType(WIDGET_PATH)[0]
+from widgets.base_widget import BaseWidgets
+from settings.widget_paths import ExchangeWidgets as widgets
 
 
-class BithumbWidget(QtWidgets.QWidget, widget):
+class BithumbWidget(BaseWidgets, widgets.BITHUMB_WIDGET):
     def __init__(self, data):
         super().__init__()
         self.setupUi(self)

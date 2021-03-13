@@ -1,22 +1,12 @@
 from pyinstaller_patch import *
-from PyQt5 import QtWidgets, uic
-from settings_encryptor import SettingEncryptKeyDialog
-
-widget_path = os.path.join(sys._MEIPASS, 'ui/BinanceWidget.ui')
-
-widget = uic.loadUiType(widget_path)[0]
+from widgets.base_widget import BaseWidgets
+from settings.widget_paths import ExchangeWidgets as widgets
 
 
-class BinanceWidget(QtWidgets.QWidget, widget):
+class BinanceWidget(BaseWidgets, widgets.BINANCE_WIDGET):
     def __init__(self, data):
         super().__init__()
         self.setupUi(self)
-        self.dialog = SettingEncryptKeyDialog()
-        self.dialog.btn.accepted.connect(self.save)
-        self.checkBox.clicked.connect(self.show_secret)
-        self.pushButton.clicked.connect(self.dialog.show)
-
-        self.saved = False
 
         if data and 'binance' in data.keys():
             self.key.setText(data['binance']['key'])
