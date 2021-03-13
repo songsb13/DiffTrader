@@ -127,7 +127,7 @@ QLineEdit {
     <string>아이디</string>
    </property>
   </widget>
-  <widget class="QLineEdit" name="PassEdit">
+  <widget class="QLineEdit" name="password">
    <property name="geometry">
     <rect>
      <x>30</x>
@@ -152,7 +152,7 @@ QLineEdit {
     <string>패스워드</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="LogginBtn">
+  <widget class="QPushButton" name="login">
    <property name="geometry">
     <rect>
      <x>30</x>
