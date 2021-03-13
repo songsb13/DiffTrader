@@ -53,7 +53,7 @@
       <item row="1" column="0">
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>거래소 PW</string>
+         <string>API SECRET</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -61,17 +61,17 @@
        </widget>
       </item>
       <item row="1" column="2">
-       <widget class="QCheckBox" name="checkBox">
+       <widget class="QCheckBox" name="showSecretBtn">
         <property name="text">
          <string>Show</string>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QLineEdit" name="id"/>
+       <widget class="QLineEdit" name="key"/>
       </item>
       <item row="3" column="2">
-       <widget class="QPushButton" name="pushButton">
+       <widget class="QPushButton" name="saveBtn">
         <property name="text">
          <string>로컬저장</string>
         </property>
@@ -80,7 +80,7 @@
       <item row="0" column="0">
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>거래소 ID</string>
+         <string>API KEY</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -88,7 +88,7 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QLineEdit" name="pw">
+       <widget class="QLineEdit" name="secret">
         <property name="echoMode">
          <enum>QLineEdit::Password</enum>
         </property>
