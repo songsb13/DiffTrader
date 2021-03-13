@@ -38,15 +38,3 @@ class BinanceWidget(BaseWidgets, widgets.BINANCE_WIDGET):
         else:
             self.dialog.save('binance', key=self.key.text(), secret=self.secret.text())
         self.saved = True
-
-    def show_secret(self):
-        if self.checkBox.isChecked():
-            self.secret.setEchoMode(0)
-        else:
-            self.secret.setEchoMode(2)
-
-    def is_set(self):
-        if self.key.text() and self.secret.text():
-            return True
-        else:
-            return False

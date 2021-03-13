@@ -7,12 +7,6 @@ class BithumbWidget(BaseWidgets, widgets.BITHUMB_WIDGET):
     def __init__(self, data):
         super().__init__()
         self.setupUi(self)
-        self.dialog = SettingEncryptKeyDialog()
-        self.dialog.btn.accepted.connect(self.save)
-        self.checkBox.clicked.connect(self.show_secret)
-        self.pushButton.clicked.connect(self.dialog.show)
-
-        self.saved = False
 
         if data and 'bithumb' in data.keys():
             self.key.setText(data['bithumb']['key'])
@@ -32,15 +26,3 @@ class BithumbWidget(BaseWidgets, widgets.BITHUMB_WIDGET):
             self.dialog.save('bithumb', key=self.key.text(),
                              secret=self.secret.text())
         self.saved = True
-
-    def show_secret(self):
-        if self.checkBox.isChecked():
-            self.secret.setEchoMode(0)
-        else:
-            self.secret.setEchoMode(2)
-
-    def is_set(self):
-        if self.key.text() and self.secret.text():
-            return True
-        else:
-            return False

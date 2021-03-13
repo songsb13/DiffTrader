@@ -7,12 +7,6 @@ class UpbitWidget(BaseWidgets, widgets.UPBIT_WIDGET):
     def __init__(self, data):
         super().__init__()
         self.setupUi(self)
-        self.dialog = SettingEncryptKeyDialog()
-        self.dialog.btn.accepted.connect(self.save)
-        self.checkBox.clicked.connect(self.show_secret)
-        self.pushButton.clicked.connect(self.dialog.show)
-
-        self.saved = False
 
         if data and 'upbit' in data.keys():
             self.id.setText(data['upbit']['id'])
@@ -40,15 +34,3 @@ class UpbitWidget(BaseWidgets, widgets.UPBIT_WIDGET):
             self.dialog.save('upbit', id=self.id.text(), pw=self.pw.text(), tkey=self.tkey.text(),
                              tchatid=self.tchatid.text())
         self.saved = True
-
-    def show_secret(self):
-        if self.checkBox.isChecked():
-            self.pw.setEchoMode(0)
-        else:
-            self.pw.setEchoMode(2)
-
-    def is_set(self):
-        if self.id.text() and self.pw.text() and self.tkey.text() and self.tchatid.text():
-            return True
-        else:
-            return False
