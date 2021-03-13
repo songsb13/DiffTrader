@@ -12,3 +12,11 @@ class ExchangeWidgets(object):
 class DialogWidgets(object):
     KEY_DIALOG_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/SettingEncryptKeyDialog.ui'))[0]
     CONFIRM_DIALOG_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/DifferentKeyInputDialog.ui'))[0]
+
+
+class ProgramSettingWidgets(object):
+    PROFIT_SETTING_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/ProfitSettingWidget.ui'))[0]
+
+
+class FirstPageWidgets(object):
+    CONFIRM_DIALOG_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/DifferentKeyInputDialog.ui'))[0]

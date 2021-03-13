@@ -1,10 +1,5 @@
 from pyinstaller_patch import *
-from PyQt5 import QtWidgets, uic
 import requests
-
-widget_path = os.path.join(sys._MEIPASS, 'ui/ProfitSettingWidget.ui')
-
-widget = uic.loadUiType(widget_path)[0]
 
 
 class MinProfitWidget(QtWidgets.QWidget, widget):
