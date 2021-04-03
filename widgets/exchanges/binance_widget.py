@@ -1,4 +1,4 @@
-from pyinstaller_patch import *
+from Util.pyinstaller_patch import *
 from widgets.base_widget import BaseWidgets
 from settings.widget_paths import ExchangeWidgets as widgets
 

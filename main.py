@@ -1,9 +1,13 @@
+import os
+import sys
+
+
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import pyqtSignal, QThread
 from diff_trader import DiffTraderGUI
 
-from pyinstaller_patch import *
+from Util.pyinstaller_patch import *
 
 login_form = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/Loggin.ui'), from_imports=True, import_from='ui')[0]
 

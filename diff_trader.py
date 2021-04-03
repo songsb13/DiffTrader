@@ -1,15 +1,16 @@
-from pyinstaller_patch import *
+from Util.pyinstaller_patch import *
 from datetime import datetime
 
 from PyQt5 import QtCore
-import ui.main_rc
+from PyQt5 import uic
+import sys
 
 from widgets.exchange_select_widget import *
-from widgets.bithumb_widget import *
-from widgets.upbit_widget import *
-from widgets.binance_widget import *
-from widgets.bitfinex_widget import *
-from widgets.huobi_widget import *
+from widgets.exchanges.bithumb_widget import BithumbWidget
+from widgets.exchanges.upbit_widget import UpbitWidget
+from widgets.exchanges.binance_widget import BinanceWidget
+from widgets.exchanges.bitfinex_widget import BitfinexWidget
+from widgets.exchanges.huobi_widget import HuobiWidget
 
 from settings_encryptor import *
 from widgets.min_profit_widget import *

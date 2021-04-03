@@ -1,4 +1,4 @@
-from pyinstaller_patch import *
+from Util.pyinstaller_patch import *
 from datetime import datetime
 from PyQt5.QtCore import QThread
 

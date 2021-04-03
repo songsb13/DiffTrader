@@ -1,4 +1,4 @@
-from pyinstaller_patch import *
+from Util.pyinstaller_patch import *
 from save_settings import save, load
 from PyQt5 import QtWidgets
 import os
