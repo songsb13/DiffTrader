@@ -1,3 +1,6 @@
+from PyQt5 import QtWidgets
+
+
 class ExchangeBaseWidget(QtWidgets.QWidget):
     def __init__(self):
         super(ExchangeBaseWidget, self).__init__()

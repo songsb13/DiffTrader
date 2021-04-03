@@ -1,8 +1,7 @@
-from Util.pyinstaller_patch import *
-from PyQt5 import QtWidgets
-import requests
+from . import *
+from DiffTrader.apps.trading.widgets.paths import ProgramSettingWidgets as widgets
 
-from settings.widget_paths import ProgramSettingWidgets as widgets
+import requests
 
 
 class MinProfitWidget(QtWidgets.QWidget, widgets.PROFIT_SETTING_WIDGET):
