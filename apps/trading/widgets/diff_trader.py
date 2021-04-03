@@ -1,21 +1,17 @@
+from . import (uic, os, sys, QtCore, QtWidgets)
 from datetime import datetime
+import logging
+import time
 
-from PyQt5 import QtCore
-from PyQt5 import uic
-
-from widgets.exchange_select_widget import *
-from widgets.exchanges.bithumb_widget import BithumbWidget
-from widgets.exchanges.upbit_widget import UpbitWidget
-from widgets.exchanges.binance_widget import BinanceWidget
-# from widgets.exchanges.bitfinex_widget import BitfinexWidget
-# from widgets.exchanges.huobi_widget import HuobiWidget
-
-from settings_encryptor import *
-from widgets.min_profit_widget import *
+from Util.pyinstaller_patch import debugger, close_program, evt
 
 from DiffTrader.apps.trading.threads.trade_thread import TradeThread
+from DiffTrader.apps.trading.widgets.dialogs import LoadSettingsDialog
+from DiffTrader.apps.trading.widgets.exchanges import (BithumbWidget, UpbitWidget,
+                                                       BinanceWidget, ExchangeSelectorWidget)
+from DiffTrader.apps.trading.widgets.min_profit_widget import MinProfitWidget
 from DiffTrader.apps.trading.models import TradeTableModel
-from top_profit_thread import TopProfitThread
+from DiffTrader.apps.trading.apis import TopProfitThread
 
 main_ui = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/main.ui'), from_imports=True, import_from='ui')[0]
 

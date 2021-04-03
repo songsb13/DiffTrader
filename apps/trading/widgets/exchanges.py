@@ -1,5 +1,6 @@
 from . import *
 from DiffTrader.apps.trading.widgets.dialogs import SettingEncryptKeyDialog
+from DiffTrader.apps.trading.widgets.paths import (FirstPageWidgets, ExchangeWidgets)
 
 
 class ExchangeBaseWidget(QtWidgets.QWidget):
@@ -38,13 +39,13 @@ class ExchangeBaseWidget(QtWidgets.QWidget):
             return False
 
 
-class ExchangeSelectorWidget(QtWidgets.QWidget, widgets.EXCHANGE_SELECTOR_WIDGET):
+class ExchangeSelectorWidget(QtWidgets.QWidget, FirstPageWidgets.EXCHANGE_SELECTOR_WIDGET):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
 
 
-class BithumbWidget(ExchangeBaseWidget, widgets.BITHUMB_WIDGET):
+class BithumbWidget(ExchangeBaseWidget, ExchangeWidgets.BITHUMB_WIDGET):
     def __init__(self, data):
         super().__init__()
         self.setupUi(self)
@@ -69,7 +70,7 @@ class BithumbWidget(ExchangeBaseWidget, widgets.BITHUMB_WIDGET):
         self.saved = True
 
 
-class BinanceWidget(ExchangeBaseWidget, widgets.BINANCE_WIDGET):
+class BinanceWidget(ExchangeBaseWidget, ExchangeWidgets.BINANCE_WIDGET):
     def __init__(self, data):
         super().__init__()
         self.setupUi(self)
@@ -106,7 +107,7 @@ class BinanceWidget(ExchangeBaseWidget, widgets.BINANCE_WIDGET):
         self.saved = True
 
 
-class UpbitWidget(ExchangeBaseWidget, widgets.UPBIT_WIDGET):
+class UpbitWidget(ExchangeBaseWidget, ExchangeWidgets.UPBIT_WIDGET):
     def __init__(self, data):
         super().__init__()
         self.setupUi(self)
