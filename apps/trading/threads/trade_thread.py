@@ -10,13 +10,13 @@ from decimal import Decimal, ROUND_DOWN
 from datetime import datetime
 
 # SAI parties
-from Bithumb.bithumb import Bithumb
-from Binance.binance import Binance
-from Bitfinex.bitfinex import Bitfinex
-from Upbit.upbit import BaseUpbit
-from Huobi.huobi import Huobi
+from Exchanges.Bithumb.bithumb import Bithumb
+from Exchanges.Binance.binance import Binance
+# from Exchanges.Bitfinex.bitfinex import Bitfinex
+from Exchanges.Upbit.upbit import BaseUpbit
+# from Exchanges.Huobi.huobi import Huobi
 
-from pyinstaller_patch import *
+from Util.pyinstaller_patch import *
 # END
 
 # Domain parties

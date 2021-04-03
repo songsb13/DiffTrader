@@ -4,9 +4,9 @@ from PyQt5 import uic
 
 
 class ExchangeWidgets(object):
-    UPBIT_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/UpbitWidget.ui'))[0]
-    BINANCE_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/BinanceWidget.ui'))[0]
-    BITHUMB_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/BithumbWidget.ui'))[0]
+    UPBIT_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/exchanges/UpbitWidget.ui'))[0]
+    BINANCE_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/exchanges/BinanceWidget.ui'))[0]
+    BITHUMB_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/exchanges/BithumbWidget.ui'))[0]
 
 
 class DialogWidgets(object):

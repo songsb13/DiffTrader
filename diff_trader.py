@@ -1,21 +1,19 @@
-from Util.pyinstaller_patch import *
 from datetime import datetime
 
 from PyQt5 import QtCore
 from PyQt5 import uic
-import sys
 
 from widgets.exchange_select_widget import *
 from widgets.exchanges.bithumb_widget import BithumbWidget
 from widgets.exchanges.upbit_widget import UpbitWidget
 from widgets.exchanges.binance_widget import BinanceWidget
-from widgets.exchanges.bitfinex_widget import BitfinexWidget
-from widgets.exchanges.huobi_widget import HuobiWidget
+# from widgets.exchanges.bitfinex_widget import BitfinexWidget
+# from widgets.exchanges.huobi_widget import HuobiWidget
 
 from settings_encryptor import *
 from widgets.min_profit_widget import *
 
-from trade_thread import TradeThread
+from DiffTrader.apps.trading.threads.trade_thread import TradeThread
 from models import TradeTableModel
 from top_profit_thread import TopProfitThread
 

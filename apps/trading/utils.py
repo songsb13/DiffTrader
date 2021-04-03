@@ -4,7 +4,7 @@
 """
 
 from decimal import Decimal
-from settings.defaults import TAG_COINS, SAI_URL
+from settings import TAG_COINS, SAI_URL
 
 import requests
 
@@ -30,5 +30,27 @@ def send_expected_profit(profit_object):
 def check_deposit_addrs(coin, deposit_dic):
     has_deposit = deposit_dic.get(coin, None)
     has_tag_deposit = deposit_dic.get(coin + 'TAG', None) if coin in TAG_COINS else None
-    
+
     return all([has_deposit, has_tag_deposit])
+
+
+def loop_wrapper(debugger):
+    """
+        wrapper that try loop up to 3 times
+        It is used when defining variable information, fee, deposits, compare_orderbook and etc.
+    """
+    def _except_wrapper(func):
+        def _wrap_func(self, *args):
+            for _ in range(3):
+                data = func(self, *args)
+                if data is not None:
+                    return data
+                else:
+                    debugger.debug(
+                        'function [{}] is failed to setting a function.'.format(func.__name__))
+                    time.sleep(5)
+            else:
+                debugger.debug('function [{}] is failed to setting a function, please try later.'.format(func.__name__))
+                raise
+        return _wrap_func
+    return _except_wrapper
