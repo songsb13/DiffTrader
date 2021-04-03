@@ -1,6 +1,6 @@
-from PyQt5 import QtWidgets
-import os
+from . import *
 
+from DiffTrader.apps.trading.widgets.utils import save, load
 from DiffTrader.apps.trading.widgets.paths import DialogWidgets as widgets
 
 

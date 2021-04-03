@@ -1,4 +1,5 @@
-from PyQt5 import QtWidgets
+from . import *
+from DiffTrader.apps.trading.widgets.dialogs import SettingEncryptKeyDialog
 
 
 class ExchangeBaseWidget(QtWidgets.QWidget):

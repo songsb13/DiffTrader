@@ -1,5 +1,6 @@
+from . import os
+
 import json
-import os
 from Crypto.Cipher import AES
 import hashlib
 

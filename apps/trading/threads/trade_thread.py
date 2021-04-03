@@ -20,14 +20,9 @@ from Util.pyinstaller_patch import *
 # END
 
 # Domain parties
-from settings.messages import Logs
-from settings.messages import Messages as Msg
-from settings.defaults import TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, ONE_WAY_EXCHANGES
-from trade_utils import calculate_withdraw_amount, send_expected_profit, \
-    check_deposit_addrs
-
-from wrapper import loop_wrapper
-
+from DiffTrader.apps.trading.messages import (Logs, Messages as Msg)
+from DiffTrader.apps.trading.threads.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY,
+                                                      ONE_WAY_EXCHANGES)
 
 # Third parties
 from PyQt5.QtCore import pyqtSignal, QThread
