@@ -1,7 +1,8 @@
 from . import *
 
-from DiffTrader.apps.widgets.utils import save, load
-from DiffTrader.apps.widgets.paths import DialogWidgets as widgets
+from DiffTrader.trading.widgets.utils import save, load
+from DiffTrader.trading.widgets.paths import DialogWidgets as widgets
+from DiffTrader.trading.messages import (QMessageBoxMessage as Msg)
 
 
 class SettingEncryptKeyDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):
@@ -18,7 +19,9 @@ class SettingEncryptKeyDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):
             self.gui = DifferentKeyInputDialog(exchange, key, **kwargs)
             self.gui.show()
         else:
-            QtWidgets.QMessageBox.about(None, "Success", "저장에 성공했습니다.")
+            log = (Msg.Title.SAVE_RESULT, Msg.CONTENT.SAVE_SUCCESS)
+            debugger.debug(log)
+            QtWidgets.QMessageBox.about(self, *log)
             self.close()
 
 
@@ -35,10 +38,9 @@ class DifferentKeyInputDialog(QtWidgets.QDialog, widgets.CONFIRM_DIALOG_WIDGET):
         while os.path.exists('Settings'):
             pass
         success = save(exchange, password, **kwargs)
-        if success:
-            QtWidgets.QMessageBox.about(None, "Success", "저장에 성공했습니다.")
-        else:
-            QtWidgets.QMessageBox.about(None, "Failed", "저장에 실패했습니다.")
+        log = (Msg.Title.SAVE_RESULT, Msg.CONTENT.SAVE_SUCCESS if success else Msg.CONTENT.SAVE_FAIL)
+        debugger.debug(log)
+        QtWidgets.QMessageBox.about(self, *log)
         self.close()
 
 
@@ -55,8 +57,10 @@ class LoadSettingsDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):
         if not success:
             box = QtWidgets.QMessageBox()
             box.setIcon(QtWidgets.QMessageBox.Question)
-            box.setWindowTitle('로딩 실패')
-            box.setText('암호화키가 틀렸습니다. 세팅파일을 초기화 하시겠습니까?')
+            box.setWindowTitle(Msg.Title.FAIL_LOAD)
+            box.setText(Msg.CONTENT.WRONG_SECRET_KEY)
+
+            debugger.debug(Msg.Title.FAIL_LOAD, Msg.CONTENT.WRONG_SECRET_KEY)
 
             box.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
             buttonY = box.button(QtWidgets.QMessageBox.Yes)

@@ -14,6 +14,7 @@ class DialogWidgets(object):
 
 class ProgramSettingWidgets(object):
     PROFIT_SETTING_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/ProfitSettingWidget.ui'))[0]
+    DIFF_TRADER_WIDGET = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/main.ui'), from_imports=True, import_from='ui')[0]
 
 
 class FirstPageWidgets(object):

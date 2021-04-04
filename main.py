@@ -6,7 +6,7 @@ import hashlib
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import pyqtSignal, QThread
-from DiffTrader.apps.widgets import DiffTraderGUI
+from DiffTrader.trading.widgets import DiffTraderGUI
 
 from Util.pyinstaller_patch import debugger
 

@@ -1,5 +1,5 @@
 from . import *
-from DiffTrader.apps.widgets.paths import ProgramSettingWidgets as widgets
+from DiffTrader.trading.widgets.paths import ProgramSettingWidgets as widgets
 
 import requests
 
@@ -36,9 +36,9 @@ class MinProfitWidget(QtWidgets.QWidget, widgets.PROFIT_SETTING_WIDGET):
             _rq = requests.get('http://songsb13.cafe24.com:8081/save_data', json=data_dic).json()
 
             if _rq['success']:
-                QtWidgets.QMessageBox.about(None, 'Success', '저장에 성공했습니다.')
+                QtWidgets.QMessageBox.about(self, 'Success', '저장에 성공했습니다.')
             else:
-                QtWidgets.QMessageBox.about(None, 'Fail', '저장에 실패했습니다.')
+                QtWidgets.QMessageBox.about(self, 'Fail', '저장에 실패했습니다.')
 
     def load_data_to_db(self):
         _rq = requests.get('http://songsb13.cafe24.com:8081/get_data', json={'id_key': self.id_key}).json()

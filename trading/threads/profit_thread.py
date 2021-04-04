@@ -1,5 +1,5 @@
 from . import QThread, debugger, time
-from DiffTrader.apps.apis import get_expected_profit_by_server
+from DiffTrader.trading.apis import get_expected_profit_by_server
 
 
 class TopProfitThread(QThread):

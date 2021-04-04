@@ -2,14 +2,14 @@ from . import *
 
 import logging
 
-from DiffTrader.apps.threads.trade_thread import TradeThread
-from DiffTrader.apps.threads.profit_thread import TopProfitThread
+from DiffTrader.trading.threads.trade_thread import TradeThread
+from DiffTrader.trading.threads.profit_thread import TopProfitThread
 
-from DiffTrader.apps.widgets.dialogs import LoadSettingsDialog
-from DiffTrader.apps.widgets.exchanges import (BithumbWidget, UpbitWidget,
+from DiffTrader.trading.widgets.dialogs import LoadSettingsDialog
+from DiffTrader.trading.widgets.exchanges import (BithumbWidget, UpbitWidget,
                                                BinanceWidget, ExchangeSelectorWidget)
-from DiffTrader.apps.widgets.min_profit_widget import MinProfitWidget
-from DiffTrader.apps.models import TradeTableModel
+from DiffTrader.trading.widgets.min_profit_widget import MinProfitWidget
+from DiffTrader.trading.models import TradeTableModel
 
 main_ui = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/main.ui'), from_imports=True, import_from='ui')[0]
 

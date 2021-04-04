@@ -1,6 +1,6 @@
 from . import *
-from DiffTrader.apps.widgets.dialogs import SettingEncryptKeyDialog
-from DiffTrader.apps.widgets.paths import (FirstPageWidgets, ExchangeWidgets)
+from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog
+from DiffTrader.trading.widgets.paths import (FirstPageWidgets, ExchangeWidgets)
 
 
 class ExchangeBaseWidget(QtWidgets.QWidget):
