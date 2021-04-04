@@ -1,6 +1,4 @@
-from Util.pyinstaller_patch import *
-from datetime import datetime
-from PyQt5.QtCore import QThread
+from DiffTrader.apps.trading.threads import QThread, debugger, time
 from DiffTrader.apps.trading.apis import get_expected_profit_by_server
 
 

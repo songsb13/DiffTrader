@@ -1,17 +1,14 @@
-from . import (uic, os, sys, QtCore, QtWidgets)
-from datetime import datetime
+from . import (uic, os, sys, QtCore, QtWidgets, datetime, time, close_program, evt)
 import logging
-import time
-
-from Util.pyinstaller_patch import debugger, close_program, evt
 
 from DiffTrader.apps.trading.threads.trade_thread import TradeThread
+from DiffTrader.apps.trading.threads.profit_thread import TopProfitThread
+
 from DiffTrader.apps.trading.widgets.dialogs import LoadSettingsDialog
 from DiffTrader.apps.trading.widgets.exchanges import (BithumbWidget, UpbitWidget,
                                                        BinanceWidget, ExchangeSelectorWidget)
 from DiffTrader.apps.trading.widgets.min_profit_widget import MinProfitWidget
 from DiffTrader.apps.trading.models import TradeTableModel
-from DiffTrader.apps.trading.apis import TopProfitThread
 
 main_ui = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/main.ui'), from_imports=True, import_from='ui')[0]
 
@@ -76,16 +73,16 @@ class DiffTraderGUI(QtWidgets.QMainWindow, main_ui):
         bithumb_widget = BithumbWidget(setting_data)
         upbit_widget = UpbitWidget(setting_data)
         binance_widget = BinanceWidget(setting_data)
-        bitfinex_widget = BitfinexWidget(setting_data)
-        huobi_widget = HuobiWidget(setting_data)
+        # bitfinex_widget = BitfinexWidget(setting_data)
+        # huobi_widget = HuobiWidget(setting_data)
         self.main_layout.addWidget(bithumb_widget)
         self.main_layout.addWidget(upbit_widget)
         self.main_layout.addWidget(binance_widget)
-        self.main_layout.addWidget(bitfinex_widget)
-        self.main_layout.addWidget(huobi_widget)
+        # self.main_layout.addWidget(bitfinex_widget)
+        # self.main_layout.addWidget(huobi_widget)
         self.exchange_widgets = {'Bithumb': bithumb_widget, 'UpbitBTC': upbit_widget, 'UpbitUSDT': upbit_widget,
-                                 'UpbitKRW': upbit_widget, 'Binance': binance_widget,
-                                 'Bitfinex': bitfinex_widget, 'Huobi': huobi_widget}
+                                 'UpbitKRW': upbit_widget, 'Binance': binance_widget}
+                                 # 'Bitfinex': bitfinex_widget, 'Huobi': huobi_widget}
 
         self.exchange_top_widget.exchanges.currentIndexChanged.connect(self.show_specific_exchange_setting)
         self.last_setting_idx = 2

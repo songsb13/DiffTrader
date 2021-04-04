@@ -3,7 +3,6 @@
 """
 
 # Python Inner parties
-import time
 import asyncio
 
 from decimal import Decimal, ROUND_DOWN
@@ -12,14 +11,14 @@ from datetime import datetime
 # SAI parties
 from Exchanges.Bithumb.bithumb import Bithumb
 from Exchanges.Binance.binance import Binance
-# from Exchanges.Bitfinex.bitfinex import Bitfinex
 from Exchanges.Upbit.upbit import BaseUpbit
-# from Exchanges.Huobi.huobi import Huobi
 
 from Util.pyinstaller_patch import *
 # END
 
 # Domain parties
+from DiffTrader.apps.trading.apis import send_expected_profit
+from DiffTrader.apps.trading.threads.utils import calculate_withdraw_amount, check_deposit_addrs
 from DiffTrader.apps.trading.messages import (Logs, Messages as Msg)
 from DiffTrader.apps.trading.threads.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY,
                                                       ONE_WAY_EXCHANGES)

@@ -1,13 +1,17 @@
-from Util.pyinstaller_patch import *
-from datetime import datetime
+from DiffTrader.apps.trading.threads import QThread, debugger, time, datetime
+from DiffTrader.apps.trading.threads.settings import SAI_URL, PROFIT_SAI_URL
+
+import requests
 
 
 def get_expected_profit_by_server():
-    profit_path = 'http://saiblockchain.com/api/expected_profit'
+    """
+        Get expected_profit from saiblockchain api server.
+    """
     now_date = time.time()
     yesterday = now_date - 24 * 60 * 60
 
-    rq = requests.get(profit_path, json={'from': yesterday, 'to': now_date})
+    rq = requests.get(PROFIT_SAI_URL, json={'from': yesterday, 'to': now_date})
     result = rq.json()
     if result:
         for date_ in result:
@@ -15,6 +19,12 @@ def get_expected_profit_by_server():
                 '%Y{} %m{} %d{} %H{} %M{}').format('년', '월', '일', '시', '분')
             date_[-1] = profit_date
 
-        return date_
+        return result
 
 
+def send_expected_profit(profit_object):
+    """
+    """
+    res = requests.post(SAI_URL, data=profit_object.information)
+
+    return True if res.status_code == 200 else False

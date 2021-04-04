@@ -3,10 +3,11 @@
     todo 경로에 대해서 의논 필요함
 """
 
-from decimal import Decimal
-from settings import TAG_COINS, SAI_URL
+from Util.pyinstaller_patch import debugger
 
-import requests
+from decimal import Decimal
+from settings import TAG_COINS
+
 import time
 
 
@@ -20,14 +21,6 @@ def calculate_withdraw_amount(amount_of_coin, tx_fee):
         Decimal(10) ** amount_of_coin.as_tuple().exponent)
 
 
-def send_expected_profit(profit_object):
-    """
-    """
-    res = requests.post(SAI_URL, data=profit_object.information)
-
-    return True if res.status_code == 200 else False
-
-
 def check_deposit_addrs(coin, deposit_dic):
     has_deposit = deposit_dic.get(coin, None)
     has_tag_deposit = deposit_dic.get(coin + 'TAG', None) if coin in TAG_COINS else None
@@ -35,7 +28,7 @@ def check_deposit_addrs(coin, deposit_dic):
     return all([has_deposit, has_tag_deposit])
 
 
-def loop_wrapper(debugger):
+def loop_wrapper():
     """
         wrapper that try loop up to 3 times
         It is used when defining variable information, fee, deposits, compare_orderbook and etc.
@@ -43,13 +36,13 @@ def loop_wrapper(debugger):
     def _except_wrapper(func):
         def _wrap_func(self, *args):
             for _ in range(3):
-                data = func(self, *args)
-                if data is not None:
-                    return data
+                result_object = func(self, *args)
+                if result_object.success:
+                    return result_object
                 else:
                     debugger.debug(
                         'function [{}] is failed to setting a function.'.format(func.__name__))
-                    time.sleep(5)
+                    time.sleep(result_object.wait_time)
             else:
                 debugger.debug('function [{}] is failed to setting a function, please try later.'.format(func.__name__))
                 raise
