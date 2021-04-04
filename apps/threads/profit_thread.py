@@ -1,4 +1,4 @@
-from DiffTrader.apps.threads import QThread, debugger, time
+from . import QThread, debugger, time
 from DiffTrader.apps.apis import get_expected_profit_by_server
 
 

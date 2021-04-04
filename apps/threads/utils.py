@@ -2,7 +2,7 @@
     trade_thread.py에서 사용되는 함수 집합체.
     todo 경로에 대해서 의논 필요함
 """
-from DiffTrader.apps import debugger, time
+from . import debugger, time
 from decimal import Decimal
 from settings import TAG_COINS
 
