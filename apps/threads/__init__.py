@@ -3,7 +3,7 @@
 """
 
 
-from DiffTrader.apps.trading import os, sys, datetime, time, debugger, evt, close_program
+from DiffTrader.apps import os, sys, datetime, time, debugger, evt, close_program
 from datetime import datetime
 from PyQt5 import (QtCore)
 from PyQt5.Qt import (QThread)

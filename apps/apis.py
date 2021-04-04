@@ -1,5 +1,5 @@
-from DiffTrader.apps.trading.threads import QThread, debugger, time, datetime
-from DiffTrader.apps.trading.threads.settings import SAI_URL, PROFIT_SAI_URL
+from DiffTrader.apps.threads import time, datetime
+from DiffTrader.apps.threads import SAI_URL, PROFIT_SAI_URL
 
 import requests
 

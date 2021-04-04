@@ -1,5 +1,5 @@
 from . import *
-from DiffTrader.apps.trading.widgets.paths import ProgramSettingWidgets as widgets
+from DiffTrader.apps.widgets.paths import ProgramSettingWidgets as widgets
 
 import requests
 

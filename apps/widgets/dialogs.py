@@ -1,7 +1,7 @@
 from . import *
 
-from DiffTrader.apps.trading.widgets.utils import save, load
-from DiffTrader.apps.trading.widgets.paths import DialogWidgets as widgets
+from DiffTrader.apps.widgets.utils import save, load
+from DiffTrader.apps.widgets.paths import DialogWidgets as widgets
 
 
 class SettingEncryptKeyDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):

@@ -17,11 +17,10 @@ from Util.pyinstaller_patch import *
 # END
 
 # Domain parties
-from DiffTrader.apps.trading.apis import send_expected_profit
-from DiffTrader.apps.trading.threads.utils import calculate_withdraw_amount, check_deposit_addrs
-from DiffTrader.apps.trading.messages import (Logs, Messages as Msg)
-from DiffTrader.apps.trading.threads.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY,
-                                                      ONE_WAY_EXCHANGES)
+from DiffTrader.apps.apis import send_expected_profit
+from DiffTrader.apps.threads.utils import calculate_withdraw_amount, check_deposit_addrs, loop_wrapper
+from DiffTrader.apps.messages import (Logs, Messages as Msg)
+from DiffTrader.apps.threads.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, ONE_WAY_EXCHANGES)
 
 # Third parties
 from PyQt5.QtCore import pyqtSignal, QThread
@@ -314,7 +313,7 @@ class TradeThread(QThread):
             exchange.get_account_id()
             return exchange
 
-    @loop_wrapper(debugger=debugger)
+    @loop_wrapper
     async def deposits(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_deposit_addrs(), self.secondary_obj.exchange.get_deposit_addrs()
@@ -331,7 +330,7 @@ class TradeThread(QThread):
 
         return True
 
-    @loop_wrapper(debugger=debugger)
+    @loop_wrapper
     async def get_trading_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_trading_fee(),
@@ -350,7 +349,7 @@ class TradeThread(QThread):
 
         return True
 
-    @loop_wrapper(debugger=debugger)
+    @loop_wrapper
     async def get_transaciton_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_transaction_fee(),
@@ -388,7 +387,7 @@ class TradeThread(QThread):
 
         return btc_precision, alt_precision
 
-    @loop_wrapper(debugger=debugger)
+    @loop_wrapper
     async def balance_and_currencies(self):
         """
             All balance values require type int, float.
@@ -412,7 +411,7 @@ class TradeThread(QThread):
 
         return True
 
-    @loop_wrapper(debugger=debugger)
+    @loop_wrapper
     async def compare_orderbook(self, default_btc=1.0):
         """
             It is for getting arbitrage profit primary to secondary or secondary to primary.

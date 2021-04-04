@@ -2,13 +2,9 @@
     trade_thread.py에서 사용되는 함수 집합체.
     todo 경로에 대해서 의논 필요함
 """
-
-from Util.pyinstaller_patch import debugger
-
+from DiffTrader.apps import debugger, time
 from decimal import Decimal
 from settings import TAG_COINS
-
-import time
 
 
 def calculate_withdraw_amount(amount_of_coin, tx_fee):

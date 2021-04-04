@@ -1,14 +1,15 @@
-from . import (uic, os, sys, QtCore, QtWidgets, datetime, time, close_program, evt)
+from . import (uic, os, sys, QtCore, QtWidgets, datetime, time,
+               debugger, close_program, evt)
 import logging
 
-from DiffTrader.apps.trading.threads.trade_thread import TradeThread
-from DiffTrader.apps.trading.threads.profit_thread import TopProfitThread
+from DiffTrader.apps.threads import TradeThread
+from DiffTrader.apps.threads import TopProfitThread
 
-from DiffTrader.apps.trading.widgets.dialogs import LoadSettingsDialog
-from DiffTrader.apps.trading.widgets.exchanges import (BithumbWidget, UpbitWidget,
-                                                       BinanceWidget, ExchangeSelectorWidget)
-from DiffTrader.apps.trading.widgets.min_profit_widget import MinProfitWidget
-from DiffTrader.apps.trading.models import TradeTableModel
+from DiffTrader.apps.widgets.dialogs import LoadSettingsDialog
+from DiffTrader.apps.widgets import (BithumbWidget, UpbitWidget,
+                                     BinanceWidget, ExchangeSelectorWidget)
+from DiffTrader.apps.widgets import MinProfitWidget
+from DiffTrader.apps.models import TradeTableModel
 
 main_ui = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/main.ui'), from_imports=True, import_from='ui')[0]
 
