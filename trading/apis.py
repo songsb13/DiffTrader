@@ -1,5 +1,5 @@
 from DiffTrader.trading.threads import time, datetime
-from DiffTrader.trading.threads import SAI_URL, PROFIT_SAI_URL
+from DiffTrader.trading.threads.settings import SAI_URL, PROFIT_SAI_URL, SAVE_DATA_URL, LOAD_DATA_URL
 
 import requests
 
@@ -28,3 +28,30 @@ def send_expected_profit(profit_object):
     res = requests.post(SAI_URL, data=profit_object.information)
 
     return True if res.status_code == 200 else False
+
+
+def save_total_data_to_database(id_key, min_profit_percent, min_profit_btc, is_withdraw):
+    dic = dict()
+    row = [id_key, min_profit_percent, min_profit_btc, is_withdraw]
+    for num, each in enumerate(['id_key', 'min_profit_percent', 'min_profit_btc', 'is_withdraw']):
+        dic.setdefault(each, row[num])
+
+    rq = requests.get(SAVE_DATA_URL, json=dic)
+
+    result = rq.json()
+
+    return True if result.get('success') else False
+
+
+def load_total_data_to_database(id_key):
+    dic = dict(id_key=id_key)
+    rq = requests.get(LOAD_DATA_URL, json=dic)
+
+    raw_result = rq.json()
+    result = raw_result[0]
+
+    min_profit_percent = result.get('min_profit_percent')
+    min_profit_btc = result.get('min_profit_btc')
+    is_withdraw = True if result.get('is_withdraw') else False
+
+    return min_profit_percent, min_profit_btc, is_withdraw

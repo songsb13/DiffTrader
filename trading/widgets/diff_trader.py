@@ -6,15 +6,14 @@ from DiffTrader.trading.threads.trade_thread import TradeThread
 from DiffTrader.trading.threads.profit_thread import TopProfitThread
 
 from DiffTrader.trading.widgets.dialogs import LoadSettingsDialog
+from DiffTrader.trading.widgets.paths import (ProgramSettingWidgets)
 from DiffTrader.trading.widgets.exchanges import (BithumbWidget, UpbitWidget,
-                                               BinanceWidget, ExchangeSelectorWidget)
-from DiffTrader.trading.widgets.min_profit_widget import MinProfitWidget
+                                                  BinanceWidget, ExchangeSelectorWidget)
+from DiffTrader.trading.widgets.sub_widget import MinProfitWidget
 from DiffTrader.trading.models import TradeTableModel
 
-main_ui = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/main.ui'), from_imports=True, import_from='ui')[0]
 
-
-class DiffTraderGUI(QtWidgets.QMainWindow, main_ui):
+class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WIDGET):
     closed = QtCore.pyqtSignal()
 
     def __init__(self, _id, email, parent=None):
@@ -231,28 +230,3 @@ class DiffTraderGUI(QtWidgets.QMainWindow, main_ui):
         self.hide_exchange_setting_widgets()
         self.last_setting_idx = idx + 2
         self.show_exchange_setting_widgets()
-
-
-class MainTopWidget(QtWidgets.QWidget):
-    def __init__(self):
-        QtWidgets.QWidget.__init__(self)
-        uic.loadUi(os.path.join(sys._MEIPASS, 'ui/main_top.ui'), self)
-
-
-class MainMainWidget(QtWidgets.QWidget):
-    def __init__(self):
-        QtWidgets.QWidget.__init__(self)
-        uic.loadUi(os.path.join(sys._MEIPASS, 'ui/main_main.ui'), self)
-
-
-class ProfitChecker(QtCore.QThread):
-    def __init__(self):
-        super().__init__()
-
-    def run(self):
-        while evt.is_set():
-            try:
-
-                time.sleep(60)
-            except:
-                debugger.exception("FATAL. cannot load profit")

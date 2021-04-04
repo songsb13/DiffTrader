@@ -22,3 +22,16 @@ class TopProfitThread(QThread):
                                                       self.parent.top_profit_model.createIndex(
                                                           self.parent.top_profit_model.rowCount(),
                                                           self.parent.top_profit_model.columnCount()))
+
+
+class ProfitChecker(QtCore.QThread):
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        while evt.is_set():
+            try:
+
+                time.sleep(60)
+            except:
+                debugger.exception("FATAL. cannot load profit")
