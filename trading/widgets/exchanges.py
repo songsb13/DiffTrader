@@ -1,6 +1,6 @@
 from . import *
 from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog
-from DiffTrader.trading.widgets.paths import (FirstPageWidgets, ExchangeWidgets)
+from DiffTrader.trading.widgets.paths import (ExchangeWidgets)
 
 
 class ExchangeBaseWidget(QtWidgets.QWidget):
@@ -39,7 +39,7 @@ class ExchangeBaseWidget(QtWidgets.QWidget):
             return False
 
 
-class ExchangeSelectorWidget(QtWidgets.QWidget, FirstPageWidgets.EXCHANGE_SELECTOR_WIDGET):
+class ExchangeSelectorWidget(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
         self.setupUi(self)

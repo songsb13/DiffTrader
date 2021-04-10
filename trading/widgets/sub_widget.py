@@ -1,6 +1,5 @@
 from . import *
-from DiffTrader.trading.widgets.paths import (ProgramSettingWidgets as ProgramWidgets,
-                                              FirstPageWidgets)
+from DiffTrader.trading.widgets.paths import (ProgramSettingWidgets as ProgramWidgets,)
 
 from DiffTrader.trading.apis import save_total_data_to_database, load_total_data_to_database
 from DiffTrader.trading.messages import QMessageBoxMessage as Qmsg
@@ -48,16 +47,4 @@ class MinProfitWidget(QtWidgets.QWidget, ProgramWidgets.PROFIT_SETTING_WIDGET):
 
             index = 1 if bool(data['is_withdraw']) else 0
             self.withdraw_setting.setCurrentIndex(index)
-
-
-class MainTopWidget(QtWidgets.QWidget, FirstPageWidgets.TWO_EXCHANGE_WIDGET):
-    def __init__(self):
-        super(MainTopWidget, self).__init__()
-        # uic.loadUi(os.path.join(sys._MEIPASS, 'ui/main_top.ui'), self)
-
-
-class MainMainWidget(QtWidgets.QWidget, FirstPageWidgets.TRADING_HISTORY_WIDGET):
-    def __init__(self):
-        super(MainMainWidget, self).__init__()
-        # uic.loadUi(os.path.join(sys._MEIPASS, 'ui/main_main.ui'), self)
 
