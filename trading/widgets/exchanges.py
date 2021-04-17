@@ -3,13 +3,10 @@ from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog
 from DiffTrader.trading.widgets.paths import (ExchangeWidgets)
 
 
-class ExchangeBaseWidget(QtWidgets.QWidget):
+class ExchangeBaseWidget(object):
     def __init__(self):
-        super(ExchangeBaseWidget, self).__init__()
         self.dialog = SettingEncryptKeyDialog()
         self.dialog.btn.accepted.connect(self.save)
-        self.showSecretBtn.clicked.connect(self.show_secret)
-        self.saveBtn.clicked.connect(self.dialog.show)
         self.saved = False
 
     def load_key_and_secret(self, exchange_str, data):
@@ -21,56 +18,34 @@ class ExchangeBaseWidget(QtWidgets.QWidget):
 
             self.saved = True
 
-    def save(self):
-        self.dialog.save(key=self.key.text(), secret=self.secret.text())
+    def save(self, exchange, key_text, secret_text):
+        self.dialog.save(exchange, key_text, secret_text)
 
-        self.saved = True
+    def show_secret(self, secret_box, show_secret_box):
+        index = 0 if show_secret_box.isChecked() else 2
+        secret_box.setEchoMode(index)
 
-    def show_secret(self):
-        if self.showSecretBox.isChecked():
-            self.secret.setEchoMode(0)
-        else:
-            self.secret.setEchoMode(2)
-
-    def is_set(self):
-        if self.key.text() and self.secret.text():
-            return True
-        else:
-            return False
+    def valid_key_secret(self, key, secret):
+        pass
 
 
-class ExchangeSelectorWidget(QtWidgets.QWidget):
-    def __init__(self):
+class BithumbWidget(ExchangeBaseWidget):
+    def __init__(self, parent):
+        """
+            Args:
+                parent: diff_trader's widget object
+        """
         super().__init__()
-        self.setupUi(self)
+        self._parent = parent
 
-
-class BithumbWidget(ExchangeBaseWidget, ExchangeWidgets.BITHUMB_WIDGET):
-    def __init__(self, data):
-        super().__init__()
-        self.setupUi(self)
-
+    def load(self, data):
         if data and 'bithumb' in data.keys():
-            self.key.setText(data['bithumb']['key'])
-            self.secret.setText(data['bithumb']['secret'])
-            if 'form' in self.__dict__:
-                self.form.setCurrentIndex(data['bithumb']['form'])
-                self.KRW_form_value.setValue(data['bithumb']['krw_form_value'])
+            self._parent.bitumbKey.setText(data['bithumb']['key'])
+            self._parent.bithumbSecret.setText(data['bithumb']['secret'])
             self.saved = True
 
-    def save(self):
-        if 'form' in self.__dict__:
-            self.dialog.save('bithumb', key=self.key.text(),
-                             secret=self.secret.text(),
-                             form=self.form.currentIndex(),
-                             krw_form_value=self.KRW_form_value.value())
-        else:
-            self.dialog.save('bithumb', key=self.key.text(),
-                             secret=self.secret.text())
-        self.saved = True
 
-
-class BinanceWidget(ExchangeBaseWidget, ExchangeWidgets.BINANCE_WIDGET):
+class BinanceWidget(ExchangeBaseWidget):
     def __init__(self, data):
         super().__init__()
         self.setupUi(self)
@@ -107,7 +82,7 @@ class BinanceWidget(ExchangeBaseWidget, ExchangeWidgets.BINANCE_WIDGET):
         self.saved = True
 
 
-class UpbitWidget(ExchangeBaseWidget, ExchangeWidgets.UPBIT_WIDGET):
+class UpbitWidget(ExchangeBaseWidget):
     def __init__(self, data):
         super().__init__()
         self.setupUi(self)
