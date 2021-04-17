@@ -50,7 +50,7 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tabWidgeFirst">
        <attribute name="title">
@@ -190,42 +190,12 @@
                </item>
                <item>
                 <property name="text">
-                 <string>UpbitBTC</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>UpbitUSDT</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>UpbitKRW</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Korbit</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Coinone</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Bitfinex</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
                  <string>Binance</string>
                 </property>
                </item>
                <item>
                 <property name="text">
-                 <string>Huobi</string>
+                 <string>Upbit</string>
                 </property>
                </item>
               </widget>
@@ -239,38 +209,8 @@
                 </size>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>0</number>
                </property>
-               <item>
-                <property name="text">
-                 <string>Bithumb</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>UpbitBTC</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>UpbitUSDT</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>UpbitKRW</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Coinone</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Bitfinex</string>
-                </property>
-               </item>
                <item>
                 <property name="text">
                  <string>Binance</string>
@@ -278,7 +218,12 @@
                </item>
                <item>
                 <property name="text">
-                 <string>Huobi</string>
+                 <string>Bithumb</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Upbit</string>
                 </property>
                </item>
               </widget>
