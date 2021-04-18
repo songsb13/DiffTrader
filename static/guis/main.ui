@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1200</width>
-    <height>870</height>
+    <height>890</height>
    </rect>
   </property>
   <property name="maximumSize">
@@ -505,7 +505,7 @@
             </spacer>
            </item>
            <item row="2" column="2">
-            <widget class="QPushButton" name="upbitLocalSave">
+            <widget class="QPushButton" name="upbitLocalSaveBtn">
              <property name="text">
               <string>로컬저장</string>
              </property>
@@ -529,7 +529,7 @@
             </widget>
            </item>
            <item row="1" column="2">
-            <widget class="QCheckBox" name="upbitShowSecret">
+            <widget class="QCheckBox" name="upbitShowSecretCheckbox">
              <property name="text">
               <string>Show</string>
              </property>
@@ -539,99 +539,6 @@
             <widget class="QLabel" name="label_2">
              <property name="text">
               <string>API SECRET</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QGroupBox" name="binanceLayout">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>200</height>
-           </size>
-          </property>
-          <property name="title">
-           <string>binance 설정</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_12">
-           <property name="leftMargin">
-            <number>5</number>
-           </property>
-           <property name="topMargin">
-            <number>5</number>
-           </property>
-           <property name="rightMargin">
-            <number>5</number>
-           </property>
-           <property name="bottomMargin">
-            <number>5</number>
-           </property>
-           <property name="spacing">
-            <number>5</number>
-           </property>
-           <item row="1" column="2">
-            <widget class="QCheckBox" name="binanceShowSecret">
-             <property name="text">
-              <string>Show</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_24">
-             <property name="text">
-              <string>API SECRET</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QLineEdit" name="binanceSecret">
-             <property name="echoMode">
-              <enum>QLineEdit::Password</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <spacer name="horizontalSpacer_11">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>386</width>
-               <height>20</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
-           <item row="0" column="1">
-            <widget class="QLineEdit" name="binanceKey"/>
-           </item>
-           <item row="2" column="2">
-            <widget class="QPushButton" name="binanceLocalSave">
-             <property name="text">
-              <string>로컬저장</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="0">
-            <widget class="QLabel" name="label_23">
-             <property name="text">
-              <string>API KEY</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -691,7 +598,7 @@
             </spacer>
            </item>
            <item row="2" column="2">
-            <widget class="QPushButton" name="bithumbLocalSave">
+            <widget class="QPushButton" name="bithumbLocalSaveBtn">
              <property name="text">
               <string>로컬저장</string>
              </property>
@@ -715,7 +622,7 @@
             </widget>
            </item>
            <item row="1" column="2">
-            <widget class="QCheckBox" name="bithumbShowSecret">
+            <widget class="QCheckBox" name="bithumbShowSecretCheckbox">
              <property name="text">
               <string>Show</string>
              </property>
@@ -747,6 +654,99 @@
           </property>
          </spacer>
         </item>
+        <item row="1" column="0">
+         <widget class="QGroupBox" name="binanceLayout">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>200</height>
+           </size>
+          </property>
+          <property name="title">
+           <string>binance 설정</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_12">
+           <property name="leftMargin">
+            <number>5</number>
+           </property>
+           <property name="topMargin">
+            <number>5</number>
+           </property>
+           <property name="rightMargin">
+            <number>5</number>
+           </property>
+           <property name="bottomMargin">
+            <number>5</number>
+           </property>
+           <property name="spacing">
+            <number>5</number>
+           </property>
+           <item row="1" column="2">
+            <widget class="QCheckBox" name="binanceShowSecretCheckbox">
+             <property name="text">
+              <string>Show</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_24">
+             <property name="text">
+              <string>API SECRET</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="binanceSecret">
+             <property name="echoMode">
+              <enum>QLineEdit::Password</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <spacer name="horizontalSpacer_11">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>386</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLineEdit" name="binanceKey"/>
+           </item>
+           <item row="2" column="2">
+            <widget class="QPushButton" name="binanceLocalSaveBtn">
+             <property name="text">
+              <string>로컬저장</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_23">
+             <property name="text">
+              <string>API KEY</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
        </layout>
       </widget>
       <widget class="QWidget" name="tabWidgetSecond">
@@ -766,7 +766,7 @@
              </widget>
             </item>
             <item row="0" column="1">
-             <widget class="QSpinBox" name="spinBox"/>
+             <widget class="QSpinBox" name="minProfitPercent"/>
             </item>
             <item row="1" column="0">
              <widget class="QLabel" name="label_5">
@@ -776,7 +776,7 @@
              </widget>
             </item>
             <item row="1" column="1">
-             <widget class="QSpinBox" name="spinBox_2"/>
+             <widget class="QSpinBox" name="minProfitBTC"/>
             </item>
             <item row="3" column="0">
              <widget class="QLabel" name="label_7">
@@ -786,7 +786,7 @@
              </widget>
             </item>
             <item row="3" column="1">
-             <widget class="QComboBox" name="comboBox">
+             <widget class="QComboBox" name="autoWithdrawal">
               <item>
                <property name="text">
                 <string>설정</string>
