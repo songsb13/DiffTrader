@@ -20,7 +20,7 @@ from . import *
 from DiffTrader.trading.apis import send_expected_profit
 from DiffTrader.trading.threads.utils import calculate_withdraw_amount, check_deposit_addrs, loop_wrapper
 from DiffTrader.trading.messages import (Logs, Messages as Msg)
-from DiffTrader.trading.threads.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, ONE_WAY_EXCHANGES)
+from DiffTrader.trading.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, ONE_WAY_EXCHANGES)
 
 # Third parties
 from PyQt5.QtCore import pyqtSignal

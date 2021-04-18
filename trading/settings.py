@@ -11,7 +11,7 @@ PRIMARY_TO_SECONDARY = 'primary_to_secondary'
 SECONDARY_TO_PRIMARY = 'secondary_to_primary'
 
 # Exchange list of available trading in SAI programs.
-AVAILABLE_EXCHANGES = ['korbit', 'binance', 'huobi', 'upbit', 'bithumb']
+AVAILABLE_EXCHANGES = ['Binance', 'Bithumb', 'Upbit']
 
 # Exchange list of only one-way trading in SAI programs.
 ONE_WAY_EXCHANGES = ['korbit']
