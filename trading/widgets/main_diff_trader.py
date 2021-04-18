@@ -1,14 +1,7 @@
 from . import *
 
-from DiffTrader.trading.threads.trade_thread import TradeThread
-from DiffTrader.trading.threads.profit_thread import TopProfitThread
-
-from DiffTrader.trading.widgets.dialogs import LoadSettingsDialog
 from DiffTrader.trading.widgets.paths import (ProgramSettingWidgets)
-from DiffTrader.trading.widgets.exchanges import (BithumbWidget, UpbitWidget,
-                                                  BinanceWidget, ExchangeSelectorWidget)
-from DiffTrader.trading.widgets.sub_widget import MinProfitWidget
-from DiffTrader.trading.models import TradeTableModel
+from DiffTrader.trading.settings import AVAILABLE_EXCHANGES
 
 
 class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WIDGET):
@@ -19,15 +12,68 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         """
         super().__init__()
 
-        self._user_id = _id
-        self._email = email
-        self._parent = parent
+        self.user_id = _id
+        self.email = email
+        self.parent = parent
 
         self.setupUi(self)
+        
+        # define tab widgets
+        self._main_tab_widget = self.MainTab(self)
+    
+    def closeEvent(self, *args, **kwargs):
+        close_program(self._id)
+        self.top_profit_thread.exit()
+        self.closed.emit()
 
-    def start_trade(self):
-        self.startTradeBtn.setEnabled(False)
-        self.stop_trade_btn.setEnabled(True)
+    class MainTab(object):
+        """
+            It is a tab to start trading after selecting two widgets.
+            Also it is located with profit table, profit top 10 table, log widget.
+        """
+        def __init__(self, diff_gui):
+            """
+                Args:
+                    diff_gui: diffTraderGUI(object)
+            """
+            self._diff_gui = diff_gui
+            self._user_id = diff_gui.user_id
+            self._email = diff_gui.email
+            self._parent = diff_gui.parent
+            
+            # connect buttons
+            self._diff_gui.startTradeBtn.clicked.connect(self.start_trade)
+            self._diff_gui.stopTradeBtn.clicked.connect(self.stop_trade)
 
-        primary_widget = self.exchange_widgets.get(self.primary_exchange_str)
-        secondary_widget = self.exchange_widgets.get(self.secondary_exchange_str)
+            # exchange select bar settings
+            self._diff_gui.primaryExchange.addItems(AVAILABLE_EXCHANGES)
+            self._diff_gui.secondaryExchange.addItems(AVAILABLE_EXCHANGES)
+
+            self._diff_gui.primaryExchange.currentIndexChanged.connect(self.same_exchange_checker)
+            # self._diff_gui.secondaryExchange.currentIndexChanged.connect(self.same_exchange_checker)
+
+        def same_exchange_checker(self):
+            """
+                check the exchange is selected twice from primary and secondary.
+            """
+            if self._diff_gui.primaryExchange.currentText() == self._diff_gui.secondaryExchange.currentText():
+                selected_index = self._diff_gui.secondaryExchange.currentIndex()
+                self._diff_gui.secondaryExchange.models().item(selected_index).setEnabled(False)
+        
+        def trade_history(self):
+            pass
+        
+        def top_ten_by_profits(self):
+            pass
+        
+        def write_logs(self):
+            pass
+
+        def start_trade(self):
+            self._diff_gui.startTradeBtn.setEnabled(False)
+            self._diff_gui.stopTradeBtn.setEnabled(True)
+
+        def stop_trade(self):
+            self._diff_gui.startTradeBtn.setEnabled(True)
+            self._diff_gui.stopTradeBtn.setEnabled(False)
+
