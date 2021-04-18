@@ -18,9 +18,16 @@ class ExchangeBaseWidget(object):
 
             self.saved = True
 
-    def save(self, exchange, key_text, secret_text):
-        self.dialog.save(exchange, key_text, secret_text)
-
+    def _save(self, exchange_str, key_text, secret_text):
+        self.dialog.save(exchange_str, key_text, secret_text)
+    
+    def _load(self, data, exchange_str, key_box, secret_box):
+        if data and exchange_str in data.keys():
+            key, secret = data[exchange_str]['key'], data[exchange_str]['secret']
+            key_box.setText(key)
+            secret_box.setText(secret)
+            self.saved = True
+        
     def show_secret(self, secret_box, show_secret_box):
         index = 0 if show_secret_box.isChecked() else 2
         secret_box.setEchoMode(index)
@@ -30,19 +37,21 @@ class ExchangeBaseWidget(object):
 
 
 class BithumbWidget(ExchangeBaseWidget):
-    def __init__(self, parent):
+    def __init__(self, data, parent):
         """
             Args:
                 parent: diff_trader's widget object
         """
         super().__init__()
         self._parent = parent
-
+    
+    def save(self):
+        key, secret = self._parent.bitumbKey.text(), self._parent.bithumbSecret.text()
+        
+        self._save('bithumb', key, secret)
+    
     def load(self, data):
-        if data and 'bithumb' in data.keys():
-            self._parent.bitumbKey.setText(data['bithumb']['key'])
-            self._parent.bithumbSecret.setText(data['bithumb']['secret'])
-            self.saved = True
+        self._load(data, 'bithumb', self._parent.bitumbKey, self._parent.bithumbSecret)
 
 
 class BinanceWidget(ExchangeBaseWidget):
