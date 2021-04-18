@@ -15,3 +15,6 @@ AVAILABLE_EXCHANGES = ['Binance', 'Bithumb', 'Upbit']
 
 # Exchange list of only one-way trading in SAI programs.
 ONE_WAY_EXCHANGES = ['korbit']
+
+ENABLE_SETTING = '설정'
+UNABLE_SETTING = '미설정'
