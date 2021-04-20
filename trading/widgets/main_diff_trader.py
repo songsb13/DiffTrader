@@ -2,6 +2,7 @@ from . import *
 
 from DiffTrader.trading.widgets.paths import (ProgramSettingWidgets)
 from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNABLE_SETTING
+from DiffTrader.trading.widgets.utils import base_item_setter
 
 
 """
@@ -73,7 +74,10 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._user_id = diff_gui.user_id
             self._email = diff_gui.email
             self._parent = diff_gui.parent
-            
+
+            # define table variables
+            self.trade_object_set = set()
+
             # exchange select bar settings
             self._diff_gui.primaryExchange.addItems(AVAILABLE_EXCHANGES)
             self._diff_gui.secondaryExchange.addItems(AVAILABLE_EXCHANGES)
@@ -89,16 +93,41 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 selected_index = self._diff_gui.secondaryExchange.currentIndex()
                 self._diff_gui.secondaryExchange.models().item(selected_index).setEnabled(False)
         
-        def trade_history(self):
-            self._diff_gui.profitBTC.text()
+        def set_trade_history(self, trade_object):
+            """
+                거래가 되면, 해당 table로 들어와서, 추가 및 갱신
+                todo: 어떤 history 값들이 들어와야 하는지, 그리고 이전 히스토리 값도 노출이 되어야 하는지?
+            """
             self._diff_gui.profitPercent.text()
-            self._diff_gui.tradeHistoryView
-            pass
-        
+
+            item_list = [
+                trade_object.symbol,
+                trade_object.profit_btc,
+                trade_object.profit_percent,
+            ]
+            row_count = self._diff_gui.tradeHistoryView.rowCount()
+            base_item_setter(row_count, self._diff_gui.tradeHistoryView, item_list)
+            
+            total = [each.profit_btc for each in self.trade_object_set]
+            
+            total_profit_btc = sum(total)
+            self._diff_gui.profitBTC.setText(total_profit_btc)
+            
         def top_ten_by_profits(self):
-            self._diff_gui.profitRankView
-            pass
-        
+            sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc)
+            
+            row_count = self._diff_gui.profitRankView.rowCount()
+            
+            for trade_object in sorted_objects:
+                item_list = [
+                    trade_object.symbol,
+                    trade_object.profit_btc,
+                    trade_object.profit_percent,
+                ]
+                
+                base_item_setter(row_count, self._diff_gui.profitRankView, item_list)
+                row_count += 1
+
         def write_logs(self, log):
             self._diff_gui.logBox
     

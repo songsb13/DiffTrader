@@ -1,4 +1,4 @@
-from . import os
+from . import *
 
 import json
 from Crypto.Cipher import AES
@@ -41,3 +41,13 @@ def load(password):
             return False
 
     return data
+
+
+def base_item_setter(row, table, data_set):
+    for num, each in enumerate(data_set):
+        item = table.item(row, num)
+        if not item:
+            item = QtWidgets.QTableWidgetItem(str(each))
+            table.setItem(row, num, item)
+        else:
+            item.setText(str(each))
