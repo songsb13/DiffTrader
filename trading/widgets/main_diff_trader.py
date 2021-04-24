@@ -4,6 +4,7 @@ from DiffTrader.trading.widgets.paths import (ProgramSettingWidgets)
 from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNABLE_SETTING
 from DiffTrader.trading.widgets.utils import base_item_setter
 
+import logging
 
 """
     controller로 보내야 하는 기준 명확하게 정의해야함.
@@ -96,6 +97,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         def set_trade_history(self, trade_object):
             """
                 거래가 되면, 해당 table로 들어와서, 추가 및 갱신
+                history -> db 참조해서 확인 한번 해보기?
+
                 todo: 어떤 history 값들이 들어와야 하는지, 그리고 이전 히스토리 값도 노출이 되어야 하는지?
             """
             self._diff_gui.profitPercent.text()
@@ -108,10 +111,13 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             row_count = self._diff_gui.tradeHistoryView.rowCount()
             base_item_setter(row_count, self._diff_gui.tradeHistoryView, item_list)
             
-            total = [each.profit_btc for each in self.trade_object_set]
+            btc_total = [each.profit_btc for each in self.trade_object_set]
+            percent_total = [each.profit_percent for each in self.trade_object_set]
             
-            total_profit_btc = sum(total)
+            total_profit_btc = sum(btc_total)
+            total_profit_percent = sum(percent_total) / len(percent_total)
             self._diff_gui.profitBTC.setText(total_profit_btc)
+            self._diff_gui.profitPercent.setText(total_profit_percent)
             
         def top_ten_by_profits(self):
             sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc)
@@ -128,9 +134,14 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 base_item_setter(row_count, self._diff_gui.profitRankView, item_list)
                 row_count += 1
 
-        def write_logs(self, log):
-            self._diff_gui.logBox
-    
+        def write_logs(self, level, msg):
+            debugger.log(level, msg)
+            self._diff_gui.logBox.setText(
+                '\n'.join(self._diff_gui.logBox.toPlainText().split('\n')[-500:]) + '\n' + str(msg)
+            )
+            self._diff_gui.logBox.verticalScrollBar().setValue(
+                self._diff_gui.logBox.verticalScrollBar().maximum())
+
     class ExchangeSettingTab(object):
         def __init__(self, diff_gui):
             """
