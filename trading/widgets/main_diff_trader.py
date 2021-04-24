@@ -58,24 +58,36 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         min_profit_btc = profit_settings['min_profit_btc']
         auto_withdrawal = profit_settings['auto_withdrawal']
 
-        primary_config = {
-            'key': '',
-            'secret': ''
-        }
+        primary_settings = self._exchange_setting_tab.config_dict.get(self.primaryExchange.currentText(), None)
+        secondary_settings = self._exchange_setting_tab.config_dict.get(self.secondaryExchange.currentText(), None)
 
-        secondary_config = {
-            'key': '',
-            'secret': ''
-        }
+        if primary_settings is None or secondary_settings is None:
+            # todo message
+            return
 
         self.trade_thread = TradeThread(
             email=self.email,
-
+            primary_info=primary_settings,
+            secondary_info=secondary_settings,
+            min_profit_per=min_profit_percent,
+            min_profit_btc=min_profit_btc,
+            auto_withdrawal=auto_withdrawal
         )
 
+        self.trade_thread.log_signal.connect(self._main_tab.write_logs)
+        self.trade_thread.stopped.connect(self.trade_thread_is_stopped)
+
+        self.trade_thread.start()
+
     def stop_trade(self):
+        if self.trade_thread and self.trade_thread.isAlive():
+            self.trade_thread.stop()
+            self._main_tab.write_logs('거래 중지를 시도합니다.')
+
+    def trade_thread_is_stopped(self):
         self.startTradeBtn.setEnabled(True)
         self.stopTradeBtn.setEnabled(False)
+        self._main_tab.write_logs('거래가 중지되었습니다.')
 
     class MainTab(object):
         """
@@ -101,7 +113,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
             self._diff_gui.primaryExchange.currentIndexChanged.connect(self.same_exchange_checker)
             # self._diff_gui.secondaryExchange.currentIndexChanged.connect(self.same_exchange_checker)
-            
+
         def same_exchange_checker(self):
             """
                 check the exchange is selected twice from primary and secondary.
@@ -134,7 +146,17 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             total_profit_percent = sum(percent_total) / len(percent_total)
             self._diff_gui.profitBTC.setText(total_profit_btc)
             self._diff_gui.profitPercent.setText(total_profit_percent)
-            
+
+        def update_tables(self, history_object):
+            """
+                거래가 끝나고 trade_thread 로부터 trade_history object를 받는 경우
+                top 10 by profit, trade_history table이 업데이트 처리되어야 함.
+            """
+            self.trade_object_set.add(history_object)
+
+            self.set_trade_history(history_object)
+            self.top_ten_by_profits()
+
         def top_ten_by_profits(self):
             sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc)
             
@@ -142,7 +164,10 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             
             for trade_object in sorted_objects:
                 item_list = [
+                    trade_object.trade_date,
                     trade_object.symbol,
+                    trade_object.primary_exchange,
+                    trade_object.secondary_exchange,
                     trade_object.profit_btc,
                     trade_object.profit_percent,
                 ]
@@ -183,6 +208,13 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             exchange_name = parent_widget.objectName()
 
             key, secret = {each.text() for each in parent_widget.findChildren(QtWidgets.QLineEdit)}
+
+            if not key or not secret:
+                QtWidgets.QMessageBox.warning(self._diff_gui,
+                                              "Key, Sercet이 정상입력 되어있지 않습니다.",
+                                              "개발자에게 debugger.log파일을 보내주세요.")
+
+                return
 
             exchange_config = {exchange_name: {
                 'key': key,
