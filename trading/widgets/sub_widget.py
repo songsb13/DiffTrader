@@ -1,6 +1,4 @@
 from . import *
-from DiffTrader.trading.widgets.paths import (ProgramSettingWidgets as ProgramWidgets,)
-
 from DiffTrader.trading.apis import save_total_data_to_database, load_total_data_to_database
 from DiffTrader.trading.messages import QMessageBoxMessage as Qmsg
 

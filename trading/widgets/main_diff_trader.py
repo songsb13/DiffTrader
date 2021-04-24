@@ -1,9 +1,10 @@
 from . import *
 
-from DiffTrader.trading.widgets.paths import (ProgramSettingWidgets)
-from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNABLE_SETTING
+from DiffTrader.paths import ProgramSettingWidgets
+from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING
 from DiffTrader.trading.widgets.utils import base_item_setter
 from DiffTrader.trading.threads.trade_thread import TradeThread
+from PyQt5.QtWidgets import QApplication
 
 import logging
 
@@ -64,20 +65,20 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         if primary_settings is None or secondary_settings is None:
             # todo message
             return
-
-        self.trade_thread = TradeThread(
-            email=self.email,
-            primary_info=primary_settings,
-            secondary_info=secondary_settings,
-            min_profit_per=min_profit_percent,
-            min_profit_btc=min_profit_btc,
-            auto_withdrawal=auto_withdrawal
-        )
-
-        self.trade_thread.log_signal.connect(self._main_tab.write_logs)
-        self.trade_thread.stopped.connect(self.trade_thread_is_stopped)
-
-        self.trade_thread.start()
+        #
+        # self.trade_thread = TradeThread(
+        #     email=self.email,
+        #     primary_info=primary_settings,
+        #     secondary_info=secondary_settings,
+        #     min_profit_per=min_profit_percent,
+        #     min_profit_btc=min_profit_btc,
+        #     auto_withdrawal=auto_withdrawal
+        # )
+        #
+        # self.trade_thread.log_signal.connect(self._main_tab.write_logs)
+        # self.trade_thread.stopped.connect(self.trade_thread_is_stopped)
+        #
+        # self.trade_thread.start()
 
     def stop_trade(self):
         if self.trade_thread and self.trade_thread.isAlive():
@@ -124,15 +125,15 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         
         def set_trade_history(self, trade_object):
             """
-                거래가 되면, 해당 table로 들어와서, 추가 및 갱신
-                history -> db 참조해서 확인 한번 해보기?
-
-                todo: 어떤 history 값들이 들어와야 하는지, 그리고 이전 히스토리 값도 노출이 되어야 하는지?
+                It is a table to display trade history, symbol, profitBTC, profit_percent and etc.
             """
             self._diff_gui.profitPercent.text()
 
             item_list = [
+                trade_object.trade_date,
                 trade_object.symbol,
+                trade_object.primary_exchange,
+                trade_object.secondary_exchange,
                 trade_object.profit_btc,
                 trade_object.profit_percent,
             ]
@@ -149,8 +150,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
         def update_tables(self, history_object):
             """
-                거래가 끝나고 trade_thread 로부터 trade_history object를 받는 경우
-                top 10 by profit, trade_history table이 업데이트 처리되어야 함.
+                Update trade_history table, top 10 by profit table
+                after trading and getting history object from trade_thread.
             """
             self.trade_object_set.add(history_object)
 
@@ -186,6 +187,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
     class ExchangeSettingTab(object):
         def __init__(self, diff_gui):
             """
+                It is a tab for setting key, secret
                 Args:
                     diff_gui: diffTraderGUI(object)
             """
@@ -248,3 +250,14 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                         min_profit_btc=float(min_profit_btc_str),
                         auto_withdrawal=auto_withdrawal)
 
+
+if __name__ == '__main__':
+    try:
+        app = QApplication([])
+        gui = DiffTraderGUI('1', 'gimo')
+        gui.show()
+        app.exec_()
+    except:
+        debugger.exception("FATAL")
+    finally:
+        debugger.debug('Done')
