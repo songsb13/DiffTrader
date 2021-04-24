@@ -3,6 +3,7 @@ from . import *
 from DiffTrader.trading.widgets.paths import (ProgramSettingWidgets)
 from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNABLE_SETTING
 from DiffTrader.trading.widgets.utils import base_item_setter
+from DiffTrader.trading.threads.trade_thread import TradeThread
 
 import logging
 
@@ -56,7 +57,22 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         min_profit_percent = profit_settings['min_profit_percent']
         min_profit_btc = profit_settings['min_profit_btc']
         auto_withdrawal = profit_settings['auto_withdrawal']
-        
+
+        primary_config = {
+            'key': '',
+            'secret': ''
+        }
+
+        secondary_config = {
+            'key': '',
+            'secret': ''
+        }
+
+        self.trade_thread = TradeThread(
+            email=self.email,
+
+        )
+
     def stop_trade(self):
         self.startTradeBtn.setEnabled(True)
         self.stopTradeBtn.setEnabled(False)
@@ -134,7 +150,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 base_item_setter(row_count, self._diff_gui.profitRankView, item_list)
                 row_count += 1
 
-        def write_logs(self, level, msg):
+        def write_logs(self, msg, level=logging.INFO):
             debugger.log(level, msg)
             self._diff_gui.logBox.setText(
                 '\n'.join(self._diff_gui.logBox.toPlainText().split('\n')[-500:]) + '\n' + str(msg)
@@ -152,6 +168,28 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._user_id = diff_gui.user_id
             self._email = diff_gui.email
             self._parent = diff_gui.parent
+
+            self.config_dict = dict()
+
+            self._diff_gui.bithumbLocalSaveBtn.clicked.connect(self.local_save)
+            self._diff_gui.upbitLocalSaveBtn.clicked.connect(self.local_save)
+            self._diff_gui.binanceLocalSaveBtn.clicked.connect(self.local_save)
+
+        def local_save(self):
+            """
+                button 클릭시 상위 group box 가져옴 -> groupBox의 name, 하위의 line edits(key, secret) 값 추출
+            """
+            parent_widget = self.sender().parent()
+            exchange_name = parent_widget.objectName()
+
+            key, secret = {each.text() for each in parent_widget.findChildren(QtWidgets.QLineEdit)}
+
+            exchange_config = {exchange_name: {
+                'key': key,
+                'secret': secret
+            }}
+
+            self.config_dict.update(exchange_config)
 
     class ProgramSettingTab(object):
         def __init__(self, diff_gui):
