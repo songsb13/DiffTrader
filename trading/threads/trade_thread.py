@@ -57,6 +57,21 @@ class MaxProfits(object):
         self.information = None
 
 
+
+class TradeHistoryObject(object):
+    def __init__(self, trade_date, symbol, primary_exchange, secondary_exchange,
+                 profit_btc, profit_percent):
+        """
+            trade history, top 10 profits에 들어가는 정보 집합 object
+        """
+        self.trade_date = trade_date
+        self.symbol = symbol
+        self.primary_exchange = primary_exchange
+        self.secondary_exchange = secondary_exchange
+        self.profit_btc = profit_btc
+        self.profit_percent = profit_percent
+
+
 class ExchangeInfo(object):
     # todo primary_info는 diff_trader에 받고있는데, 하나의 DICT에 하나의 거래소만 받는데 왜 dict처리하는지 확인 필요함.
     """
