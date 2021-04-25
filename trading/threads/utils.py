@@ -4,7 +4,7 @@
 """
 from . import debugger, time
 from decimal import Decimal
-from settings import TAG_COINS
+from DiffTrader.trading.settings import TAG_COINS
 
 
 def calculate_withdraw_amount(amount_of_coin, tx_fee):
@@ -24,12 +24,12 @@ def check_deposit_addrs(coin, deposit_dic):
     return all([has_deposit, has_tag_deposit])
 
 
-def loop_wrapper():
+def loop_wrapper(func):
     """
         wrapper that try loop up to 3 times
         It is used when defining variable information, fee, deposits, compare_orderbook and etc.
     """
-    def _except_wrapper(func):
+    def _except_wrapper():
         def _wrap_func(self, *args):
             for _ in range(3):
                 result_object = func(self, *args)

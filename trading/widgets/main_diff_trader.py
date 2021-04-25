@@ -1,4 +1,4 @@
-from . import *
+from DiffTrader.trading.widgets import *
 
 from DiffTrader.paths import ProgramSettingWidgets
 from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING

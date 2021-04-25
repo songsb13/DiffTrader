@@ -7,7 +7,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class LoginWidgets(object):
-    LOGIN = uic.loadUiType(ROOT_DIR, os.path.join('static/guis/Login.ui')[0])
+    LOGIN = uic.loadUiType(os.path.join(ROOT_DIR, 'static/guis/Login.ui'))[0]
 
 
 class ExchangeWidgets(object):
@@ -23,4 +23,4 @@ class DialogWidgets(object):
 
 class ProgramSettingWidgets(object):
     PROFIT_SETTING_WIDGET = uic.loadUiType(os.path.join(ROOT_DIR, 'static/guis/ProfitSettingWidget.ui'))[0]
-    DIFF_TRADER_WIDGET = uic.loadUiType(os.path.join(ROOT_DIR, 'static/guis/main.ui'), from_imports=True, import_from='ui')[0]
+    DIFF_TRADER_WIDGET = uic.loadUiType(os.path.join(ROOT_DIR, 'static/guis/main.ui'))[0]

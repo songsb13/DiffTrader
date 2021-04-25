@@ -10,7 +10,7 @@ from decimal import Decimal, ROUND_DOWN
 # SAI parties
 from Exchanges.Bithumb.bithumb import Bithumb
 from Exchanges.Binance.binance import Binance
-from Exchanges.Upbit.upbit import BaseUpbit
+from Exchanges.Upbit.upbit import Upbit
 
 from Util.pyinstaller_patch import *
 # END
