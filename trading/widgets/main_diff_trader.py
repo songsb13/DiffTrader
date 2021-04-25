@@ -10,6 +10,8 @@ import logging
 
 """
     controller로 보내야 하는 기준 명확하게 정의해야함.
+    https://github.com/songsb13/DiffTrader/pull/3/files#diff-d0ad76ee4fb5c3deb31cef4fc484c7d60870bc15a42e27f9116200327ff10189R1
+    dynamic하게 변경 필요함.
 """
 
 
@@ -206,7 +208,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             """
                 button 클릭시 상위 group box 가져옴 -> groupBox의 name, 하위의 line edits(key, secret) 값 추출
             """
-            parent_widget = self.sender().parent()
+            # todo 성공시 메세지, 실패시 메세지
+            parent_widget = self._diff_gui.sender().parent()
             exchange_name = parent_widget.objectName()
 
             key, secret = {each.text() for each in parent_widget.findChildren(QtWidgets.QLineEdit)}
@@ -235,12 +238,15 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._user_id = diff_gui.user_id
             self._email = diff_gui.email
             self._parent = diff_gui.parent
-        
+
+            self._diff_gui.saveProgramSettingBtn.clicked.connect(self.get_profit_settings)
+            
         def get_profit_settings(self):
             min_profit_percent_str = self._diff_gui.minProfitPercent.text()
             min_profit_btc_str = self._diff_gui.minProfitBTC.text()
             auto_withdrawal = True if self._diff_gui.autoWithdrawal.currentText() == ENABLE_SETTING else False
             
+            # todo 메세지 넣기
             if min_profit_percent_str and float(min_profit_btc_str) <= 0:
                 return dict()
             elif min_profit_btc_str and float(min_profit_btc_str) <= 0:
