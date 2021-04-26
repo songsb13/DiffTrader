@@ -61,7 +61,19 @@ class MaxProfits(object):
         self.currency = currency
         self.trade_type = trade
 
-        self.information = None
+        self.information = dict()
+    
+    def set_information(self, user_id, profit_percent, profit_btc, currency_time,
+                        primary_market, secondary_market, currency_name):
+        self.information = dict(
+            user_id=user_id,
+            profit_percent=profit_percent,
+            profit_btc=profit_btc,
+            currency_time=currency_time,
+            primary_market=primary_market,
+            secondary_market=secondary_market,
+            currency_name=currency_name
+        )
 
 
 class ExchangeInfo(object):
@@ -580,7 +592,7 @@ class TradeThread(QThread):
                 elif profit_object.btc_profit < btc_profit:
                     profit_object = MaxProfits(btc_profit, tradable_btc, alt_amount, currency, trade)
 
-                profit_object.information = dict(
+                profit_object.set_information(
                     user_id=self.email,
                     profit_percent=real_diff,
                     profit_btc=btc_profit,
