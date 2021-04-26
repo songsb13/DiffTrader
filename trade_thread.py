@@ -511,15 +511,14 @@ class TradeThread(QThread):
                 expect_profit_percent = data.get(trade, dict()).get(currency, int())
 
                 if trade == PRIMARY_TO_SECONDARY and expect_profit_percent >= 0:
-                    sender, receiver, asks, bids, profit_per = self.primary_obj.name, self.secondary_obj.name, \
-                                                        primary_orderbook[currency]['asks'], \
-                                                        secondary_orderbook[currency]['bids'], \
-                                                        expect_profit_percent * 100,
+                    sender, receiver = self.primary_obj.name, self.secondary_obj.name
+                    asks, bids = primary_orderbook[currency]['asks'], secondary_orderbook[currency]['bids']
+                    profit_per = expect_profit_percent * 100
+                    
                 else:  # trade == SECONDARY_TO_PRIMARY and expect_profit_percent >= 0:
-                    sender, receiver, asks, bids, profit_per = self.secondary_obj.name, self.primary_obj.name, \
-                                                        secondary_orderbook[currency]['asks'], \
-                                                        primary_orderbook[currency]['bids'], \
-                                                        expect_profit_percent * 100
+                    sender, receiver = self.secondary_obj.name, self.primary_obj.name
+                    asks, bids = secondary_orderbook[currency]['asks'], primary_orderbook[currency]['bids']
+                    profit_per = expect_profit_percent * 100
 
                 self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
                     from_exchange=sender,
