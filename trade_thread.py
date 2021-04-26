@@ -390,7 +390,10 @@ class TradeThread(QThread):
         alt_precision = max(secondary_btc_precision, secondary_alt_precision)
 
         return btc_precision, alt_precision
-
+    
+    def get_currencies(self):
+        return list(set(self.secondary_obj.balance).intersection(self.primary_obj.balance))
+    
     @loop_wrapper(debugger=debugger)
     async def balance_and_currencies(self):
         """
@@ -411,7 +414,7 @@ class TradeThread(QThread):
         self.primary_obj.balance = primary_res.data
         self.secondary_obj.balance = secondary_res.data
 
-        self.currencies = list(set(self.secondary_obj.balance).intersection(self.primary_obj.balance))
+        self.currencies = self.get_currencies()
 
         return True
 
