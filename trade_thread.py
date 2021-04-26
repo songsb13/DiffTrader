@@ -193,11 +193,8 @@ class TradeThread(QThread):
         self.stop_flag = True
 
     def run(self):
-        list_ = list()
-        for info in [self.primary_obj, self.secondary_obj]:
-            list_.append(self.get_exchange(info.name, info.cfg))
-        else:
-            self.primary_obj.exchange, self.secondary_obj.exchange = list_
+        self.primary_obj.exchange = self.get_exchange(self.primary_obj.name, self.primary_obj.cfg)
+        self.secondary_obj.exchange = self.get_exchange(self.secondary_obj.name, self.secondary_obj.cfg)
 
         if not self.primary_obj.exchange or not self.secondary_obj.exchange:
             self.stop()
@@ -635,7 +632,6 @@ class TradeThread(QThread):
         ))
 
         self.stop()
-        return True
 
     def _withdraw(self, sender_object, receiver_object, profit_object, send_amount, coin):
         """
