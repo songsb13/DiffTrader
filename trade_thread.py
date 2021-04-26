@@ -330,7 +330,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         self.primary_obj.deposit = primary_res.data
         self.secondary_obj.deposit = secondary_res.data
@@ -349,7 +349,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         self.primary_obj.trading_fee = primary_res.data
         self.secondary_obj.trading_fee = secondary_res.data
@@ -368,7 +368,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         self.primary_obj.transaction_fee = primary_res.data
         self.secondary_obj.transaction_fee = secondary_res.data
@@ -384,7 +384,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         primary_btc_precision, primary_alt_precision = primary_res.data
         secondary_btc_precision, secondary_alt_precision = secondary_res.data
@@ -409,7 +409,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         self.primary_obj.balance = primary_res.data
         self.secondary_obj.balance = secondary_res.data
@@ -433,7 +433,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         primary_to_secondary = dict()
         for currency_pair in self.currencies:
