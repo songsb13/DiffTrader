@@ -67,7 +67,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                                           Msg.Content.WRONG_PROFIT_SETTING)
             return
 
-        elif self._diff_gui.primaryExchange.currentText() == self._diff_gui.secondaryExchange.currentText():
+        elif self.primaryExchange.currentText() == self.secondaryExchange.currentText():
             QtWidgets.QMessageBox.warning(self,
                                           Msg.Title.EXCHANGE_SETTING_ERROR,
                                           Msg.Content.CANNOT_BE_SAME_EXCHANGE)
