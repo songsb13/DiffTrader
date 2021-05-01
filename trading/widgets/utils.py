@@ -51,3 +51,16 @@ def base_item_setter(row, table, data_set):
             table.setItem(row, num, item)
         else:
             item.setText(str(each))
+
+
+def number_type_converter(to_type, value):
+    try:
+        if not value:
+            return int()
+        else:
+            if not isinstance(value, to_type):
+                return to_type(value)
+            else:
+                return value
+    except ValueError:
+        return int()

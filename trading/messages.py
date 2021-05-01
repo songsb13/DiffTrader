@@ -121,3 +121,5 @@ class QMessageBoxMessage(object):
         CANNOT_BE_SAME_EXCHANGE = '거래소 1과 거래소 2가 동일한 값이 될 수 없습니다.'
         SET_MINIMUM_TWO_EXCHANGE = '최소 거래소가 2개 이상 세팅되어 있어야 합니다.'
         SEND_TO_DEVELOPER = '개발자에게 debugger.log를 보내주세요.'
+        WRONG_PROFIT_PERCENT = '최소 수익 %가 정상적으로 입력되지 않았습니다.'
+        WRONG_PROFIT_BTC = '최소 수익 BTC가 정상적으로 입력되지 않았습니다.'

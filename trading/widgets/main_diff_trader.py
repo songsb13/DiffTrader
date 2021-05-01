@@ -2,8 +2,10 @@ from DiffTrader.trading.widgets import *
 
 from DiffTrader.paths import ProgramSettingWidgets
 from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING
-from DiffTrader.trading.widgets.utils import base_item_setter
+from DiffTrader.trading.widgets.utils import base_item_setter, number_type_converter
 from DiffTrader.trading.threads.trade_thread import TradeThread
+from DiffTrader.trading.messages import QMessageBoxMessage as Msg
+
 from PyQt5.QtWidgets import QApplication
 
 import logging
@@ -50,7 +52,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
     def start_trade(self):
         self._set_to_ready_trading()
         
-        profit_settings = self._program_setting_tab.get_profit_settings()
+        profit_settings = self._program_setting_tab.profit_settings
         
         if not profit_settings:
             profit_settings_error = '프로그램 설정 중 올바르지 못한 설정이 있습니다.'
@@ -241,20 +243,36 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
             self._diff_gui.saveProgramSettingBtn.clicked.connect(self.get_profit_settings)
             
+            self.profit_settings = dict()
+            
         def get_profit_settings(self):
             min_profit_percent_str = self._diff_gui.minProfitPercent.text()
             min_profit_btc_str = self._diff_gui.minProfitBTC.text()
             auto_withdrawal = True if self._diff_gui.autoWithdrawal.currentText() == ENABLE_SETTING else False
             
+            min_profit_percent = number_type_converter(int, min_profit_percent_str)
+            min_profit_btc = number_type_converter(float, min_profit_btc_str)
+            
             # todo 메세지 넣기
-            if min_profit_percent_str and float(min_profit_btc_str) <= 0:
+            if min_profit_percent <= 0:
+                QtWidgets.QMessageBox.warning(self._diff_gui,
+                                              Msg.Title.EXCHANGE_SETTING_ERROR,
+                                              Msg.CONTENT.WRONG_PROFIT_PERCENT)
                 return dict()
-            elif min_profit_btc_str and float(min_profit_btc_str) <= 0:
+            elif min_profit_btc <= 0:
+                QtWidgets.QMessageBox.warning(self._diff_gui,
+                                              Msg.Title.EXCHANGE_SETTING_ERROR,
+                                              Msg.CONTENT.WRONG_PROFIT_BTC)
                 return dict()
+            
             # todo 해당 3가지 값이 지속적으로 쓰이는지 모니터링, 지속적으로 쓰이면 object전환 검토
-            return dict(min_profit_percent=float(min_profit_percent_str),
-                        min_profit_btc=float(min_profit_btc_str),
-                        auto_withdrawal=auto_withdrawal)
+            self.profit_settings = dict(
+                min_profit_percent=min_profit_percent / 100,
+                min_profit_btc=min_profit_btc,
+                auto_withdrawal=auto_withdrawal
+            )
+
+
 
 
 if __name__ == '__main__':
