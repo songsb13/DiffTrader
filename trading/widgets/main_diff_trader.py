@@ -50,22 +50,34 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         self.stopTradeBtn.setEnabled(True)
     
     def start_trade(self):
-        self._set_to_ready_trading()
-        
         profit_settings = self._program_setting_tab.profit_settings
-        
-        min_profit_percent = profit_settings['min_profit_percent']
-        min_profit_btc = profit_settings['min_profit_btc']
-        auto_withdrawal = profit_settings['auto_withdrawal']
 
         primary_settings = self._exchange_setting_tab.config_dict.get(self.primaryExchange.currentText(), None)
         secondary_settings = self._exchange_setting_tab.config_dict.get(self.secondaryExchange.currentText(), None)
 
         if primary_settings is None or secondary_settings is None:
-            QtWidgets.QMessageBox.warning(self._diff_gui,
+            QtWidgets.QMessageBox.warning(self,
                                           Msg.Title.EXCHANGE_SETTING_ERROR,
-                                          Msg.Content.WRONG_KEY_SECRET)
+                                          Msg.Content.REQUIRE_EXCHANGE_SETTING)
+            return
 
+        elif not profit_settings:
+            QtWidgets.QMessageBox.warning(self,
+                                          Msg.Title.EXCHANGE_SETTING_ERROR,
+                                          Msg.Content.WRONG_PROFIT_SETTING)
+            return
+
+        elif self._diff_gui.primaryExchange.currentText() == self._diff_gui.secondaryExchange.currentText():
+            QtWidgets.QMessageBox.warning(self,
+                                          Msg.Title.EXCHANGE_SETTING_ERROR,
+                                          Msg.Content.CANNOT_BE_SAME_EXCHANGE)
+            return
+        
+        min_profit_percent = profit_settings['min_profit_percent']
+        min_profit_btc = profit_settings['min_profit_btc']
+        auto_withdrawal = profit_settings['auto_withdrawal']
+
+        self._set_to_ready_trading()
         # self.trade_thread = TradeThread(
         #     email=self.email,
         #     primary_info=primary_settings,
@@ -112,7 +124,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._diff_gui.primaryExchange.addItems(AVAILABLE_EXCHANGES)
             self._diff_gui.secondaryExchange.addItems(AVAILABLE_EXCHANGES)
 
-            self._diff_gui.primaryExchange.currentIndexChanged.connect(self.same_exchange_checker)
+            # self._diff_gui.primaryExchange.currentIndexChanged.connect(self.same_exchange_checker)
             # self._diff_gui.secondaryExchange.currentIndexChanged.connect(self.same_exchange_checker)
 
         def same_exchange_checker(self):
@@ -121,7 +133,6 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             """
             if self._diff_gui.primaryExchange.currentText() == self._diff_gui.secondaryExchange.currentText():
                 selected_index = self._diff_gui.secondaryExchange.currentIndex()
-                self._diff_gui.secondaryExchange.models().item(selected_index).setEnabled(False)
         
         def set_trade_history(self, trade_object):
             """
