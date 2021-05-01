@@ -112,7 +112,7 @@ class QMessageBoxMessage(object):
         SAVE_RESULT = '저장 결과'
         FAIL_LOAD = '로딩 오류'
         EXCHANGE_SETTING_ERROR = '거래소 설정 오류'
-        UNEXCEPTED_ERROR = '예기치 못한 오류'
+        UNEXPECTED_ERROR = '예기치 못한 오류'
 
     class Content(object):
         SAVE_SUCCESS = '저장에 성공했습니다.'
@@ -120,6 +120,8 @@ class QMessageBoxMessage(object):
         WRONG_SECRET_KEY = '암호화키가 다릅니다. 세팅 파일을 초기화 하시겠습니까?'
         CANNOT_BE_SAME_EXCHANGE = '거래소 1과 거래소 2가 동일한 값이 될 수 없습니다.'
         SET_MINIMUM_TWO_EXCHANGE = '최소 거래소가 2개 이상 세팅되어 있어야 합니다.'
+        REQUIRE_EXCHANGE_SETTING = '거래소 1과 거래소 2의 세팅 값이 정상적으로 입력되지 않았습니다.'
         SEND_TO_DEVELOPER = '개발자에게 debugger.log를 보내주세요.'
         WRONG_PROFIT_PERCENT = '최소 수익 %가 정상적으로 입력되지 않았습니다.'
         WRONG_PROFIT_BTC = '최소 수익 BTC가 정상적으로 입력되지 않았습니다.'
+        WRONG_KEY_SECRET = 'API KEY나 API SECRET이 정상적으로 입력되지 않았습니다.'

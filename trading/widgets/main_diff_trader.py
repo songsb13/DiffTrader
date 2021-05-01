@@ -54,11 +54,6 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         
         profit_settings = self._program_setting_tab.profit_settings
         
-        if not profit_settings:
-            profit_settings_error = '프로그램 설정 중 올바르지 못한 설정이 있습니다.'
-            self._main_tab.write_logs(profit_settings_error)
-            return
-        
         min_profit_percent = profit_settings['min_profit_percent']
         min_profit_btc = profit_settings['min_profit_btc']
         auto_withdrawal = profit_settings['auto_withdrawal']
@@ -67,9 +62,10 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         secondary_settings = self._exchange_setting_tab.config_dict.get(self.secondaryExchange.currentText(), None)
 
         if primary_settings is None or secondary_settings is None:
-            # todo message
-            return
-        #
+            QtWidgets.QMessageBox.warning(self._diff_gui,
+                                          Msg.Title.EXCHANGE_SETTING_ERROR,
+                                          Msg.Content.WRONG_KEY_SECRET)
+
         # self.trade_thread = TradeThread(
         #     email=self.email,
         #     primary_info=primary_settings,
@@ -214,12 +210,12 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             parent_widget = self._diff_gui.sender().parent()
             exchange_name = parent_widget.objectName()
 
-            key, secret = {each.text() for each in parent_widget.findChildren(QtWidgets.QLineEdit)}
+            key, secret = [each.text() for each in parent_widget.findChildren(QtWidgets.QLineEdit)]
 
             if not key or not secret:
                 QtWidgets.QMessageBox.warning(self._diff_gui,
-                                              "Key, Sercet이 정상입력 되어있지 않습니다.",
-                                              "개발자에게 debugger.log파일을 보내주세요.")
+                                              Msg.Title.EXCHANGE_SETTING_ERROR,
+                                              Msg.Content.WRONG_KEY_SECRET)
 
                 return
 
@@ -229,6 +225,10 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             }}
 
             self.config_dict.update(exchange_config)
+
+            QtWidgets.QMessageBox.warning(self._diff_gui,
+                                          Msg.Title.SAVE_RESULT,
+                                          Msg.Content.SAVE_SUCCESS)
 
     class ProgramSettingTab(object):
         def __init__(self, diff_gui):
@@ -272,7 +272,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 auto_withdrawal=auto_withdrawal
             )
 
-
+            QtWidgets.QMessageBox.about(self._diff_gui,
+                                        Msg.Title.SAVE_RESULT,
+                                        Msg.Content.SAVE_SUCCESS)
 
 
 if __name__ == '__main__':
