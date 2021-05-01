@@ -801,18 +801,12 @@
               </property>
              </widget>
             </item>
-            <item row="0" column="1">
-             <widget class="QSpinBox" name="minProfitPercent"/>
-            </item>
             <item row="1" column="0">
              <widget class="QLabel" name="label_5">
               <property name="text">
                <string>최소 수익 BTC</string>
               </property>
              </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QSpinBox" name="minProfitBTC"/>
             </item>
             <item row="3" column="0">
              <widget class="QLabel" name="label_7">
@@ -869,6 +863,20 @@
                </size>
               </property>
              </spacer>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="minProfitBTC">
+              <property name="decimals">
+               <number>8</number>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QSpinBox" name="minProfitPercent">
+              <property name="maximum">
+               <number>100</number>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>

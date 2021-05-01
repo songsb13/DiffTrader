@@ -114,7 +114,7 @@ class QMessageBoxMessage(object):
         EXCHANGE_SETTING_ERROR = '거래소 설정 오류'
         UNEXCEPTED_ERROR = '예기치 못한 오류'
 
-    class CONTENT(object):
+    class Content(object):
         SAVE_SUCCESS = '저장에 성공했습니다.'
         SAVE_FAIL = '저장에 실패했습니다.'
         WRONG_SECRET_KEY = '암호화키가 다릅니다. 세팅 파일을 초기화 하시겠습니까?'

@@ -34,7 +34,7 @@ class MinProfitWidget(QtWidgets.QWidget, ProgramWidgets.PROFIT_SETTING_WIDGET):
 
             success = save_total_data_to_database(self.id_key, min_profit_percent, min_profit_btc, is_withdraw)
 
-            log = (Qmsg.Title.SAVE_RESULT, Qmsg.CONTENT.SAVE_SUCCESS if success else Qmsg.CONTENT.SAVE_FAIL)
+            log = (Qmsg.Title.SAVE_RESULT, QMsg.Content.SAVE_SUCCESS if success else QMsg.Content.SAVE_FAIL)
             debugger.debug(log)
             QtWidgets.QMessageBox.about(self, *log)
 

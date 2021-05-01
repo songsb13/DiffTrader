@@ -19,7 +19,7 @@ class SettingEncryptKeyDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):
             self.gui = DifferentKeyInputDialog(exchange, key, **kwargs)
             self.gui.show()
         else:
-            log = (Msg.Title.SAVE_RESULT, Msg.CONTENT.SAVE_SUCCESS)
+            log = (Msg.Title.SAVE_RESULT, Msg.Content.SAVE_SUCCESS)
             debugger.debug(log)
             QtWidgets.QMessageBox.about(self, *log)
             self.close()
@@ -38,7 +38,7 @@ class DifferentKeyInputDialog(QtWidgets.QDialog, widgets.CONFIRM_DIALOG_WIDGET):
         while os.path.exists('Settings'):
             pass
         success = save(exchange, password, **kwargs)
-        log = (Msg.Title.SAVE_RESULT, Msg.CONTENT.SAVE_SUCCESS if success else Msg.CONTENT.SAVE_FAIL)
+        log = (Msg.Title.SAVE_RESULT, Msg.Content.SAVE_SUCCESS if success else Msg.Content.SAVE_FAIL)
         debugger.debug(log)
         QtWidgets.QMessageBox.about(self, *log)
         self.close()
@@ -58,9 +58,9 @@ class LoadSettingsDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):
             box = QtWidgets.QMessageBox()
             box.setIcon(QtWidgets.QMessageBox.Question)
             box.setWindowTitle(Msg.Title.FAIL_LOAD)
-            box.setText(Msg.CONTENT.WRONG_SECRET_KEY)
+            box.setText(Msg.Content.WRONG_SECRET_KEY)
 
-            debugger.debug(Msg.Title.FAIL_LOAD, Msg.CONTENT.WRONG_SECRET_KEY)
+            debugger.debug(Msg.Title.FAIL_LOAD, Msg.Content.WRONG_SECRET_KEY)
 
             box.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
             buttonY = box.button(QtWidgets.QMessageBox.Yes)

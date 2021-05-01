@@ -257,12 +257,12 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             if min_profit_percent <= 0:
                 QtWidgets.QMessageBox.warning(self._diff_gui,
                                               Msg.Title.EXCHANGE_SETTING_ERROR,
-                                              Msg.CONTENT.WRONG_PROFIT_PERCENT)
+                                              Msg.Content.WRONG_PROFIT_PERCENT)
                 return dict()
             elif min_profit_btc <= 0:
                 QtWidgets.QMessageBox.warning(self._diff_gui,
                                               Msg.Title.EXCHANGE_SETTING_ERROR,
-                                              Msg.CONTENT.WRONG_PROFIT_BTC)
+                                              Msg.Content.WRONG_PROFIT_BTC)
                 return dict()
             
             # todo 해당 3가지 값이 지속적으로 쓰이는지 모니터링, 지속적으로 쓰이면 object전환 검토
