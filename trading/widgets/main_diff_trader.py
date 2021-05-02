@@ -3,6 +3,7 @@ from DiffTrader.trading.widgets import *
 from DiffTrader.paths import ProgramSettingWidgets
 from DiffTrader.trading.apis import save_total_data_to_database
 from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING
+from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog, LoadSettingsDialog
 from DiffTrader.trading.widgets.utils import base_item_setter, number_type_converter
 from DiffTrader.trading.threads.trade_thread import TradeThread
 from DiffTrader.trading.messages import QMessageBoxMessage as Msg
@@ -220,6 +221,40 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._diff_gui.upbitLocalSaveBtn.clicked.connect(self.local_save)
             self._diff_gui.binanceLocalSaveBtn.clicked.connect(self.local_save)
 
+            self._diff_gui.bithumbShowSecretCheckbox.clicked.connect(self.show_secret)
+            self._diff_gui.upbitShowSecretCheckbox.clicked.connect(self.show_secret)
+            self._diff_gui.binanceShowSecretCheckbox.clicked.connect(self.show_secret)
+
+            self.dialog = SettingEncryptKeyDialog()
+            self.load_dialog = LoadSettingsDialog()
+
+            self.load_key_secret()
+
+        def load_key_secret(self):
+            setting_data = self.load_dialog.exec()
+            for exchange_name in AVAILABLE_EXCHANGES:
+                if setting_data and exchange_name in setting_data.keys():
+                    if exchange_name == 'Bithumb':
+                        key_box, secret_box = self._diff_gui.bithumbKey, self._diff_gui.bithumbSecret
+                    elif exchange_name == 'Upbit':
+                        key_box, secret_box = self._diff_gui.upbitKey, self._diff_gui.upbitSecret
+                    elif exchange_name == 'Binance':
+                        key_box, secret_box = self._diff_gui.binanceKey, self._diff_gui.binanceSecret
+
+                    key, secret = setting_data[exchange_name]['key'], setting_data[exchange_name]['secret']
+
+                    key_box.setText(key)
+                    secret_box.setText(secret)
+
+        def show_secret(self):
+            parent_widget = self._diff_gui.sender().parent()
+            exchange_name = parent_widget.objectName()
+
+            checkbox_set = [each for each in parent_widget.findChildren(QtWidgets.QCheckBox)]
+
+            # index = 0 if show_secret_box.isChecked() else 2
+            # secret_box.setEchoMode(index)
+
         def local_save(self):
             """
                 button 클릭시 상위 group box 가져옴 -> groupBox의 name, 하위의 line edits(key, secret) 값 추출
@@ -236,6 +271,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
                 return
 
+            else:
+                self.dialog.save(exchange_name, key=key, secret=secret)
+
             exchange_config = {exchange_name: {
                 'key': key,
                 'secret': secret
@@ -243,9 +281,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
             self.config_dict.update(exchange_config)
 
-            QtWidgets.QMessageBox.warning(self._diff_gui,
-                                          Msg.Title.SAVE_RESULT,
-                                          Msg.Content.SAVE_SUCCESS)
+            # QtWidgets.QMessageBox.warning(self._diff_gui,
+            #                               Msg.Title.SAVE_RESULT,
+            #                               Msg.Content.SAVE_SUCCESS)
 
     class ProgramSettingTab(object):
         def __init__(self, diff_gui):
@@ -258,11 +296,11 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._email = diff_gui.email
             self._parent = diff_gui.parent
 
-            self._diff_gui.saveProgramSettingBtn.clicked.connect(self.get_profit_settings)
+            self._diff_gui.saveProgramSettingBtn.clicked.connect(self.save_profit_settings)
             
             self.profit_settings = dict()
             
-        def get_profit_settings(self):
+        def save_profit_settings(self):
             min_profit_percent_str = self._diff_gui.minProfitPercent.text()
             min_profit_btc_str = self._diff_gui.minProfitBTC.text()
             auto_withdrawal = True if self._diff_gui.autoWithdrawal.currentText() == ENABLE_SETTING else False
