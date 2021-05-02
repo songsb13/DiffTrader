@@ -291,7 +291,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                                         Msg.Title.SAVE_RESULT,
                                         Msg.Content.SAVE_SUCCESS)
 
-            save_total_data_to_database(self._user_id, min_profit_percent, min_profit_btc)
+            save_total_data_to_database(self._user_id, min_profit_percent, min_profit_btc, auto_withdrawal)
 
 
 if __name__ == '__main__':
