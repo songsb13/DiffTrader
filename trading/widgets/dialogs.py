@@ -1,7 +1,7 @@
 from . import *
 
 from DiffTrader.trading.widgets.utils import save, load
-from DiffTrader.trading.widgets.paths import DialogWidgets as widgets
+from DiffTrader.paths import DialogWidgets as widgets
 from DiffTrader.trading.messages import (QMessageBoxMessage as Msg)
 
 
