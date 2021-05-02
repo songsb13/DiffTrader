@@ -1,6 +1,7 @@
 from DiffTrader.trading.widgets import *
 
 from DiffTrader.paths import ProgramSettingWidgets
+from DiffTrader.trading.apis import save_total_data_to_database
 from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING
 from DiffTrader.trading.widgets.utils import base_item_setter, number_type_converter
 from DiffTrader.trading.threads.trade_thread import TradeThread
@@ -39,7 +40,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         self._main_tab = self.MainTab(self)
         self._exchange_setting_tab = self.ExchangeSettingTab(self)
         self._program_setting_tab = self.ProgramSettingTab(self)
-    
+
+        self.stopTradeBtn.setEnabled(False)
+
     def closeEvent(self, *args, **kwargs):
         close_program(self._id)
         self.top_profit_thread.exit()
@@ -48,31 +51,35 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
     def _set_to_ready_trading(self):
         self.startTradeBtn.setEnabled(False)
         self.stopTradeBtn.setEnabled(True)
-    
+
+    def _trade_validation_checker(self, primary_settings, secondary_settings, profit_settings):
+        if primary_settings is None or secondary_settings is None:
+            QtWidgets.QMessageBox.warning(self,
+                                          Msg.Title.EXCHANGE_SETTING_ERROR,
+                                          Msg.Content.REQUIRE_EXCHANGE_SETTING)
+            return False
+
+        elif self.primaryExchange.currentText() == self.secondaryExchange.currentText():
+            QtWidgets.QMessageBox.warning(self,
+                                          Msg.Title.EXCHANGE_SETTING_ERROR,
+                                          Msg.Content.CANNOT_BE_SAME_EXCHANGE)
+            return False
+
+        elif not profit_settings:
+            QtWidgets.QMessageBox.warning(self,
+                                          Msg.Title.EXCHANGE_SETTING_ERROR,
+                                          Msg.Content.WRONG_PROFIT_SETTING)
+        return True
+
     def start_trade(self):
         profit_settings = self._program_setting_tab.profit_settings
 
         primary_settings = self._exchange_setting_tab.config_dict.get(self.primaryExchange.currentText(), None)
         secondary_settings = self._exchange_setting_tab.config_dict.get(self.secondaryExchange.currentText(), None)
 
-        if primary_settings is None or secondary_settings is None:
-            QtWidgets.QMessageBox.warning(self,
-                                          Msg.Title.EXCHANGE_SETTING_ERROR,
-                                          Msg.Content.REQUIRE_EXCHANGE_SETTING)
+        if not self._trade_validation_checker(primary_settings, secondary_settings, profit_settings):
             return
 
-        elif not profit_settings:
-            QtWidgets.QMessageBox.warning(self,
-                                          Msg.Title.EXCHANGE_SETTING_ERROR,
-                                          Msg.Content.WRONG_PROFIT_SETTING)
-            return
-
-        elif self.primaryExchange.currentText() == self.secondaryExchange.currentText():
-            QtWidgets.QMessageBox.warning(self,
-                                          Msg.Title.EXCHANGE_SETTING_ERROR,
-                                          Msg.Content.CANNOT_BE_SAME_EXCHANGE)
-            return
-        
         min_profit_percent = profit_settings['min_profit_percent']
         min_profit_btc = profit_settings['min_profit_btc']
         auto_withdrawal = profit_settings['auto_withdrawal']
@@ -217,7 +224,6 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             """
                 button 클릭시 상위 group box 가져옴 -> groupBox의 name, 하위의 line edits(key, secret) 값 추출
             """
-            # todo 성공시 메세지, 실패시 메세지
             parent_widget = self._diff_gui.sender().parent()
             exchange_name = parent_widget.objectName()
 
@@ -264,7 +270,6 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             min_profit_percent = number_type_converter(int, min_profit_percent_str)
             min_profit_btc = number_type_converter(float, min_profit_btc_str)
             
-            # todo 메세지 넣기
             if min_profit_percent <= 0:
                 QtWidgets.QMessageBox.warning(self._diff_gui,
                                               Msg.Title.EXCHANGE_SETTING_ERROR,
@@ -276,7 +281,6 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                                               Msg.Content.WRONG_PROFIT_BTC)
                 return dict()
             
-            # todo 해당 3가지 값이 지속적으로 쓰이는지 모니터링, 지속적으로 쓰이면 object전환 검토
             self.profit_settings = dict(
                 min_profit_percent=min_profit_percent / 100,
                 min_profit_btc=min_profit_btc,
@@ -286,6 +290,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             QtWidgets.QMessageBox.about(self._diff_gui,
                                         Msg.Title.SAVE_RESULT,
                                         Msg.Content.SAVE_SUCCESS)
+
+            save_total_data_to_database(self._user_id, min_profit_percent, min_profit_btc)
 
 
 if __name__ == '__main__':
