@@ -221,9 +221,15 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._diff_gui.upbitLocalSaveBtn.clicked.connect(self.local_save)
             self._diff_gui.binanceLocalSaveBtn.clicked.connect(self.local_save)
 
-            self._diff_gui.bithumbShowSecretCheckbox.clicked.connect(self.show_secret)
-            self._diff_gui.upbitShowSecretCheckbox.clicked.connect(self.show_secret)
-            self._diff_gui.binanceShowSecretCheckbox.clicked.connect(self.show_secret)
+            self._diff_gui.bithumbShowSecretCheckbox.clicked.connect(lambda: self.show_secret(
+                self._diff_gui.bithumbShowSecretCheckbox, self._diff_gui.bithumbSecret
+            ))
+            self._diff_gui.upbitShowSecretCheckbox.clicked.connect(lambda: self.show_secret(
+                self._diff_gui.upbitShowSecretCheckbox, self._diff_gui.upbitSecret
+            ))
+            self._diff_gui.binanceShowSecretCheckbox.clicked.connect(lambda: self.show_secret(
+                self._diff_gui.binanceShowSecretCheckbox, self._diff_gui.binanceSecret
+            ))
 
             self.dialog = SettingEncryptKeyDialog()
             self.load_dialog = LoadSettingsDialog()
@@ -252,8 +258,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
             checkbox_set = [each for each in parent_widget.findChildren(QtWidgets.QCheckBox)]
 
-            # index = 0 if show_secret_box.isChecked() else 2
-            # secret_box.setEchoMode(index)
+        def show_secret(self, show_secret_box, secret_box):
+            index = 0 if show_secret_box.isChecked() else 2
+            secret_box.setEchoMode(index)
 
         def local_save(self):
             """
