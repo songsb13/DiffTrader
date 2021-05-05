@@ -10,7 +10,7 @@ from decimal import Decimal, ROUND_DOWN
 # SAI parties
 from Exchanges.Bithumb.bithumb import Bithumb
 from Exchanges.Binance.binance import Binance
-from Exchanges.Upbit.upbit import Upbit
+from Exchanges.Upbit.upbit import BaseUpbit
 
 from Util.pyinstaller_patch import *
 # END
@@ -20,7 +20,7 @@ from . import *
 from DiffTrader.trading.apis import send_expected_profit
 from DiffTrader.trading.threads.utils import calculate_withdraw_amount, check_deposit_addrs, loop_wrapper
 from DiffTrader.trading.messages import (Logs, Messages as Msg)
-from DiffTrader.trading.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, ONE_WAY_EXCHANGES)
+from DiffTrader.trading.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY)
 
 # Third parties
 from PyQt5.QtCore import pyqtSignal
@@ -519,9 +519,6 @@ class TradeThread(QThread):
         profit_object = None
         primary_orderbook, secondary_orderbook, exchanges_coin_profit_set = data
         for trade in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
-            if self.primary_obj.name in ONE_WAY_EXCHANGES and trade == PRIMARY_TO_SECONDARY:
-                # 특정 거래소의 경우 한 방향에서의 거래밖에 적용되지 않음.
-                continue
             for currency in self.currencies:
                 alt = currency.split('_')[1]
                 if not self.primary_obj.balance.get(alt):
