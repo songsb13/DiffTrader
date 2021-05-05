@@ -1,8 +1,8 @@
 from DiffTrader.trading.widgets import *
 
 from DiffTrader.paths import ProgramSettingWidgets
-from DiffTrader.trading.apis import save_total_data_to_database
-from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING
+from DiffTrader.trading.apis import save_total_data_to_database, load_total_data_to_database
+from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNABLE_SETTING
 from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog, LoadSettingsDialog
 from DiffTrader.trading.widgets.utils import base_item_setter, number_type_converter
 from DiffTrader.trading.threads.trade_thread import TradeThread
@@ -16,6 +16,10 @@ import logging
     controller로 보내야 하는 기준 명확하게 정의해야함.
     https://github.com/songsb13/DiffTrader/pull/3/files#diff-d0ad76ee4fb5c3deb31cef4fc484c7d60870bc15a42e27f9116200327ff10189R1
     dynamic하게 변경 필요함.
+    For the next clean up
+        sending expected profit should be done in a different thread? sending a POST may cost a lot
+        remove one way exchanges and related logics
+
 """
 
 
