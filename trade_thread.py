@@ -1,18 +1,174 @@
-from pyinstaller_patch import *
-from PyQt5.QtCore import pyqtSignal, QThread
+"""
+    thread for calculating & trading & withdrawing two exchanges
+"""
+
+# Python Inner parties
+import time
+import asyncio
+
 from decimal import Decimal, ROUND_DOWN
 from datetime import datetime
-import asyncio
-from telegram import Bot
 
+# SAI parties
 from Bithumb.bithumb import Bithumb
 from Binance.binance import Binance
 from Bitfinex.bitfinex import Bitfinex
-from Upbit.upbit import UpbitBTC, UpbitUSDT, UpbitKRW
+from Upbit.upbit import BaseUpbit
 from Huobi.huobi import Huobi
+
+from pyinstaller_patch import *
+# END
+
+# Domain parties
 from settings.messages import Logs
 from settings.messages import Messages as Msg
-import time
+from settings.defaults import TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, ONE_WAY_EXCHANGES
+from trade_utils import calculate_withdraw_amount, send_expected_profit, \
+    check_deposit_addrs
+
+from wrapper import loop_wrapper
+
+
+# Third parties
+from PyQt5.QtCore import pyqtSignal, QThread
+
+
+"""
+    모든 함수 값에 self가 있으면, self를 우선순위로 둬야함
+    def send(primary, secondary)
+        --> 이 경우 이미 self.primary_obj.exchange가 있으므로 
+    
+    def send():
+        self.primary_obj.exchange ... 로 처리
+"""
+
+
+class MaxProfits(object):
+    def __init__(self, btc_profit, tradable_btc, alt_amount, currency, trade):
+        """
+            Profit object for comparing numerous currencies
+            Args:
+                btc_profit: Arbitrage profit of BTC on both exchanges
+                tradable_btc: It can be BTC amount at from_object or convertible amount that ALT to BTC at to_object
+                alt_amount: to_object's ALT amount
+                currency: It will be a customize symbol like {MARKET}_{COIN} ( BTC_ETH )
+                trade: Trade type that primary to secondary or secondary to primary.
+                information: It is profit data and sending to SAI server for collecting it
+        """
+        self.btc_profit = btc_profit
+        self.tradable_btc = tradable_btc
+        self.alt_amount = alt_amount
+        self.currency = currency
+        self.trade_type = trade
+
+        self.information = dict()
+    
+    def set_information(self, user_id, profit_percent, profit_btc, currency_time,
+                        primary_market, secondary_market, currency_name):
+        self.information = dict(
+            user_id=user_id,
+            profit_percent=profit_percent,
+            profit_btc=profit_btc,
+            currency_time=currency_time,
+            primary_market=primary_market,
+            secondary_market=secondary_market,
+            currency_name=currency_name
+        )
+
+
+class ExchangeInfo(object):
+    # todo primary_info는 diff_trader에 받고있는데, 하나의 DICT에 하나의 거래소만 받는데 왜 dict처리하는지 확인 필요함.
+    """
+        Exchange object for setting exchange's information like name, balance, fee and etc.
+    """
+    def __init__(self, cfg, name, log):
+        # todo property, setter의 사용성에 대해 재고가 필요, 만약에 변수들에 대한 처리가 많아야 하는 경우에는 필요할듯.
+        self._log = log
+        self.__cfg = cfg
+        self.__name = None
+        self.__name = name
+
+        self.__exchange = None
+
+        self.__balance = None
+        self.__orderbook = None
+        self.__td_fee = None
+        self.__tx_fee = None
+        self.__deposit = None
+
+        self.__fee_cnt = None
+
+    @property
+    def cfg(self):
+        return self.__cfg
+
+    @cfg.setter
+    def cfg(self, val):
+        self.__cfg = val
+
+    @property
+    def name(self):
+        return self.__name
+
+    @name.setter
+    def name(self, val):
+        self.__name = val
+
+    @property
+    def exchange(self):
+        return self.__exchange
+
+    @exchange.setter
+    def exchange(self, val):
+        self.__exchange = val
+
+    @property
+    def balance(self):
+        return self.__balance
+
+    @balance.setter
+    def balance(self, val):
+        self.__balance = val
+
+    @property
+    def orderbook(self):
+        return self.__orderbook
+
+    @orderbook.setter
+    def orderbook(self, val):
+        self.__orderbook = val
+
+    @property
+    def trading_fee(self):
+        return self.__td_fee
+
+    @trading_fee.setter
+    def trading_fee(self, val):
+        self.__td_fee = val
+
+    @property
+    def transaction_fee(self):
+        return self.__tx_fee
+
+    @transaction_fee.setter
+    def transaction_fee(self, val):
+        self.__tx_fee = val
+
+    @property
+    def fee_cnt(self):
+        return self.__fee_cnt
+
+    @fee_cnt.setter
+    def fee_cnt(self, val):
+        self.__fee_cnt = val
+
+    @property
+    def deposit(self):
+        return self.__deposit
+
+    @deposit.setter
+    def deposit(self, val):
+        self.__deposit = val
 
 
 class TradeThread(QThread):
@@ -21,6 +177,16 @@ class TradeThread(QThread):
     profit_signal = pyqtSignal(str, float)
 
     def __init__(self, email, primary_info, secondary_info, min_profit_per, min_profit_btc, auto_withdrawal):
+        """
+            Thread for calculating the profit and sending coins between primary exchange and secondary exchange.
+            Args:
+                email: user's email
+                primary_info: Primary exchange's information, key, secret and etc
+                secondary_info: Secondary exchange's information, key, secret and etc
+                min_profit_btc: Minimum BTC profit config
+                min_profit_per: Minimum profit percent config
+                auto_withdrawal: auto withdrawal config
+        """
         super().__init__()
         self.stop_flag = True
         self.log = Logs(self.log_signal)
@@ -29,29 +195,20 @@ class TradeThread(QThread):
         self.min_profit_btc = min_profit_btc
         self.auto_withdrawal = auto_withdrawal
 
-        self.primary_exchange_str = list(primary_info.keys())[0]
-        self.secondary_exchange_str = list(secondary_info.keys())[0]
+        self.primary_obj = ExchangeInfo(cfg=primary_info, name=list(primary_info.keys())[0], log=self.log)
+        self.secondary_obj = ExchangeInfo(cfg=secondary_info, name=list(secondary_info.keys())[0], log=self.log)
 
-        self.primary_cfg = primary_info[self.primary_exchange_str]
-        self.secondary_cfg = secondary_info[self.secondary_exchange_str]
-
-        self.primary = None
-        self.secondary = None
-        self.primary_balance = None
-        self.secondary_balance = None
-        self.collected_data = {}
+        self.collected_data = dict()
+        self.currencies = None
 
     def stop(self):
         self.stop_flag = True
 
     def run(self):
-        self.primary = self.get_exchange(self.primary_exchange_str, self.primary_cfg)
-        if not self.primary:
-            self.stop()
-            self.stopped.emit()
-            return
-        self.secondary = self.get_exchange(self.secondary_exchange_str, self.secondary_cfg)
-        if not self.secondary:
+        self.primary_obj.exchange = self.get_exchange(self.primary_obj.name, self.primary_obj.cfg)
+        self.secondary_obj.exchange = self.get_exchange(self.secondary_obj.name, self.secondary_obj.cfg)
+
+        if not self.primary_obj.exchange or not self.secondary_obj.exchange:
             self.stop()
             self.stopped.emit()
             return
@@ -67,9 +224,9 @@ class TradeThread(QThread):
             self.stop()
             self.stopped.emit()
             return
-        
+
         self.log.send(Msg.Init.START)
-        
+
         loop = asyncio.new_event_loop()
         loop.run_until_complete(self.trader())
         loop.close()
@@ -81,104 +238,68 @@ class TradeThread(QThread):
         try:
             if self.auto_withdrawal:
                 self.log.send(Msg.Init.GET_WITHDRAWAL_INFO)
-                deposit = await self.deposits(self.primary, self.secondary)
-                if not deposit:
-                    self.log.send(Msg.Init.FAIL_WITHDRAWAL_INFO)
-                    return False
+                await self.deposits()
                 self.log.send(Msg.Init.SUCCESS_WITHDRAWAL_INFO)
-            else:
-                deposit = None
-            # primary_deposit_addrs, secondary_deposit_addrs 가 온다.
-            t = 0
-            fee = []
-            fee_cnt = (self.primary.fee_count(), self.secondary.fee_count())
 
+            fee_refresh_time = int()
             while evt.is_set() and not self.stop_flag:
                 try:
-                    if time.time() >= t + 600:
-                        fee = await self.fees(self.primary, self.secondary)
-                        if not fee:
-                            #   실패 했을 경우 다시 요청
+                    if time.time() >= fee_refresh_time + 600:
+                        tx_res = await self.get_transaciton_fees()
+                        td_res = await self.get_trading_fees()
+
+                        if not (tx_res and td_res):
                             continue
+
                         self.log.send(Msg.Trade.SUCCESS_FEE_INFO)
-                        t = time.time()
-                    bal_n_crncy = await self.balance_and_currencies(self.primary, self.secondary, deposit)
-                    if not bal_n_crncy:
+                        fee_refresh_time = time.time()
+                    is_success = await self.balance_and_currencies()
+                    if not is_success:
                         continue
-                    if not bal_n_crncy[2]:
+                    if not self.currencies:
                         # Intersection 결과가 비어있는 경우
                         self.log.send(Msg.Trade.NO_AVAILABLE)
                         continue
-                    try:
-                        if bal_n_crncy[0]['BTC'] > bal_n_crncy[1]['BTC']:
-                            default_btc = bal_n_crncy[0]['BTC'] * 1.5
-                        else:
-                            default_btc = bal_n_crncy[1]['BTC'] * 1.5
-                    except:
+
+                    primary_btc = self.primary_obj.balance.get('BTC', 0)
+                    secondary_btc = self.secondary_obj.balance.get('BTC', 0)
+
+                    default_btc = max(primary_btc, secondary_btc) * 1.5
+
+                    if not default_btc:
+                        # BTC가 balance에 없는 경우
                         self.log.send(Msg.Trade.NO_BALANCE_BTC)
                         continue
-                    success, data, err, ts = await self.primary.compare_orderbook(
-                        self.secondary, bal_n_crncy[2], default_btc
-                    )
+
+                    success, data, error, time_ = await self.compare_orderbook(default_btc)
                     if not success:
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=err))
-                        time.sleep(ts)
+                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=error))
+                        time.sleep(time_)
                         continue
 
-                    # btc_profit, tradable_btc, alt_amount, currency, trade
-                    max_profit = self.get_max_profit(data, bal_n_crncy, fee, fee_cnt)
-                    if max_profit is None:
+                    profit_object = self.get_max_profit(data)
+                    if not profit_object:
                         self.log.send(Msg.Trade.NO_PROFIT)
-                        self.save_profit_expected(data, bal_n_crncy[2],
-                                                  self.primary_exchange_str, self.secondary_exchange_str)
                         continue
-                    if max_profit is False:
-                        # 예상차익이 실수가 아닌경우
-                        continue
-                    btc_profit = max_profit[0]
-
-                    if 'pydevd' in sys.modules:
-                        # todo 차후 리팩토링에서 삭제 예정
+                    if profit_object.btc_profit >= self.min_profit_btc:
                         try:
-                            bot = Bot(token='607408701:AAGYRRnzUKTWRIdJvYzl8AQMlGz52vinoUA')
-                            bot.get_chat('348748653')
-                            bot.sendMessage('348748653',
-                                            '[{}] {} - {}: {}'.format(bal_n_crncy[2], self.primary_exchange_str,
-                                                                      self.secondary_exchange_str, data))
-                        except:
-                            self.log_signal.emit(logging.INFO, "텔레그램 메세지 전송 실패")
+                            trade_success = self.trade(profit_object)
+                            send_expected_profit(profit_object)
 
-                    if btc_profit >= self.min_profit_btc:
-                        #   사용자 지정 BTC 보다 많은경우
-                        try:
-                            success, res, msg, st = self.trade(max_profit, deposit, fee)
-
-                            # profit 수집
-                            sai_url = 'http://www.saiblockchain.com/api/pft_data'
-                            try:
-                                requests.post(sai_url, data=self.collected_data)
-                                success = self.save_profit_expected(data, bal_n_crncy[2], self.primary_exchange_str,
-                                                                    self.secondary_exchange_str)
-                            except:
-                                pass
-
-                            if not success:
+                            if not trade_success:
                                 self.log.send(Msg.Trade.FAIL)
                                 continue
                             self.log.send(Msg.Trade.SUCCESS)
 
                         except:
-                            #   trade 함수 내에서 처리하지 못한 함수가 발견한 경우
                             debugger.exception(Msg.Error.EXCEPTION)
                             self.log.send_error(Msg.Error.EXCEPTION)
-                            self.save_profit_expected(data, bal_n_crncy[2],
-                                                      self.primary_exchange_str, self.secondary_exchange_str)
+                            send_expected_profit(profit_object)
+
                             return False
                     else:
-                        #   사용자 지정 BTC 보다 적은경우
                         self.log.send(Msg.Trade.NO_MIN_BTC)
-                        self.save_profit_expected(data, bal_n_crncy[2],
-                                                  self.primary_exchange_str, self.secondary_exchange_str)
+                        send_expected_profit(profit_object)
 
                 except:
                     debugger.exception(Msg.Error.EXCEPTION)
@@ -202,669 +323,415 @@ class TradeThread(QThread):
             return Bitfinex(cfg['key'], cfg['secret'])
         elif exchange_str.startswith('Upbit'):
             # todo 차후 리팩토링에서 수정 예정임
-            if exchange_str == 'UpbitBTC':
-                exchange = UpbitBTC(cfg['id'], cfg['pw'], cfg['tkey'], cfg['tchatid'])
-            elif exchange_str == 'UpbitUSDT':
-                exchange = UpbitUSDT(cfg['id'], cfg['pw'], cfg['tkey'], cfg['tchatid'])
-            elif exchange_str == 'UpbitKRW':
-                exchange = UpbitKRW(cfg['id'], cfg['pw'], cfg['tkey'], cfg['tchatid'])
-            else:
-                return False
-            try:
-                exchange.bot = Bot(token=exchange.token)
-            except:
-                self.log_signal.emit(logging.INFO, "잘못된 텔레그램 봇 토큰입니다.")
-                return False
-            try:
-                exchange.bot.get_chat(exchange.chat_id)
-            except:
-                self.log_signal.emit(logging.INFO,
-                                     ("존재하지 않는 채팅 아이디 입니다.\n"
-                                      "채팅 아이디가 올바르다면 봇에게 메세지를 보낸 후 다시 시도해 주세요."))
-                return False
-
-            self.log_signal.emit(logging.INFO, "[{}] 업비트 인증을 시작합니다.".format(exchange_str))
-            if 'pydevd' in sys.modules:
-                exchange.chrome(headless=False)
-            else:
-                exchange.chrome(headless=True)
-            while True:
-                success, tokens, msg, st = exchange.sign_in(cfg['id'], cfg['pw'])
-                if not tokens:
-                    self.log_signal.emit(logging.INFO, msg)
-                    exchange.off()
-                    if '비밀번호' in msg:
-                        return False
-                    time.sleep(st)
-                    exchange.chrome(headless=True)
-                else:
-                    exchange.decrypt_token(tokens)
-                    exchange.off()
-                    break
-            return exchange
+            return BaseUpbit(cfg['key'], cfg['secret'])
         elif exchange_str == 'Huobi':
             exchange = Huobi(cfg['key'], cfg['secret'])
-            suc, data, msg, st = exchange.get_account_id()
-            if not suc:
-                self.log.send(msg)
-                return False
-
+            exchange.get_account_id()
             return exchange
 
-    async def deposits(self, primary, secondary):
-        result1, result2 = await asyncio.gather(primary.get_deposit_addrs(), secondary.get_deposit_addrs())
+    @loop_wrapper(debugger=debugger)
+    async def deposits(self):
+        primary_res, secondary_res = await asyncio.gather(
+            self.primary_obj.exchange.get_deposit_addrs(), self.secondary_obj.exchange.get_deposit_addrs()
+        )
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
-        ts = 0
-        err = False
-        if not result1[0]:
-            self.log.send(result1[2])
-            ts = result1[3]
-            err = True
-        if not result2[0]:
-            self.log.send(result2[2])
-            if ts < result2[3]:
-                ts = result2[3]
-            err = True
-        time.sleep(ts)
-
-        if err:
-            return False
-        else:
-            result = (result1[1], result2[1])
-            return result
-
-    async def fees(self, primary, secondary):
-        fut = [
-            primary.get_trading_fee(),
-            secondary.get_trading_fee(),
-            primary.get_transaction_fee(),
-            secondary.get_transaction_fee()
-        ]
-        ret = await asyncio.gather(*fut)
-        ts = 0
-        err = False
-        if not ret[0][0]:
-            self.log.send( ret[0][2])
-            ts = ret[0][3]
-            err = True
-        if not ret[1][0]:
-            self.log.send(ret[1][2])
-            if ts < ret[1][3]:
-                ts = ret[1][3]
-            err = True
-        if not ret[2][0]:
-            self.log.send(ret[2][2])
-            if ts < ret[2][3]:
-                ts = ret[2][3]
-            err = True
-        if not ret[3][0]:
-            self.log.send(ret[3][2])
-            if ts < ret[3][3]:
-                ts = ret[3][3]
-            err = True
-        if err:
-            time.sleep(ts)
-            return False
-        else:
-            return ret[0][1], ret[1][1], ret[2][1], ret[3][1]
-
-    def get_precision(self, primary, secondary, currency):
-        primary_ret = primary.get_precision(currency)
-        secondary_ret = secondary.get_precision(currency)
-
-        if not primary_ret[0]:
-            self.log.send(primary_ret[2])
-            time.sleep(primary_ret[3])
-            return False
-        elif not secondary_ret[0]:
-            self.log.send(secondary_ret[2])
-            time.sleep(secondary_ret[3])
+        if not primary_res.success or not secondary_res.success:
             return False
 
-        btc_precision = primary_ret[1][0] if primary_ret[1][0] >= secondary_ret[1][0] else secondary_ret[1][0]
-        alt_precision = primary_ret[1][1] if primary_ret[1][1] >= secondary_ret[1][1] else secondary_ret[1][1]
+        self.primary_obj.deposit = primary_res.data
+        self.secondary_obj.deposit = secondary_res.data
+
+        return True
+
+    @loop_wrapper(debugger=debugger)
+    async def get_trading_fees(self):
+        primary_res, secondary_res = await asyncio.gather(
+            self.primary_obj.exchange.get_trading_fee(),
+            self.secondary_obj.exchange.get_trading_fee(),
+        )
+
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
+
+        if not primary_res.success or not secondary_res.success:
+            return False
+
+        self.primary_obj.trading_fee = primary_res.data
+        self.secondary_obj.trading_fee = secondary_res.data
+
+        return True
+
+    @loop_wrapper(debugger=debugger)
+    async def get_transaciton_fees(self):
+        primary_res, secondary_res = await asyncio.gather(
+            self.primary_obj.exchange.get_transaction_fee(),
+            self.secondary_obj.exchange.get_transaction_fee()
+        )
+
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
+
+        if not primary_res.success or not secondary_res.success:
+            return False
+
+        self.primary_obj.transaction_fee = primary_res.data
+        self.secondary_obj.transaction_fee = secondary_res.data
+
+        return True
+
+    def get_precision(self, currency):
+        primary_res = self.primary_obj.exchange.get_precision(currency)
+        secondary_res = self.secondary_obj.exchange.get_precision(currency)
+
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
+
+        if not primary_res.success or not secondary_res.success:
+            return False
+
+        primary_btc_precision, primary_alt_precision = primary_res.data
+        secondary_btc_precision, secondary_alt_precision = secondary_res.data
+
+        btc_precision = max(primary_btc_precision, secondary_btc_precision)
+        alt_precision = max(secondary_btc_precision, secondary_alt_precision)
 
         return btc_precision, alt_precision
+    
+    def get_currencies(self):
+        return list(set(self.secondary_obj.balance).intersection(self.primary_obj.balance))
+    
+    @loop_wrapper(debugger=debugger)
+    async def balance_and_currencies(self):
+        """
+            All balance values require type int, float.
+        """
+        primary_res, secondary_res = await asyncio.gather(
+            self.primary_obj.exchange.balance(),
+            self.secondary_obj.exchange.balance()
+        )
 
-    async def balance_and_currencies(self, primary, secondary, deposit):
-        result = await asyncio.gather(primary.balance(), secondary.balance())
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
-        if False and 'pydevd' in sys.modules:
-            primary_balance = {'BTC': 0.4, 'ETH': 10, 'BCC': 7, 'LTC': 55, 'XRP': 10000,
-                               'ETC': 262, 'OMG': 1000, 'DASH': 1.5, 'XMR': 37, 'ADA': 55000,
-                               'QTUM': 500, 'ZEC': 19, 'EOS': 1000, 'BTG': 200}
-            secondary_balance = {'BTC': 0.4, 'ETH': 10, 'BCH': 7, 'LTC': 55, 'XRP': 10000,
-                                 'ETC': 262, 'OMG': 1000, 'DASH': 1.5, 'XMR': 37,
-                                 'QTUM': 500, 'ZEC': 19, 'BTG': 200}
-        else:
-            primary_balance, secondary_balance = result
-            ts = 0
-            err = False
-            if not primary_balance[0]:
-                self.log.send(primary_balance[2])
-                ts = primary_balance[3]
-                err = True
-            else:
-                primary_balance = primary_balance[1]
-            if not secondary_balance[0]:
-                self.log.send(secondary_balance[2])
-                if ts < secondary_balance[3]:
-                    ts = secondary_balance[3]
-                err = True
-            else:
-                secondary_balance = secondary_balance[1]
+        if not primary_res.success or not secondary_res.success:
+            return False
 
-            if err:
-                time.sleep(ts)
-                return False
+        self.primary_obj.balance = primary_res.data
+        self.secondary_obj.balance = secondary_res.data
 
-        if self.primary_balance != primary_balance or self.secondary_balance != secondary_balance:
-            self.primary_balance = primary_balance
-            self.secondary_balance = secondary_balance
-            self.log.send(Msg.Balance.CURRENT.format(exchange=self.primary_exchange_str, balance=primary_balance))
-            self.log.send(Msg.Balance.CURRENT.format(exchange=self.secondary_exchange_str, balance=secondary_balance))
-        currencies = list(set(secondary_balance).intersection(primary_balance))
-        
-        debugger.debug(Msg.Debug.TRADABLE.format(currencies))
-        temp = []
-        for c in currencies:  # Currency_pair의 필요성(BTC_xxx)
-            if c == 'BTC':
+        self.currencies = self.get_currencies()
+
+        return True
+
+    @loop_wrapper(debugger=debugger)
+    async def compare_orderbook(self, default_btc=1.0):
+        """
+            It is for getting arbitrage profit primary to secondary or secondary to primary.
+        """
+        primary_res, secondary_res = await asyncio.gather(
+            self.primary_obj.exchange.get_curr_avg_orderbook(self.currencies, default_btc),
+            self.secondary_obj.exchange.get_curr_avg_orderbook(self.currencies, default_btc)
+        )
+
+        for res in [primary_res, secondary_res]:
+            if not res.success:
+                self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
+
+        if not primary_res.success or not secondary_res.success:
+            return False
+
+        primary_to_secondary = dict()
+        for currency_pair in self.currencies:
+            primary_ask = primary_res.data[currency_pair]['asks']
+            secondary_bid = secondary_res.data[currency_pair]['bids']
+            primary_to_secondary[currency_pair] = float(((secondary_bid - primary_ask) / primary_ask))
+
+        secondary_to_primary = dict()
+        for currency_pair in self.currencies:
+            primary_bid= primary_res.data[currency_pair]['bids']
+            secondary_ask = secondary_res.data[currency_pair]['asks']
+            secondary_to_primary[currency_pair] = float(((primary_bid- secondary_ask) / secondary_ask))
+
+        res = primary_res.data, secondary_res.data, {PRIMARY_TO_SECONDARY: primary_to_secondary,
+                                                     SECONDARY_TO_PRIMARY: secondary_to_primary}
+
+        return res
+
+    def get_expectation_by_balance(self, from_object, to_object, currency, alt, btc_precision, alt_precision, real_diff):
+        """
+            Args:
+                from_object: Exchange that buying the ALT
+                to_object: Exchange that selling the BTC
+                currency: SAI symbol, {MARKET}_{COIN}
+                btc_precision: precision of BTC
+                alt_precision: precision of ALT
+                real_diff:
+        """
+        tradable_btc, alt_amount = self.find_min_balance(from_object.balance['BTC'],
+                                                         to_object.balance[alt],
+                                                         to_object.orderbook[currency], currency,
+                                                         btc_precision, alt_precision)
+
+        self.log.send(Msg.Trade.TRADABLE.format(
+            from_exchange=from_object.name,
+            to_exchange=to_object.name,
+            alt=alt,
+            alt_amount=alt_amount,
+            tradable_btc=tradable_btc
+        ))
+        btc_profit = (tradable_btc * Decimal(real_diff)) - (
+                Decimal(from_object.transaction_fee[alt]) * from_object.orderbook[currency]['asks']) - Decimal(
+            to_object.transaction_fee['BTC'])
+
+        self.log.send(Msg.Trade.BTC_PROFIT.format(
+            from_exchange=from_object.name,
+            to_exchange=to_object.name,
+            alt=alt,
+            btc_profit=btc_profit,
+            btc_profit_per=real_diff * 100
+        ))
+
+        return tradable_btc, alt_amount, btc_profit
+
+    def get_max_profit(self, data):
+        """
+            Args:
+                data:
+                    primary_orderbook: dict, primary orderbook for checking profit
+                    secondary_orderbook: dict, secondary orderbook for checking profit
+                    exchanges_coin_profit_set: dict, profit percent by currencies
+        """
+        profit_object = None
+        primary_orderbook, secondary_orderbook, exchanges_coin_profit_set = data
+        for trade in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
+            if self.primary_obj.name in ONE_WAY_EXCHANGES and trade == PRIMARY_TO_SECONDARY:
+                # 특정 거래소의 경우 한 방향에서의 거래밖에 적용되지 않음.
                 continue
-            temp.append('BTC_' + c)
-        return [primary_balance, secondary_balance, temp]
-
-    def get_max_profit(self, data, balance, fee, fee_cnt):
-        primary_balance, secondary_balance, currencies = balance
-        primary_trade_fee, secondary_trade_fee, primary_tx_fee, secondary_tx_fee = fee
-        primary_fee_cnt, secondary_fee_cnt = fee_cnt
-        max_profit = None
-        primary_orderbook, secondary_orderbook, data = data
-        for trade in ['m_to_s', 's_to_m']:
-            if self.primary_exchange_str == 'Korbit' and trade == 'm_to_s':
-                # 코빗은 s_to_m만 가능
-                continue
-            for currency in currencies:
+            for currency in self.currencies:
                 alt = currency.split('_')[1]
-                if alt not in primary_balance.keys() or not primary_balance[alt]:
-                    self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.primary_exchange_str, alt=alt))
+                if not self.primary_obj.balance.get(alt):
+                    self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.primary_obj.name, alt=alt))
                     continue
-                if alt not in secondary_balance.keys() or not secondary_balance[alt]:
-                    self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.secondary_exchange_str, alt=alt))
+                elif not self.secondary_obj.balance.get(alt):
+                    self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.secondary_obj.name, alt=alt))
                     continue
 
-                if trade == 'm_to_s' and data[trade][currency] >= 0:
-                    self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
-                        from_exchange=self.primary_exchange_str,
-                        to_exchange=self.secondary_exchange_str,
-                        currency=currency,
-                        profit_per=data[trade][currency] * 100
-                    ))
-                    debugger.debug(Msg.Debug.ASK_BID.format(
-                        currency=currency,
-                        from_exchange=self.primary_exchange_str,
-                        from_asks=primary_orderbook[currency]['asks'],
-                        to_exchange=self.secondary_exchange_str,
-                        to_bids=secondary_orderbook[currency]['bids']
-                    ))
-                elif data[trade][currency] >= 0:
-                    self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
-                        from_exchange=self.secondary_exchange_str,
-                        to_exchange=self.primary_exchange_str,
-                        currency=currency,
-                        profit_per=data[trade][currency] * 100
-                    ))
-                    debugger.debug(Msg.Debug.ASK_BID.format(
-                            currency=currency,
-                            from_exchange=self.secondary_exchange_str,
-                            from_asks=primary_orderbook[currency]['asks'],
-                            to_exchange=self.primary_exchange_str,
-                            to_bids=secondary_orderbook[currency]['bids']
-                    ))
-                try:
-                    if data[trade][currency] < self.min_profit_per:
-                        #   예상 차익이 %를 넘지 못하는 경우
-                        continue
-                except ValueError:
-                    #   float() 이 에러가 난 경우
-                    self.log.send(Msg.Trade.MIN_PROFIT_ERROR)
-                    return False
-                # TODO unit:coin = Decimal, unit:percent = float
-                # real_diff 부분은 원화마켓과 BTC마켓의 수수료가 부과되는 횟수가 달라서 거래소 별로 다르게 지정해줘야함
-                # 내부에서 부과회수(함수로 만듬 fee_count)까지 리턴해서 받아오는걸로 처리한다.
-                real_diff = ((1 + data[trade][currency]) * ((1 - primary_trade_fee) ** primary_fee_cnt) * (
-                        (1 - secondary_trade_fee) ** secondary_fee_cnt)) - 1
+                expect_profit_percent = data.get(trade, dict()).get(currency, int())
+
+                if trade == PRIMARY_TO_SECONDARY and expect_profit_percent >= 0:
+                    sender, receiver = self.primary_obj.name, self.secondary_obj.name
+                    asks, bids = primary_orderbook[currency]['asks'], secondary_orderbook[currency]['bids']
+                    profit_per = expect_profit_percent * 100
+                    
+                else:  # trade == SECONDARY_TO_PRIMARY and expect_profit_percent >= 0:
+                    sender, receiver = self.secondary_obj.name, self.primary_obj.name
+                    asks, bids = secondary_orderbook[currency]['asks'], primary_orderbook[currency]['bids']
+                    profit_per = expect_profit_percent * 100
+
+                self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
+                    from_exchange=sender,
+                    to_exchange=receiver,
+                    currency=currency,
+                    profit_per=profit_per
+                ))
+                debugger.debug(Msg.Debug.ASK_BID.format(
+                    currency=currency,
+                    from_exchange=sender,
+                    from_asks=asks,
+                    to_exchange=receiver,
+                    to_bids=bids
+                ))
+
+                if expect_profit_percent < self.min_profit_per:
+                    continue
+
+                primary_trade_fee_percent = (1 - self.primary_obj.trading_fee) ** self.primary_obj.fee_cnt
+                secondary_trade_fee_percent = (1 - self.secondary_obj.trading_fee) ** self.secondary_obj.fee_cnt
+
+                real_diff = ((1 + expect_profit_percent) * primary_trade_fee_percent * secondary_trade_fee_percent) - 1
 
                 # get precision of BTC and ALT
-                ret = self.get_precision(self.primary, self.secondary, currency)
-                if not ret:
+                precision_set = self.get_precision(currency)
+                if not precision_set:
                     return False
-                btc_precision, alt_precision = ret
+                btc_precision, alt_precision = precision_set
 
                 try:
-                    if trade == 'm_to_s':
-                        tradable_btc, alt_amount = self.find_min_balance(primary_balance['BTC'],
-                                                                         secondary_balance[alt],
-                                                                         secondary_orderbook[currency], currency,
-                                                                         btc_precision, alt_precision)
-                        self.log.send(Msg.Trade.TRADABLE.format(
-                            from_exchange=self.primary_exchange_str,
-                            to_exchange=self.secondary_exchange_str,
-                            alt=alt,
-                            alt_amount=alt_amount,
-                            tradable_btc=tradable_btc
-                        ))
-                        btc_profit = (tradable_btc * Decimal(real_diff)) - (
-                                Decimal(primary_tx_fee[alt]) * primary_orderbook[currency]['asks']) - Decimal(
-                            secondary_tx_fee['BTC'])
-                        
-                        self.log.send(Msg.Trade.BTC_PROFIT.format(
-                            from_exchange=self.primary_exchange_str,
-                            to_exchange=self.secondary_exchange_str,
-                            alt=alt,
-                            btc_profit=btc_profit,
-                            btc_profit_per=real_diff * 100
-                        ))
-                        
-                        # alt_amount로 거래할 btc를 맞춰줌, BTC를 사고 ALT를 팔기때문에 bids가격을 곱해야함
-                        # tradable_btc = alt_amount * data['s_o_b'][currency]['bids']
-                    else:
-                        tradable_btc, alt_amount = self.find_min_balance(
-                            secondary_balance['BTC'], primary_balance[alt], primary_orderbook[currency], currency,
-                            btc_precision, alt_precision
+                    if trade == PRIMARY_TO_SECONDARY:
+                        tradable_btc, alt_amount, btc_profit = self.get_expectation_by_balance(
+                            self.primary_obj, self.secondary_obj, currency, alt, btc_precision, alt_precision, real_diff
                         )
-                        self.log.send(Msg.Trade.TRADABLE.format(
-                            from_exchange=self.secondary_exchange_str,
-                            to_exchange=self.primary_exchange_str,
-                            alt=alt,
-                            alt_amount=alt_amount,
-                            tradable_btc=tradable_btc
-                        ))
-                        
-                        btc_profit = (tradable_btc * Decimal(real_diff)) - (
-                                Decimal(secondary_tx_fee[alt]) * secondary_orderbook[currency]['asks']) - Decimal(
-                            primary_tx_fee['BTC'])
-                        
-                        self.log.send(Msg.Trade.BTC_PROFIT.format(
-                            from_exchange=self.secondary_exchange_str,
-                            to_exchange=self.primary_exchange_str,
-                            alt=alt,
-                            btc_profit=btc_profit,
-                            btc_profit_per=real_diff * 100
-                        ))
+                    else:
+                        tradable_btc, alt_amount, btc_profit = self.get_expectation_by_balance(
+                            self.secondary_obj, self.primary_obj, currency, alt, btc_precision, alt_precision, real_diff
+                        )
 
-                        # alt_amount로 거래할 btc를 맞춰줌, ALT를 사고 BTC를 팔기때문에 asks가격을 곱해야함
-                        # tradable_btc = alt_amount * data['s_o_b'][currency]['asks']
-
-                    tradable_btc = tradable_btc.quantize(Decimal(10) ** -4, rounding=ROUND_DOWN)
-                    
                     debugger.debug(Msg.Debug.TRADABLE_BTC.format(tradable_btc=tradable_btc))
                     debugger.debug(Msg.Debug.TRADABLE_ASK_BID.format(
-                        from_exchange=self.secondary_exchange_str,
+                        from_exchange=self.secondary_obj.name,
                         from_orderbook=secondary_orderbook[currency],
-                        to_exchange=self.primary_exchange_str,
+                        to_exchange=self.primary_obj.name,
                         to_orderbook=primary_orderbook[currency]
-                        
+
                     ))
                 except:
                     debugger.exception(Msg.Error.FATAL)
-
-                if max_profit is None and (tradable_btc != 0 or alt_amount != 0):
-                    max_profit = [btc_profit, tradable_btc, alt_amount, currency, trade]
-                elif max_profit is None:
                     continue
-                elif max_profit[0] < btc_profit:
-                    max_profit = [btc_profit, tradable_btc, alt_amount, currency, trade]
-                    #  최고 이익일 경우, 저장함
 
-                self.collected_data = {
-                    'user_id': self.email,
-                    'profit_percent': real_diff,
-                    'profit_btc': btc_profit,
-                    'current_time': datetime.now().strftime('%d-%m-%Y %H:%M:%S'),
-                    'primary_market': self.primary_exchange_str,
-                    'secondary_market': self.secondary_exchange_str,
-                    'coin_name': currency  # currency
-                }
+                if profit_object is None and (tradable_btc and alt_amount):
+                    profit_object = MaxProfits(btc_profit, tradable_btc, alt_amount, currency, trade)
+                elif profit_object is None:
+                    continue
+                elif profit_object.btc_profit < btc_profit:
+                    profit_object = MaxProfits(btc_profit, tradable_btc, alt_amount, currency, trade)
 
-        return max_profit
+                profit_object.set_information(
+                    user_id=self.email,
+                    profit_percent=real_diff,
+                    profit_btc=btc_profit,
+                    currency_time=datetime.now().strftime('%d-%m-%Y %H:%M:%S'),
+                    primary_market=self.primary_obj.name,
+                    secondary_market=self.secondary_obj.name,
+                    currency_name=currency
+                )
+
+        return profit_object
 
     @staticmethod
     def find_min_balance(btc_amount, alt_amount, btc_alt, symbol, btc_precision, alt_precision):
-        btc_amount = Decimal(float(btc_amount)).quantize(Decimal(10) ** btc_precision, rounding=ROUND_DOWN)
-        alt_btc = Decimal(float(alt_amount) * float(btc_alt['bids'])).quantize(Decimal(10) ** -8,
-                                                                               rounding=ROUND_DOWN)
+        """
+            calculating amount to btc_amount from from_object
+            calculating amount to alt_amount from to_object
+
+            Args:
+                btc_amount: BTC amount from from_object
+                alt_amount: ALT amount from to_object
+                btc_alt: symbol's bids
+                btc_precision: precision of BTC
+                alt_precision: precision of ALT
+        """
+        btc_amount = float(btc_amount)
+        alt_btc = float(alt_amount) * float(btc_alt['bids'])
+
         if btc_amount < alt_btc:
+            # from_object에 있는 BTC보다 to_object에서 alt를 판매할 때 나오는 btc의 수량이 더 높은경우
             alt_amount = Decimal(float(btc_amount) / float(btc_alt['bids'])).quantize(Decimal(10) ** alt_precision,
                                                                                       rounding=ROUND_DOWN)
             return btc_amount, alt_amount
         else:
+            # from_object에 있는 BTC의 수량이 to_object에서 alt를 판매할 때 나오는 btc의 수량보다 더 높은경우
             alt_amount = Decimal(float(alt_amount)).quantize(Decimal(10) ** alt_precision, rounding=ROUND_DOWN)
             return alt_btc, alt_amount
 
-    def save_profit_expected(self, profits, currencies, primary_name: str, secondary_name: str):
-        """
-        :param profits: 예상차익
-        :param currencies: 거래될 코인종류
-        :param primary_name: 주 거래소 이름
-        :param secondary_name: 보조 거래소 이름
-        :return: Boolean
-        """
-        #   m_to_s, s_to_m 정보가 담긴 딕셔너리만 보낸다. 0: primary orderbook, 1: secondary orderbook
-        profit = profits[2]
-        try:
-            r = requests.get("http://saiblockchain.com/api/expected_profit",
-                             json={'profit': profit, 'currencies': currencies, 'primary': primary_name,
-                                   'secondary': secondary_name})
-            if r.status_code == 200:
-                return True
-            else:
-                return False
-        except:
-            debugger.exception(Msg.Error.FATAL)
-            return False
+    def manually_withdraw(self, from_object, to_object, max_profit, send_amount, alt):
+        self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=to_object.name, alt=alt))
+        self.log.send(Msg.Trade.ALT_WITHDRAW.format(
+            from_exchange=from_object.name,
+            to_exchange=to_object.name,
+            alt=alt,
+            unit=float(send_amount)
+        ))
+        btc_send_amount = calculate_withdraw_amount(max_profit.tradable_btc, to_object.transaction_fee['BTC'])
+        self.log.send(Msg.Trade.BTC_WITHDRAW.format(
+            to_exchange=to_object.name,
+            from_exchange=from_object.name,
+            unit=float(btc_send_amount)
+        ))
 
-    def trade(self, max_profit, deposit_addrs, fee):
+        self.stop()
+
+    def _withdraw(self, sender_object, receiver_object, profit_object, send_amount, coin):
         """
-        :param max_profit:
-        :param deposit_addrs:
-        :param fee:
-        :return:
+            Function for sending profit
+            Args:
+                sender_object: It is a object to send the profit amount to receiver_object
+                receiver_object: It is a object to receive the profit amount
+                profit_object: information of profit
+
+            sender_object: 이 거래소에서 coin 값을 send_amount만큼 보낸다.
+            receiver_object: 이 거래소에서 coin 값을 send_amount만큼 받는다.
         """
-        
-        self.log.send(Msg.Trade.START_TRADE)
-        btc_profit, tradable_btc, alt_amount, currency, trade = max_profit
-        primary_trade_fee, secondary_trade_fee, primary_tx_fee, secondary_tx_fee = fee
         if self.auto_withdrawal:
-            primary_deposit_addrs, secondary_deposit_addrs = deposit_addrs
-            if not primary_deposit_addrs or not secondary_deposit_addrs:
-                return False, '', '메인 또는 서브 거래소 입금주소가 존재하지 않습니다', 0
-
-        alt = currency.split('_')[1]
-
-        if trade == 'm_to_s':
-            #   거래소1 에서 ALT 를 사고(btc를팔고) 거래소2 에서 BTC 를 사서(ALT를팔고) 교환함
-            suc, res, msg, st = self.primary.base_to_alt(currency, tradable_btc, alt_amount, primary_trade_fee,
-                                                         primary_tx_fee)  # ,'buy')
-            if not suc:
-                return False, '', msg, st
-            
-            debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=self.primary_exchange_str, alt=alt))
-            alt_amount = res
-
-            # 무조건 성공해야하는 부분이기때문에 return값이 없다
-            self.secondary.alt_to_base(currency, tradable_btc, alt_amount)
-            debugger.debug(Msg.Debug.SELL_ALT.format(to_exchange=self.secondary_exchange_str, alt=alt))
-            debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=self.secondary_exchange_str))
-            
-            send_amount = alt_amount + Decimal(primary_tx_fee[alt]).quantize(
-                Decimal(10) ** alt_amount.as_tuple().exponent)
-
-            if self.primary_exchange_str.startswith("Upbit") and self.secondary_exchange_str.startswith("Upbit"):
-                return True, '', '', 0
-
-            if self.auto_withdrawal:
-                while not self.stop_flag:
-                    #   거래소1 -> 거래소2 ALT 이체
-                    if alt == 'XRP' or alt == 'XMR':
-                        if (alt not in secondary_deposit_addrs
-                                or alt + 'TAG' not in secondary_deposit_addrs
-                                or not secondary_deposit_addrs[alt]
-                                or not secondary_deposit_addrs[alt + 'TAG']):
-                            
-                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.secondary_exchange_str, alt=alt))
-                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                                from_exchange=self.primary_exchange_str,
-                                to_exchange=self.secondary_exchange_str,
-                                alt=alt,
-                                unit=float(send_amount)
-                            ))
-                            send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
-                                Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            
-                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                                to_exchange=self.secondary_exchange_str,
-                                from_exchange=self.primary_exchange_str,
-                                unit=float(send_amount)
-                            ))
-                            
-                            self.stop()
-                            return True, '', '', 0
-                        res = self.primary.withdraw(alt, float(send_amount), secondary_deposit_addrs[alt],
-                                                    secondary_deposit_addrs[alt + 'TAG'])
+            while not self.stop_flag:
+                if check_deposit_addrs(coin, receiver_object.deposit):
+                    if coin in TAG_COINS:
+                        res_object = sender_object.exchange.withdraw(coin, send_amount, receiver_object.deposit[coin],
+                                                                   receiver_object.deposit[coin + 'TAG'])
                     else:
-                        if alt not in secondary_deposit_addrs or not secondary_deposit_addrs[alt]:
-                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.secondary_exchange_str, alt=alt))
-                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                                from_exchange=self.primary_exchange_str,
-                                to_exchange=self.secondary_exchange_str,
-                                alt=alt,
-                                unit=float(send_amount)
-                            ))
-                            send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
-                                Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                                to_exchange=self.secondary_exchange_str,
-                                from_exchange=self.primary_exchange_str,
-                                unit=float(send_amount)
-                            ))
-                            self.stop()
-                            return True, '', '', 0
-                        res = self.primary.withdraw(alt, send_amount, secondary_deposit_addrs[alt])
-                    if not res[0]:  # success 여부
+                        res_object = sender_object.exchange.withdraw(coin, send_amount, receiver_object.deposit[coin])
+
+                    if res_object.success:
+                        return True
+                    else:
                         self.log.send(Msg.Trade.FAIL_WITHDRAWAL.format(
-                            from_exchange=self.primary_exchange_str,
-                            to_exchange=self.secondary_exchange_str,
-                            alt=alt
+                            from_exchange=sender_object.name,
+                            to_exchange=receiver_object.name,
+                            alt=coin
                         ))
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
+                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res_object.message))
                         self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
-                        time.sleep(res[3])
-                    else:
-                        break
+                        time.sleep(res_object.time)
+                        continue
                 else:
-                    self.log.send(Msg.Trade.MANUAL_STOP)
-                    self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                        from_exchange=self.primary_exchange_str,
-                        to_exchange=self.secondary_exchange_str,
-                        alt=alt,
-                        unit=float(send_amount)
-                    ))
-                    send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
-                        Decimal(10) ** tradable_btc.as_tuple().exponent)
-                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                        to_exchange=self.secondary_exchange_str,
-                        from_exchange=self.primary_exchange_str,
-                        unit=float(send_amount)
-                    ))
-                    return True, '', '', 0
-
-                self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                    from_exchange=self.primary_exchange_str,
-                    to_exchange=self.secondary_exchange_str,
-                    alt=alt,
-                    unit=float(send_amount)
-                ))
-                send_amount = tradable_btc + Decimal(secondary_tx_fee['BTC']).quantize(
-                    Decimal(10) ** tradable_btc.as_tuple().exponent)
-                while not self.stop_flag:
-                    #   거래소2 -> 거래소1 BTC 이체
-                    if 'BTC' not in primary_deposit_addrs or not primary_deposit_addrs['BTC']:
-                        self.log.send(Msg.Trade.NO_BTC_ADDRESS.format(from_exchange=self.primary_exchange_str))
-                        self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                            to_exchange=self.secondary_exchange_str,
-                            from_exchange=self.primary_exchange_str,
-                            unit=float(send_amount)
-                        ))
-                        self.stop()
-                        return True, '', '', 0
-                    res = self.secondary.withdraw('BTC', send_amount, primary_deposit_addrs['BTC'])
-                    if res[0]:
-                        break
-                    else:
-                        self.log.send(Msg.Trade.FAIL_BTC_WITHDRAWAL.format(
-                            to_exchange=self.secondary_exchange_str,
-                            from_exchange=self.primary_exchange_str
-                        ))
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
-                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
-                        
-                        time.sleep(res[3])
-                else:
-                    self.log.send(Msg.Trade.MANUAL_STOP)
-                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                        to_exchange=self.secondary_exchange_str,
-                        from_exchange=self.primary_exchange_str,
-                        unit=float(send_amount)
-                    ))
-                    return True, '', '', 0
-
-                self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                    to_exchange=self.secondary_exchange_str,
-                    from_exchange=self.primary_exchange_str,
-                    unit=float(send_amount)
-                ))
+                    self.manually_withdraw(sender_object, receiver_object, profit_object, send_amount, coin)
+                    return
             else:
-                self.log.send(Msg.Trade.COMPLETE_MANUAL)
-                self.stop()
+                self.manually_withdraw(sender_object, receiver_object, profit_object, send_amount, coin)
+                return
         else:
-            #   거래소1 에서 BTC 를 사고 거래소2 에서 ALT 를 사서 교환함
-            suc, res, msg, st = self.secondary.base_to_alt(currency, tradable_btc, alt_amount, secondary_trade_fee,
-                                                           secondary_tx_fee)
-            if not suc:
-                return False, '', msg, st
-            
-            debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=self.secondary_exchange_str, alt=alt))
-            
-            alt_amount = res
-            self.primary.alt_to_base(currency, tradable_btc, alt_amount)
-            
-            debugger.debug(Msg.Debug.SELL_ALT.format(to_exchange=self.primary_exchange_str, alt=alt))
-            debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=self.primary_exchange_str))
-            send_amount = alt_amount + Decimal(secondary_tx_fee[alt]).quantize(
-                Decimal(10) ** alt_amount.as_tuple().exponent)
+            self.manually_withdraw(sender_object, receiver_object, profit_object, send_amount, coin)
+            return
 
-            if self.primary_exchange_str.startswith("Upbit") and self.secondary_exchange_str.startswith("Upbit"):
-                return True, '', '', 0
+    def _trade(self, from_object, to_object, profit_object):
+        """
+            Function for trading coins
+            from_object: A object that will be buying the ALT coin
+            to_object: A object that will be selling the ALT coin
+            profit_object: information of profit
+        """
 
-            if self.auto_withdrawal:
-                while not self.stop_flag:
-                    #   Bithumb -> Binance ALT 이체
-                    if alt == 'XRP' or alt == 'XMR':
-                        if (alt not in primary_deposit_addrs
-                                or alt + 'TAG' not in primary_deposit_addrs
-                                or not primary_deposit_addrs[alt]
-                                or not primary_deposit_addrs[alt + 'TAG']):
-                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.primary_exchange_str, alt=alt))
-                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                                from_exchange=self.secondary_exchange_str,
-                                to_exchange=self.primary_exchange_str,
-                                alt=alt,
-                                unit=float(send_amount)
-                            ))
-                            send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
-                                Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                                to_exchange=self.primary_exchange_str,
-                                from_exchange=self.secondary_exchange_str,
-                                unit=float(send_amount)
-                            ))
-                            self.stop()
-                            return True, '', '', 0
-                        res = self.secondary.withdraw(alt, send_amount, primary_deposit_addrs[alt],
-                                                      primary_deposit_addrs[alt + 'TAG'])
-                    else:
-                        if alt not in primary_deposit_addrs or not primary_deposit_addrs[alt]:
-                            self.log.send(Msg.Trade.NO_ADDRESS.format(to_exchange=self.primary_exchange_str, alt=alt))
-                            self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                                from_exchange=self.secondary_exchange_str,
-                                to_exchange=self.primary_exchange_str,
-                                alt=alt,
-                                unit=float(send_amount)
-                            ))
-                            send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
-                                Decimal(10) ** tradable_btc.as_tuple().exponent)
-                            self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                                to_exchange=self.primary_exchange_str,
-                                from_exchange=self.secondary_exchange_str,
-                                unit=float(send_amount)
-                            ))
-                            self.stop()
-                            return True, '', '', 0
-                        res = self.secondary.withdraw(alt, send_amount, primary_deposit_addrs[alt])
-                    if res[0]:
-                        break
-                    else:
-                        self.log.send(Msg.Trade.FAIL_WITHDRAWAL.format(
-                            from_exchange=self.secondary_exchange_str,
-                            to_exchange=self.primary_exchange_str,
-                            alt=alt
-                        ))
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
-                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
-                        time.sleep(res[3])
-                else:
-                    self.log.send(Msg.Trade.MANUAL_STOP)
-                    self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                        from_exchange=self.secondary_exchange_str,
-                        to_exchange=self.primary_exchange_str,
-                        alt=alt,
-                        unit=float(send_amount)
-                    ))
-                    send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
-                        Decimal(10) ** tradable_btc.as_tuple().exponent)
-                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                        to_exchange=self.primary_exchange_str,
-                        from_exchange=self.secondary_exchange_str,
-                        unit=float(send_amount)
-                    ))
-                    return True, '', '', 0
+        alt = profit_object.currency.split('_')[1]
 
-                self.log.send(Msg.Trade.ALT_WITHDRAW.format(
-                    from_exchange=self.secondary_exchange_str,
-                    to_exchange=self.primary_exchange_str,
-                    alt=alt,
-                    unit=float(send_amount)
-                ))
-                send_amount = tradable_btc + Decimal(primary_tx_fee['BTC']).quantize(
-                    Decimal(10) ** tradable_btc.as_tuple().exponent)
-                while not self.stop_flag:
-                    #   Binance -> Bithumb BTC 이체
-                    if 'BTC' not in secondary_deposit_addrs or not secondary_deposit_addrs['BTC']:
-                        self.log.send(Msg.Trade.NO_BTC_ADDRESS.format(from_exchange=self.secondary_exchange_str))
-                        self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                            to_exchange=self.primary_exchange_str,
-                            from_exchange=self.secondary_exchange_str,
-                            unit=float(send_amount)
-                        ))
-                        self.stop()
-                        return True, '', '', 0
-                    res = self.primary.withdraw('BTC', send_amount, secondary_deposit_addrs['BTC'])
-                    if not res[0]:
-                        self.log.send(Msg.Trade.FAIL_BTC_WITHDRAWAL.format(
-                            to_exchange=self.primary_exchange_str,
-                            from_exchange=self.secondary_exchange_str
-                        ))
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=res[2]))
-                        self.log.send(Msg.Trade.REQUEST_MANUAL_STOP)
-                        time.sleep(res[3])
-                    else:
-                        break
-                else:
-                    self.log.send(Msg.Trade.MANUAL_STOP)
-                    self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                        to_exchange=self.primary_exchange_str,
-                        from_exchange=self.secondary_exchange_str,
-                        unit=float(send_amount)
-                    ))
-                    return True, '', '', 0
+        res_object = from_object.exchange.base_to_alt(profit_object.currency, profit_object.tradable_btc,
+                                                      profit_object.alt_amount, from_object.trading_fee,
+                                                      to_object.trading_fee)
 
-                self.log.send(Msg.Trade.BTC_WITHDRAW.format(
-                    to_exchange=self.primary_exchange_str,
-                    from_exchange=self.secondary_exchange_str,
-                    unit=float(send_amount)
-                ))
-            else:
-                self.log.send(Msg.Trade.COMPLETE_MANUAL)
-                self.stop()
+        if not res_object.success:
+            raise
 
-        return True, '', '', 0
+        from_object_alt_amount = res_object.data
+
+        debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=from_object.name, alt=alt))
+
+        self.secondary.alt_to_base(profit_object.currency, profit_object.tradable_btc, from_object_alt_amount)
+        debugger.debug(Msg.Debug.SELL_ALT.format(to_exchange=to_object.name, alt=alt))
+        debugger.debug(Msg.Debug.BUY_BTC.format(to_exchange=to_object.name))
+
+        # from_object -> to_object 로 ALT 보냄
+        send_amount = calculate_withdraw_amount(from_object_alt_amount, from_object.transaction_fee[alt])
+        self._withdraw(from_object, to_object, profit_object, send_amount, alt)
+
+        # to_object -> from_object 로 BTC 보냄
+        btc_send_amount = calculate_withdraw_amount(profit_object.tradable_btc, to_object.transaction_fee['BTC'])
+        self._withdraw(to_object, from_object, profit_object, btc_send_amount, 'BTC')
+
+    def trade(self, profit_object):
+        self.log.send(Msg.Trade.START_TRADE)
+        if self.auto_withdrawal:
+            if not self.primary_obj.deposit or not self.secondary_obj.deposit:
+                # 입금 주소 없음
+                return False
+
+        if profit_object.trade == PRIMARY_TO_SECONDARY:
+            self._trade(self.primary_obj, self.secondary_obj, profit_object)
+        else:
+            self._trade(self.secondary_obj, self.primary_obj, profit_object)
+
+        return True
