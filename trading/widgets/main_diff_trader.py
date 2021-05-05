@@ -239,7 +239,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         def load_key_secret(self):
             setting_data = self.load_dialog.exec()
             for exchange_name in AVAILABLE_EXCHANGES:
-                if setting_data and exchange_name in setting_data.keys():
+                # setting_data 값을 가져올 때 exchange들은 lower 값
+                lower_exchange = exchange_name.lower()
+                if setting_data and lower_exchange in setting_data.keys():
                     if exchange_name == 'Bithumb':
                         key_box, secret_box = self._diff_gui.bithumbKey, self._diff_gui.bithumbSecret
                     elif exchange_name == 'Upbit':
@@ -247,16 +249,17 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                     elif exchange_name == 'Binance':
                         key_box, secret_box = self._diff_gui.binanceKey, self._diff_gui.binanceSecret
 
-                    key, secret = setting_data[exchange_name]['key'], setting_data[exchange_name]['secret']
+                    key, secret = setting_data[lower_exchange]['key'], setting_data[lower_exchange]['secret']
 
                     key_box.setText(key)
                     secret_box.setText(secret)
 
-        def show_secret(self):
-            parent_widget = self._diff_gui.sender().parent()
-            exchange_name = parent_widget.objectName()
+                    exchange_config = {exchange_name: {
+                        'key': key,
+                        'secret': secret
+                    }}
 
-            checkbox_set = [each for each in parent_widget.findChildren(QtWidgets.QCheckBox)]
+                    self.config_dict.update(exchange_config)
 
         def show_secret(self, show_secret_box, secret_box):
             index = 0 if show_secret_box.isChecked() else 2
@@ -304,9 +307,25 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._parent = diff_gui.parent
 
             self._diff_gui.saveProgramSettingBtn.clicked.connect(self.save_profit_settings)
-            
-            self.profit_settings = dict()
-            
+
+            self.profit_settings = self.load_and_set_profit_settings()
+
+        def load_and_set_profit_settings(self):
+            result_dict = load_total_data_to_database(self._user_id)
+
+            if not result_dict:
+                return dict()
+            else:
+                self._diff_gui.minProfitPercent.setValue(result_dict['min_profit_percent'])
+                self._diff_gui.minProfitBTC.setValue(result_dict['min_profit_percent'])
+
+                if result_dict['auto_withdrawal'] is True:
+                    self._diff_gui.autowithdrawal.setCurrentText(ENABLE_SETTING)
+                else:
+                    self._diff_gui.autowithdrawal.setCurrentText(UNABLE_SETTING)
+
+                self.profit_settings = result_dict
+
         def save_profit_settings(self):
             min_profit_percent_str = self._diff_gui.minProfitPercent.text()
             min_profit_btc_str = self._diff_gui.minProfitBTC.text()
@@ -325,9 +344,10 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                                               Msg.Title.EXCHANGE_SETTING_ERROR,
                                               Msg.Content.WRONG_PROFIT_BTC)
                 return dict()
-            
+
+            min_profit_percent_to_float = min_profit_percent / 100
             self.profit_settings = dict(
-                min_profit_percent=min_profit_percent / 100,
+                min_profit_percent=min_profit_percent_to_float,
                 min_profit_btc=min_profit_btc,
                 auto_withdrawal=auto_withdrawal
             )
@@ -336,7 +356,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                                         Msg.Title.SAVE_RESULT,
                                         Msg.Content.SAVE_SUCCESS)
 
-            save_total_data_to_database(self._user_id, min_profit_percent, min_profit_btc, auto_withdrawal)
+            save_total_data_to_database(self._user_id, min_profit_percent_to_float, min_profit_btc, auto_withdrawal)
 
 
 if __name__ == '__main__':
