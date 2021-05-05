@@ -1,7 +1,8 @@
 from DiffTrader.trading.widgets import *
 
 from DiffTrader.paths import ProgramSettingWidgets
-from DiffTrader.trading.apis import save_total_data_to_database, load_total_data_to_database
+from DiffTrader.trading.apis import (save_total_data_to_database, load_total_data_to_database,
+                                     get_expected_profit_by_server)
 from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNABLE_SETTING
 from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog, LoadSettingsDialog
 from DiffTrader.trading.widgets.utils import base_item_setter, number_type_converter
@@ -191,6 +192,12 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
             self.set_trade_history(history_object)
             self.top_ten_by_profits()
+
+        def get_histories_from_server(self):
+            result_data_list = get_expected_profit_by_server()
+
+        def get_top_ten_by_profits_from_server(self):
+            pass
 
         def top_ten_by_profits(self):
             sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc)
