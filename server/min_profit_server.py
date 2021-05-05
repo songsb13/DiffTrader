@@ -1,5 +1,7 @@
 import logging
 import sys
+
+from DiffTrader.server.models import ProfitSettingTable
 from flask import Flask
 from flask import request
 from flask_mysqldb import MySQL
@@ -26,47 +28,32 @@ mysql = MySQL(app)
 
 @app.route('/save_data', methods=['GET'])
 def data_truck():
+    # todo server 개선, 가독성 개선, 접근 url 변경, execute 방식 점검 필요함.
     try:
         data = request.json
         
         cursor = mysql.connection.cursor()
 
-        cursor.execute("CREATE DATABASE IF NOT EXISTS profit_settings")
+        # table은 미리 만들어져 있는 상태?
+        # query = ProfitSettingTable.create_min_profit_data_table()
+        # cursor.execute(query)
 
-        cursor.execute("USE profit_settings")
+        exists_query = ProfitSettingTable.has_already_exists_profit_setting_table()
 
-        tb_query = '''
-            CREATE TABLE IF NOT EXISTS settings(
-            id_key INT PRIMARY KEY ,
-            min_pft_per float NOT NULL,
-            min_pft_btc float NOT NULL,
-            is_withdraw boolean NOT NULL)
-        '''
-        cursor.execute(tb_query)
-
-        cursor.execute('SELECT * FROM settings WHERE id_key = %s',(data['id_key'],))
-
+        cursor.execute(exists_query, (data['user_id']))
         if cursor.fetchone():
-            qry = '''
-            UPDATE settings set min_pft_per = %s, min_pft_btc = %s, is_withdraw = %s WHERE id_key = %s
-            '''
+            data_query = ProfitSettingTable.update_profit_setting_table()
         else:
-            qry = '''
-            INSERT INTO settings(min_pft_per, min_pft_btc, is_withdraw, id_key)
-            VALUES(%s, %s, %s, %s)
-            '''
-
-        #        for _i in ('min_pft_per', 'min_pft_btc', 'is_withdrwal'):
-
-        data_list = (data['min_pft_per'], data['min_pft_btc'], data['is_withdraw'], data['id_key'])
-        cursor.execute(qry, data_list)
+            data_query = ProfitSettingTable.insert_profit_setting_table()
+        data_list = (data['user_id'], data['min_profit_percent'], data['min_profit_btc'], data['auto_withdrawal'])
+        cursor.execute(data_query, data_list)
         mysql.connection.commit()
-        suc = {'success': True}
-    except Exception as e:
-        print(e)
-        suc = {'success': False, 'msg': e}
 
-    return json.dumps(suc)
+        result = dict(success=True)
+    except Exception as e:
+        result = dict(success=False, message=e)
+
+    return json.dumpss(result)
 
 
 @app.route('/get_data', methods=['GET'])
