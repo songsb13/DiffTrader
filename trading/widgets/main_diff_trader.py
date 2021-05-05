@@ -90,19 +90,19 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         auto_withdrawal = profit_settings['auto_withdrawal']
 
         self._set_to_ready_trading()
-        # self.trade_thread = TradeThread(
-        #     email=self.email,
-        #     primary_info=primary_settings,
-        #     secondary_info=secondary_settings,
-        #     min_profit_per=min_profit_percent,
-        #     min_profit_btc=min_profit_btc,
-        #     auto_withdrawal=auto_withdrawal
-        # )
-        #
-        # self.trade_thread.log_signal.connect(self._main_tab.write_logs)
-        # self.trade_thread.stopped.connect(self.trade_thread_is_stopped)
-        #
-        # self.trade_thread.start()
+        self.trade_thread = TradeThread(
+            email=self.email,
+            primary_info=primary_settings,
+            secondary_info=secondary_settings,
+            min_profit_per=min_profit_percent,
+            min_profit_btc=min_profit_btc,
+            auto_withdrawal=auto_withdrawal
+        )
+
+        self.trade_thread.log_signal.connect(self._main_tab.write_logs)
+        self.trade_thread.stopped.connect(self.trade_thread_is_stopped)
+
+        self.trade_thread.start()
 
     def stop_trade(self):
         if self.trade_thread and self.trade_thread.isAlive():
@@ -134,18 +134,29 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
             # exchange select bar settings
             self._diff_gui.primaryExchange.addItems(AVAILABLE_EXCHANGES)
-            self._diff_gui.secondaryExchange.addItems(AVAILABLE_EXCHANGES)
+            self._diff_gui.secondaryExchange.addItems(AVAILABLE_EXCHANGES[::-1])
 
-            # self._diff_gui.primaryExchange.currentIndexChanged.connect(self.same_exchange_checker)
-            # self._diff_gui.secondaryExchange.currentIndexChanged.connect(self.same_exchange_checker)
+            self._diff_gui.primaryExchange.currentIndexChanged.connect(lambda: self.same_exchange_checker(
+                self._diff_gui.secondaryExchange
+            ))
+            self._diff_gui.secondaryExchange.currentIndexChanged.connect(lambda: self.same_exchange_checker(
+                self._diff_gui.primaryExchange
+            ))
 
-        def same_exchange_checker(self):
+        def same_exchange_checker(self, exchange_combobox):
             """
                 check the exchange is selected twice from primary and secondary.
             """
             if self._diff_gui.primaryExchange.currentText() == self._diff_gui.secondaryExchange.currentText():
-                selected_index = self._diff_gui.secondaryExchange.currentIndex()
-        
+                box_item_length = exchange_combobox.count()
+                selected_index = exchange_combobox.currentIndex()
+
+                move_to_index = selected_index + 1
+                if move_to_index >= box_item_length:
+                    move_to_index = selected_index - 1
+
+                exchange_combobox.setCurrentIndex(move_to_index)
+
         def set_trade_history(self, trade_object):
             """
                 It is a table to display trade history, symbol, profitBTC, profit_percent and etc.
