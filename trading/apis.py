@@ -2,6 +2,7 @@ from DiffTrader.trading.threads import time, datetime
 from DiffTrader.trading.settings import SAI_URL, PROFIT_SAI_URL, SAVE_DATA_URL, LOAD_DATA_URL
 
 import requests
+import copy
 
 
 def get_expected_profit_by_server():
@@ -14,7 +15,8 @@ def get_expected_profit_by_server():
     rq = requests.get(PROFIT_SAI_URL, json={'from': yesterday, 'to': now_date})
     result = rq.json()
     if result:
-        for date_ in result:
+        copied_result = copy.deepcopy(result)
+        for date_ in enumerate(copied_result):
             profit_date = datetime.fromtimestamp(date_[-1]).strftime(
                 '%Y{} %m{} %d{} %H{} %M{}').format('년', '월', '일', '시', '분')
             date_[-1] = profit_date
