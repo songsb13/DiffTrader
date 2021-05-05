@@ -54,7 +54,19 @@ class MaxProfits(object):
         self.currency = currency
         self.trade_type = trade
 
-        self.information = None
+        self.information = dict()
+
+    def set_information(self, user_id, profit_percent, profit_btc, currency_time,
+                        primary_market, secondary_market, currency_name):
+        self.information = dict(
+            user_id=user_id,
+            profit_percent=profit_percent,
+            profit_btc=profit_btc,
+            currency_time=currency_time,
+            primary_market=primary_market,
+            secondary_market=secondary_market,
+            currency_name=currency_name
+        )
 
 
 
@@ -201,11 +213,8 @@ class TradeThread(QThread):
         self.stop_flag = True
 
     def run(self):
-        list_ = list()
-        for info in [self.primary_obj, self.secondary_obj]:
-            list_.append(self.get_exchange(info.name, info.cfg))
-        else:
-            self.primary_obj.exchange, self.secondary_obj.exchange = list_
+        self.primary_obj.exchange = self.get_exchange(self.primary_obj.name, self.primary_obj.cfg)
+        self.secondary_obj.exchange = self.get_exchange(self.secondary_obj.name, self.secondary_obj.cfg)
 
         if not self.primary_obj.exchange or not self.secondary_obj.exchange:
             self.stop()
@@ -338,7 +347,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         self.primary_obj.deposit = primary_res.data
         self.secondary_obj.deposit = secondary_res.data
@@ -357,7 +366,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         self.primary_obj.trading_fee = primary_res.data
         self.secondary_obj.trading_fee = secondary_res.data
@@ -376,7 +385,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         self.primary_obj.transaction_fee = primary_res.data
         self.secondary_obj.transaction_fee = secondary_res.data
@@ -392,7 +401,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         primary_btc_precision, primary_alt_precision = primary_res.data
         secondary_btc_precision, secondary_alt_precision = secondary_res.data
@@ -401,6 +410,9 @@ class TradeThread(QThread):
         alt_precision = max(secondary_btc_precision, secondary_alt_precision)
 
         return btc_precision, alt_precision
+
+    def get_currencies(self):
+        return list(set(self.secondary_obj.balance).intersection(self.primary_obj.balance))
 
     @loop_wrapper
     async def balance_and_currencies(self):
@@ -417,12 +429,12 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         self.primary_obj.balance = primary_res.data
         self.secondary_obj.balance = secondary_res.data
 
-        self.currencies = list(set(self.secondary_obj.balance).intersection(self.primary_obj.balance))
+        self.currencies = self.get_currencies()
 
         return True
 
@@ -441,7 +453,7 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return None
+            return False
 
         primary_to_secondary = dict()
         for currency_pair in self.currencies:
@@ -522,15 +534,14 @@ class TradeThread(QThread):
                 expect_profit_percent = data.get(trade, dict()).get(currency, int())
 
                 if trade == PRIMARY_TO_SECONDARY and expect_profit_percent >= 0:
-                    sender, receiver, asks, bids, profit_per = self.primary_obj.name, self.secondary_obj.name, \
-                                                        primary_orderbook[currency]['asks'], \
-                                                        secondary_orderbook[currency]['bids'], \
-                                                        expect_profit_percent * 100,
+                    sender, receiver = self.primary_obj.name, self.secondary_obj.name
+                    asks, bids = primary_orderbook[currency]['asks'], secondary_orderbook[currency]['bids']
+                    profit_per = expect_profit_percent * 100
+
                 else:  # trade == SECONDARY_TO_PRIMARY and expect_profit_percent >= 0:
-                    sender, receiver, asks, bids, profit_per = self.secondary_obj.name, self.primary_obj.name, \
-                                                        secondary_orderbook[currency]['asks'], \
-                                                        primary_orderbook[currency]['bids'], \
-                                                        expect_profit_percent * 100
+                    sender, receiver = self.secondary_obj.name, self.primary_obj.name
+                    asks, bids = secondary_orderbook[currency]['asks'], primary_orderbook[currency]['bids']
+                    profit_per = expect_profit_percent * 100
 
                 self.log.send(Msg.Trade.EXCEPT_PROFIT.format(
                     from_exchange=sender,
@@ -589,7 +600,7 @@ class TradeThread(QThread):
                 elif profit_object.btc_profit < btc_profit:
                     profit_object = MaxProfits(btc_profit, tradable_btc, alt_amount, currency, trade)
 
-                profit_object.information = dict(
+                profit_object.set_information(
                     user_id=self.email,
                     profit_percent=real_diff,
                     profit_btc=btc_profit,
@@ -643,7 +654,6 @@ class TradeThread(QThread):
         ))
 
         self.stop()
-        return True
 
     def _withdraw(self, sender_object, receiver_object, profit_object, send_amount, coin):
         """
