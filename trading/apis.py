@@ -44,14 +44,20 @@ def save_total_data_to_database(id_key, min_profit_percent, min_profit_btc, is_w
 
 
 def load_total_data_to_database(id_key):
-    dic = dict(id_key=id_key)
-    rq = requests.get(LOAD_DATA_URL, json=dic)
+    try:
+        dic = dict(id_key=id_key)
+        rq = requests.get(LOAD_DATA_URL, json=dic)
 
-    raw_result = rq.json()
-    result = raw_result[0]
+        raw_result = rq.json()
+        result = raw_result[0]
 
-    min_profit_percent = result.get('min_profit_percent')
-    min_profit_btc = result.get('min_profit_btc')
-    is_withdraw = True if result.get('is_withdraw') else False
-
-    return min_profit_percent, min_profit_btc, is_withdraw
+        min_profit_percent = result.get('min_profit_percent')
+        min_profit_btc = result.get('min_profit_btc')
+        is_withdraw = True if result.get('is_withdraw') else False
+        return dict(
+            min_profit_percent=min_profit_percent,
+            min_profit_btc=min_profit_btc,
+            auto_withdrawal=is_withdraw
+        )
+    except:
+        return dict()
