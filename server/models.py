@@ -1,6 +1,11 @@
 from DiffTrader.server.util import execute_db_many, execute_db
 
 
+"""
+todo 각 쿼리 테스트 데이터 넣어서 정상적으로 작동하는지 확인 필요함.
+"""
+
+
 class ProfitSettingQueries(object):
     @staticmethod
     def create_min_profit_data_table():
