@@ -52,9 +52,9 @@ class ExpectedProfitTable(Resource):
         args = request.args
         user_id = args.get('user_id', None)
 
-        date_range = [args.get('date_from'), args.get('date_to')]
+        date_from, date_to = args.get('date_from'), args.get('date_to')
 
-        ExpectedProfitQueries.get_expected_profit_table(user_id, date_range)
+        ExpectedProfitQueries.get_expected_profit_table(user_id, date_from, date_to)
 
     def put(self):
         args = request.args

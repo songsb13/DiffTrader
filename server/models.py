@@ -6,7 +6,7 @@ class ProfitSettingQueries(object):
     def create_min_profit_data_table():
         query = """
             CREATE TABLE IF NOT EXISTS profit_setting_table(
-                user_id = INT PRIMARY KEY,
+                user_id INT PRIMARY KEY,
                 min_profit_percent float NOT NULL,
                 min_profit_btc float NOT NULL,
                 auto_withdrawal boolean NOT NULL
@@ -39,11 +39,26 @@ class ProfitSettingQueries(object):
 
 class ExpectedProfitQueries(object):
     @staticmethod
+    def create_expected_profit_table():
+        query = """
+            CREATE TABLE IF NOT EXISTS expected_profit_table(
+                user_id INT,
+                trade_date DATE,
+                primary_exchange CHAR(16),
+                secondary_exchange CHAR(16),
+                profit_btc DECIMAL(4, 8),
+                profit_perecent FLOAT,
+            )
+        """
+
+        return execute_db(query)
+
+    @staticmethod
     def get_expected_profit_table(user_id, date_from, date_to):
         query = """
         SELECT trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent
         FROM expected_porift_table
-        WHERE user_id = %s and date_from date_to
+        WHERE user_id = %s AND (trade_date BETWEEN date_from AND date_to)
         """
 
         return execute_db(query, value=[user_id, date_from, date_to])
