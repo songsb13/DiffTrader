@@ -1,4 +1,4 @@
-from DiffTrader.server.models import ProfitSettingQueries
+from DiffTrader.server.models import ProfitSettingQueries, ExpectedProfitQueries
 from flask_restful import Resource
 from flask import jsonify, request
 
@@ -37,3 +37,38 @@ class ProfitSettingTable(Resource):
                 return False
         else:
             return True
+
+
+class ExpectedProfitTable(Resource):
+    def get(self):
+        """
+            trade_object.trade_date,
+            trade_object.symbol,
+            trade_object.primary_exchange,
+            trade_object.secondary_exchange,
+            trade_object.profit_btc,
+            trade_object.profit_percent,
+        """
+        args = request.args
+        user_id = args.get('user_id', None)
+
+        date_range = [args.get('date_from'), args.get('date_to')]
+
+        ExpectedProfitQueries.get_expected_profit_table(user_id, date_range)
+
+    def put(self):
+        args = request.args
+        user_id = args.get('user_id', None)
+
+        trade_date = args.get('trade_date')
+        symbol = args.get('symbol')
+        primary_exchange = args.get('primary_exchange')
+        secondary_exchange = args.get('secondary_exchange')
+        profit_btc = args.get('profit_btc')
+        profit_percent = args.get('profit_percent')
+
+        value_list = [
+            trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent
+        ]
+
+        ExpectedProfitQueries.put_expected_profit_table(user_id, value_list)

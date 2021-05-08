@@ -35,3 +35,25 @@ class ProfitSettingQueries(object):
             auto_withdrawal = VALUES(auto_withdrawal)
         """
         return execute_db(query, value=value_list)
+
+
+class ExpectedProfitQueries(object):
+    @staticmethod
+    def get_expected_profit_table(user_id, date_from, date_to):
+        query = """
+        SELECT trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent
+        FROM expected_porift_table
+        WHERE user_id = %s and date_from date_to
+        """
+
+        return execute_db(query, value=[user_id, date_from, date_to])
+
+    @staticmethod
+    def put_expected_profit_table(user_id, value_list):
+        query = """
+        INSERT INTO expected_profit_table(user_id, trade_date, symbol, 
+        primary_exchange, secondary_exchange, profit_btc, profit_percent)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+
+        return execute_db(query, value=[user_id, *value_list])
