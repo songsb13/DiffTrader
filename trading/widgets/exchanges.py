@@ -1,6 +1,5 @@
 from . import *
 from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog
-from DiffTrader.trading.widgets.paths import (ExchangeWidgets)
 
 
 class ExchangeBaseWidget(object):
