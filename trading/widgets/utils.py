@@ -6,6 +6,13 @@ import hashlib
 
 
 def save(exchange, password, **kwargs):
+    """
+        Args:
+            exchange: exchange string.
+            password: password for encrypt the key and secret.
+        Return:
+            True if key is saved successful else False
+    """
     if os.path.exists('Settings'):
         data = load(password)
         if not data:
@@ -28,6 +35,12 @@ def save(exchange, password, **kwargs):
 
 
 def load(password):
+    """
+        Args:
+            password: password for encrypt the key and secret.
+        Return:
+            True if key is saved successful else False
+    """
     if not os.path.exists('Settings'):
         return {}
     with open('Settings', 'rb') as sf:
@@ -44,6 +57,12 @@ def load(password):
 
 
 def base_item_setter(row, table, data_set):
+    """
+        Args:
+            row: insert to this row
+            table: table object
+            data_set: list, data that is inserted to table
+    """
     for num, each in enumerate(data_set):
         item = table.item(row, num)
         if not item:
@@ -54,6 +73,11 @@ def base_item_setter(row, table, data_set):
 
 
 def number_type_converter(to_type, value):
+    """
+        Args:
+            to_type: Convert value to this parameter
+            value: value, It is must be int type.
+    """
     try:
         if not value:
             return int()
