@@ -54,7 +54,10 @@ class ExpectedProfitTable(Resource):
 
         date_from, date_to = args.get('date_from'), args.get('date_to')
 
-        ExpectedProfitQueries.get_expected_profit_table(user_id, date_from, date_to)
+        # todo 테스트 진행 시 리턴값 확인하고 보내줘야 함.
+        result = ExpectedProfitQueries.get_expected_profit_table(user_id, date_from, date_to)
+
+        return result
 
     def put(self):
         args = request.args

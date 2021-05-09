@@ -23,6 +23,15 @@ import logging
 
 """
 
+class TradeObject(object):
+    def __init__(self, trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent):
+        self.trade_date = trade_date
+        self.symbol = symbol
+        self.primary_exchange = primary_exchange
+        self.secondary_exchange = secondary_exchange
+        self.profit_btc = profit_btc
+        self.profit_percent = profit_percent
+
 
 class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WIDGET):
     closed = QtCore.pyqtSignal()
@@ -144,6 +153,11 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 self._diff_gui.primaryExchange
             ))
 
+            # Initiation for setting tables
+            self.get_histories_from_server()
+            self.set_all_trade_history()
+            self.top_ten_by_profits()
+
         def same_exchange_checker(self, exchange_combobox):
             """
                 check the exchange is selected twice from primary and secondary.
@@ -183,6 +197,20 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._diff_gui.profitBTC.setText(total_profit_btc)
             self._diff_gui.profitPercent.setText(total_profit_percent)
 
+        def set_all_trade_history(self):
+            row_count = self._diff_gui.tradeHistoryView.rowCount()
+            for trade_object in self.trade_object_set:
+                data_list = [
+                    trade_object.trade_date,
+                    trade_object.symbol,
+                    trade_object.primary_exchange,
+                    trade_object.secondary_exchange,
+                    trade_object.profit_btc,
+                    trade_object.profit_percent,
+                ]
+                base_item_setter(row_count, self._diff_gui.tradeHistoryView, data_list)
+                row_count += 1
+
         def update_tables(self, history_object):
             """
                 Update trade_history table, top 10 by profit table
@@ -193,11 +221,23 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self.set_trade_history(history_object)
             self.top_ten_by_profits()
 
-        def get_histories_from_server(self):
+        def set_trade_object_set_from_server(self):
+            """
+                it is getting history data by user_id, Setting to self.trade_object_set.
+            """
             result_data_list = get_expected_profit_by_server()
+            for data_list in result_data_list:
+                trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent = data_list
 
-        def get_top_ten_by_profits_from_server(self):
-            pass
+                trade_object = TradeObject(
+                    trade_date,
+                    symbol,
+                    primary_exchange,
+                    secondary_exchange,
+                    profit_btc,
+                    profit_percent
+                )
+                self.trade_object_set.add(trade_object)
 
         def top_ten_by_profits(self):
             sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc)
@@ -213,7 +253,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                     trade_object.profit_btc,
                     trade_object.profit_percent,
                 ]
-                
+
                 base_item_setter(row_count, self._diff_gui.profitRankView, item_list)
                 row_count += 1
 
