@@ -6,17 +6,14 @@ import hashlib
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import pyqtSignal, QThread
-from DiffTrader.settings import LOGIN_URL, UPDATE_IP_URL
+from DiffTrader.settings import LOGIN_URL, UPDATE_IP_URL, VERSION
 from DiffTrader.trading.widgets.main_diff_trader import DiffTraderGUI
+from DiffTrader.paths import LoginWidgets
 
 from Util.pyinstaller_patch import debugger, check_status, evt
 
-login_form = uic.loadUiType(os.path.join(sys._MEIPASS, 'backup/ui/Loggin.ui'), from_imports=True, import_from='ui')[0]
 
-VERSION = '0.2.0'
-
-
-class LoginWidget(QWidget, login_form):
+class LoginWidget(QWidget, LoginWidgets.LOGIN_WIDGET):
     def __init__(self, pid, widget_after_login):
         super().__init__()
         if 'pydevd' in sys.modules:
@@ -36,11 +33,11 @@ class LoginWidget(QWidget, login_form):
             self.submit(username, password)
 
     def is_valid_form(self):
-        if self.IdEdit.text() == '':
+        if self.idEdit.text() == '':
             QMessageBox.about(self, "Invalid", "아이디를 입력하세요")
             return False
 
-        if self.PassEdit.text() == '':
+        if self.passwordEdit.text() == '':
             QMessageBox.about(self, "Invalid", "비밀번호를 입력하세요")
             return False
 
