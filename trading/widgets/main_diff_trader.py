@@ -37,8 +37,6 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
     closed = QtCore.pyqtSignal()
 
     def __init__(self, _id, email, parent=None):
-        """
-        """
         super().__init__()
 
         self.user_id = _id
@@ -64,10 +62,24 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         self.closed.emit()
     
     def _set_to_ready_trading(self):
+        """
+            enable stop btn for stopping trade_thread,
+            unable start btn for preventing doubleclick and etc.
+        """
         self.startTradeBtn.setEnabled(False)
         self.stopTradeBtn.setEnabled(True)
 
     def _trade_validation_checker(self, primary_settings, secondary_settings, profit_settings):
+        """
+            It is validator settings are validated or not.
+
+            Args:
+                primary_settings: It is primary exchange setting that includes exchange's key and secret
+                secondary_settings: It is secondary exchange setting that includes exchange's key and secret
+                profit_settings: It is profit setting that includes profit percent, BTC and auto withdrawal.
+            Return:
+                True if all settings are validated else False and emitting message to user.
+        """
         if primary_settings is None or secondary_settings is None:
             QtWidgets.QMessageBox.warning(self,
                                           Msg.Title.EXCHANGE_SETTING_ERROR,
@@ -87,6 +99,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         return True
 
     def start_trade(self):
+        """
+            It is TradingThread starter.
+        """
         profit_settings = self._program_setting_tab.profit_settings
 
         primary_settings = self._exchange_setting_tab.config_dict.get(self.primaryExchange.currentText(), None)
@@ -115,6 +130,11 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         self.trade_thread.start()
 
     def stop_trade(self):
+        """
+            Stop and close TradingThread when signal is received by stop_btn
+            stop btn -> trying to stop from TradingThread
+            -> go to trade_thread_is_stopped when TradingThread is stopped.
+        """
         if self.trade_thread and self.trade_thread.isAlive():
             self.trade_thread.stop()
             self._main_tab.write_logs('거래 중지를 시도합니다.')
@@ -160,7 +180,11 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
         def same_exchange_checker(self, exchange_combobox):
             """
-                check the exchange is selected twice from primary and secondary.
+                Check the exchange is selected twice from primary and secondary.
+                And move to other exchange for preventing set the same exchange.
+
+                Args:
+                    exchange_combobox: selected comboBox
             """
             if self._diff_gui.primaryExchange.currentText() == self._diff_gui.secondaryExchange.currentText():
                 box_item_length = exchange_combobox.count()
@@ -174,7 +198,11 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
         def set_trade_history(self, trade_object):
             """
-                It is a table to display trade history, symbol, profitBTC, profit_percent and etc.
+                It is historyView setter when trading is done and received its data.
+
+                Args:
+                    trade_object: TradeObject, data object.
+
             """
             self._diff_gui.profitPercent.text()
 
@@ -188,7 +216,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             ]
             row_count = self._diff_gui.tradeHistoryView.rowCount()
             base_item_setter(row_count, self._diff_gui.tradeHistoryView, item_list)
-            
+
             btc_total = [each.profit_btc for each in self.trade_object_set]
             percent_total = [each.profit_percent for each in self.trade_object_set]
             
@@ -198,6 +226,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._diff_gui.profitPercent.setText(total_profit_percent)
 
         def set_all_trade_history(self):
+            """
+                It is setting all historyView setter when program is starting and receiving data from profit server.
+            """
             row_count = self._diff_gui.tradeHistoryView.rowCount()
             for trade_object in self.trade_object_set:
                 data_list = [
@@ -211,19 +242,22 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 base_item_setter(row_count, self._diff_gui.tradeHistoryView, data_list)
                 row_count += 1
 
-        def update_tables(self, history_object):
+        def update_tables(self, trade_object):
             """
                 Update trade_history table, top 10 by profit table
                 after trading and getting history object from trade_thread.
-            """
-            self.trade_object_set.add(history_object)
 
-            self.set_trade_history(history_object)
+                Args:
+                    trade_object: TradeObject, data object
+            """
+            self.trade_object_set.add(trade_object)
+
+            self.set_trade_history(trade_object)
             self.top_ten_by_profits()
 
         def set_trade_object_set_from_server(self):
             """
-                it is getting history data by user_id, Setting to self.trade_object_set.
+                It is self.trade_object_set setting function.
             """
             result_data_list = get_expected_profit_by_server(self._user_id)
             for data_list in result_data_list:
@@ -240,6 +274,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 self.trade_object_set.add(trade_object)
 
         def top_ten_by_profits(self):
+            """
+                It is profitRankView setter when trading is done and received its data.
+            """
             sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc)
             
             row_count = self._diff_gui.profitRankView.rowCount()
@@ -258,6 +295,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 row_count += 1
 
         def write_logs(self, msg, level=logging.INFO):
+            """
+                It is display TradingThread logs.
+            """
             debugger.log(level, msg)
             self._diff_gui.logBox.setText(
                 '\n'.join(self._diff_gui.logBox.toPlainText().split('\n')[-500:]) + '\n' + str(msg)
