@@ -154,7 +154,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             ))
 
             # Initiation for setting tables
-            self.get_histories_from_server()
+            self.set_trade_object_set_from_server()
             self.set_all_trade_history()
             self.top_ten_by_profits()
 
@@ -225,7 +225,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             """
                 it is getting history data by user_id, Setting to self.trade_object_set.
             """
-            result_data_list = get_expected_profit_by_server()
+            result_data_list = get_expected_profit_by_server(self._user_id)
             for data_list in result_data_list:
                 trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent = data_list
 

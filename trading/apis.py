@@ -5,14 +5,14 @@ import requests
 import copy
 
 
-def get_expected_profit_by_server():
+def get_expected_profit_by_server(user_id):
     """
         Get expected_profit from saiblockchain api server.
     """
     now_date = time.time()
     yesterday = now_date - 24 * 60 * 60
 
-    rq = requests.get(PROFIT_SAI_URL, json={'from': yesterday, 'to': now_date})
+    rq = requests.get(PROFIT_SAI_URL, json={'user_id': user_id, 'from': yesterday, 'to': now_date})
     result = rq.json()
     if result:
         copied_result = copy.deepcopy(result)
