@@ -7,7 +7,7 @@ from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNA
 from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog, LoadSettingsDialog
 from DiffTrader.trading.widgets.utils import base_item_setter, number_type_converter
 from DiffTrader.trading.threads.trade_thread import TradeThread
-from DiffTrader.trading.messages import QMessageBoxMessage as Msg
+from DiffTrader.messages import QMessageBoxMessage as Msg
 
 from PyQt5.QtWidgets import QApplication
 
