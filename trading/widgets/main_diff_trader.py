@@ -20,8 +20,8 @@ import logging
     For the next clean up
         sending expected profit should be done in a different thread? sending a POST may cost a lot
         remove one way exchanges and related logics
-
 """
+
 
 class TradeObject(object):
     def __init__(self, trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent):

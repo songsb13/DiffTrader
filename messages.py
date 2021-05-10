@@ -7,7 +7,6 @@ import os, sys
 import datetime
 
 
-# todo log 방식에 대한 저장 명시 필요
 # JSON, pickle 등으로 저장?
 """
     Logs 정책
@@ -21,7 +20,6 @@ class Logs(logging.Logger):
         super(Logs, self).__init__()
         self.signal = signal
 
-    # todo debug level에 대한 정의도 필요함
     def send(self, message):
         self.signal.emit(logging.INFO, message)
 
