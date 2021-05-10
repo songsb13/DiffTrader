@@ -109,12 +109,21 @@ class Messages(object):
 
 class QMessageBoxMessage(object):
     class Title(object):
+        LOGIN_FAILED = '로그인 실패'
         SAVE_RESULT = '저장 결과'
         FAIL_LOAD = '로딩 오류'
         EXCHANGE_SETTING_ERROR = '거래소 설정 오류'
         UNEXPECTED_ERROR = '예기치 못한 오류'
 
     class Content(object):
+        EMPTY_ID = '아이디가 빈 값입니다.'
+        EMPTY_PASSWORD = '비밀번호가 빈 값입니다.'
+        
+        WRONG_ID = '아이디가 없거나, 잘못된 패스워드입니다.'
+        EXPIRED_ID = '기간이 만료된 ID입니다.\n관리자에게 문의하세요.'
+        
+        SERVER_IS_CLOSED = '서버가 닫혀 있습니다.'
+        
         SAVE_SUCCESS = '저장에 성공했습니다.'
         SAVE_FAIL = '저장에 실패했습니다.'
         WRONG_SECRET_KEY = '암호화키가 다릅니다. 세팅 파일을 초기화 하시겠습니까?'
