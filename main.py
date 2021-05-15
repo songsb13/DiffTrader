@@ -6,7 +6,7 @@ import hashlib
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import pyqtSignal, QThread
-from DiffTrader.settings import LOGIN_URL, UPDATE_IP_URL, VERSION
+from DiffTrader.settings import LOGIN_URL, UPDATE_IP_URL, VERSION, DEBUG
 from DiffTrader.trading.widgets.main_diff_trader import DiffTraderGUI
 from DiffTrader.paths import LoginWidgets
 from DiffTrader.messages import (QMessageBoxMessage as Msg)
@@ -17,7 +17,7 @@ from Util.pyinstaller_patch import debugger, check_status, evt
 class LoginWidget(QWidget, LoginWidgets.LOGIN_WIDGET):
     def __init__(self, pid, widget_after_login):
         super().__init__()
-        if 'pydevd' in sys.modules:
+        if DEBUG:
             pid = 'SAIDiffTrader'
         self.setupUi(self)
         self.pid = hashlib.sha256(pid.encode()).hexdigest()
@@ -27,11 +27,17 @@ class LoginWidget(QWidget, LoginWidgets.LOGIN_WIDGET):
         self.loginBtn.clicked.connect(self.sign_in)
 
     def sign_in(self):
-        if self.is_valid_form():
-            username = self.idEdit.text()
-            password = self.passwordEdit.text()
+        if DEBUG:
+            id_ = '533'
+            email = 'goodmoskito@gmail.com'
+            data = dict(id=id_)
+            self.after_login(data, email)
+        else:
+            if self.is_valid_form():
+                username = self.idEdit.text()
+                password = self.passwordEdit.text()
 
-            self.submit(username, password)
+                self.submit(username, password)
 
     def is_valid_form(self):
         if self.idEdit.text() == '':
@@ -43,6 +49,18 @@ class LoginWidget(QWidget, LoginWidgets.LOGIN_WIDGET):
             return False
 
         return True
+
+    def after_login(self, data, email):
+        t = StatusCheck(data['id']) #threading.Thread(target=check_status, args=(data['id'], evt,))
+        t.start()
+        t.msg.connect(self.status_check_fail)
+        try:
+            self.mainWidget = self.widget_after_login(_id=data['id'], email=email)
+            self.mainWidget.closed.connect(self.main_closed)
+        except:
+            debugger.exception("FATAL")
+        self.close()
+        self.mainWidget.show()
 
     def submit(self, _id, _pw):
         try:
@@ -92,16 +110,7 @@ class LoginWidget(QWidget, LoginWidgets.LOGIN_WIDGET):
                               )
             return False
 
-        self.close()
-        t = StatusCheck(data['id']) #threading.Thread(target=check_status, args=(data['id'], evt,))
-        t.start()
-        t.msg.connect(self.status_check_fail)
-        try:
-            self.mainWidget = self.widget_after_login(_id=data['id'], email=_id)
-            self.mainWidget.closed.connect(self.main_closed)
-        except:
-            debugger.exception("FATAL")
-        self.mainWidget.show()
+        self.after_login(data, _id)
 
     def update_ip(self, data, first_login=False):
         try:
