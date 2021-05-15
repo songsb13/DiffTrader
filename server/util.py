@@ -1,15 +1,15 @@
 from DiffTrader.server.settings import SqlInfo as info
-import pymysql
+import mysql.connector
 
 from Util.pyinstaller_patch import debugger
 
-con = pymysql.connect(host=info.HOST, user=info.USER, password=info.PASSWORD, charset='utf8', db=info.DATABASE)
+con = mysql.connector.connect(host=info.HOST, user=info.USER, password=info.PASSWORD, charset='utf8', db=info.DATABASE)
 
 
 def execute_db(query, value=None, custom_cursor=None):
     global con
     if not con.open:
-        con = pymysql.connect(host=info.HOST, user=info.USER, password=info.PASSWORD, charset='utf8', db=info.DATABASE)
+        con = mysql.connector.connect(host=info.HOST, user=info.USER, password=info.PASSWORD, charset='utf8', db=info.DATABASE)
 
     with con.cursor(custom_cursor) as cursor:
         if value:
@@ -29,7 +29,7 @@ def execute_db_many(query, value_list, *args):
     try:
         global con
         if not con.open:
-            con = pymysql.connect(host=info.HOST, user=info.USER, password=info.PASSWORD, charset='utf8',
+            con = mysql.connector.connect(host=info.HOST, user=info.USER, password=info.PASSWORD, charset='utf8',
                                   db=info.DATABASE)
 
         with con.cursor() as cursor:
