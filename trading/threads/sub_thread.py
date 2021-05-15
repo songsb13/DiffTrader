@@ -1,5 +1,5 @@
 from . import QThread, debugger, time
-from DiffTrader.trading.apis import get_expected_profit_by_server
+from DiffTrader.trading.apis import get_expected_profit
 
 
 class TopProfitThread(QThread):
@@ -10,7 +10,7 @@ class TopProfitThread(QThread):
     def run(self):
         while True:
             try:
-                date_row = get_expected_profit_by_server()
+                date_row = get_expected_profit()
                 self.update_table(date_row)
             except:
                 debugger.exception("Top Profit Thread ERROR")

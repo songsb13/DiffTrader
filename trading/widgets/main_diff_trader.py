@@ -2,7 +2,7 @@ from DiffTrader.trading.widgets import *
 
 from DiffTrader.paths import ProgramSettingWidgets
 from DiffTrader.trading.apis import (save_total_data_to_database, load_total_data_to_database,
-                                     get_expected_profit_by_server)
+                                     get_expected_profit)
 from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNABLE_SETTING
 from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog, LoadSettingsDialog
 from DiffTrader.trading.widgets.utils import base_item_setter, number_type_converter
@@ -259,7 +259,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             """
                 It is self.trade_object_set setting function.
             """
-            result_data_list = get_expected_profit_by_server(self._user_id)
+            result_data_list = get_expected_profit(self._user_id)
             for data_list in result_data_list:
                 trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent = data_list
 

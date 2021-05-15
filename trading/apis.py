@@ -5,7 +5,7 @@ import requests
 import copy
 
 
-def get_expected_profit_by_server(user_id):
+def get_expected_profit(user_id):
     """
         Get expected_profit from saiblockchain api server.
     """
