@@ -10,19 +10,22 @@ def get_expected_profit(user_id):
     """
         Get expected_profit from saiblockchain api server.
     """
-    now_date = time.time()
-    yesterday = now_date - 24 * 60 * 60
+    try:
+        now_date = time.time()
+        yesterday = now_date - 24 * 60 * 60
 
-    rq = requests.get(PROFIT_SAI_URL, json={'user_id': user_id, 'from': yesterday, 'to': now_date})
-    result = rq.json()
-    if result:
-        copied_result = copy.deepcopy(result)
-        for date_ in enumerate(copied_result):
-            profit_date = datetime.fromtimestamp(date_[-1]).strftime(
-                '%Y{} %m{} %d{} %H{} %M{}').format('년', '월', '일', '시', '분')
-            date_[-1] = profit_date
+        rq = requests.get(PROFIT_SAI_URL, json={'user_id': user_id, 'from': yesterday, 'to': now_date})
+        result = rq.json()
+        if result:
+            copied_result = copy.deepcopy(result)
+            for date_ in enumerate(copied_result):
+                profit_date = datetime.fromtimestamp(date_[-1]).strftime(
+                    '%Y{} %m{} %d{} %H{} %M{}').format('년', '월', '일', '시', '분')
+                date_[-1] = profit_date
 
-        return result
+            return result
+    except:
+        return list()
 
 
 def send_expected_profit(profit_object):
