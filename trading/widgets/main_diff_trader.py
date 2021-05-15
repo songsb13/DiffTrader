@@ -61,7 +61,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         self.stopTradeBtn.setEnabled(False)
 
     def closeEvent(self, *args, **kwargs):
-        close_program(self._id)
+        close_program(self.user_id)
         self.top_profit_thread.exit()
         self.closed.emit()
     
