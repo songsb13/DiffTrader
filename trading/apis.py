@@ -5,6 +5,8 @@ import copy
 import time
 from datetime import datetime
 
+from Util.pyinstaller_patch import debugger
+
 
 def get_expected_profit(user_id):
     """

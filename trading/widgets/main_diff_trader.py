@@ -457,12 +457,16 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 min_profit_btc=min_profit_btc,
                 auto_withdrawal=auto_withdrawal
             )
+            result = save_total_data_to_database(self._user_id, min_profit_percent_to_float, min_profit_btc, auto_withdrawal)
 
-            QtWidgets.QMessageBox.about(self._diff_gui,
-                                        Msg.Title.SAVE_RESULT,
-                                        Msg.Content.SAVE_SUCCESS)
-
-            save_total_data_to_database(self._user_id, min_profit_percent_to_float, min_profit_btc, auto_withdrawal)
+            if result:
+                QtWidgets.QMessageBox.about(self._diff_gui,
+                                            Msg.Title.SAVE_RESULT,
+                                            Msg.Content.SAVE_SUCCESS)
+            else:
+                QtWidgets.QMessageBox.about(self._diff_gui,
+                                            Msg.Title.SAVE_RESULT,
+                                            Msg.Content.SAVE_FAIL)
 
 
 if __name__ == '__main__':
