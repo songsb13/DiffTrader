@@ -9,6 +9,7 @@ from PyQt5.QtCore import pyqtSignal, QThread
 from DiffTrader.settings import LOGIN_URL, UPDATE_IP_URL, VERSION
 from DiffTrader.trading.widgets.main_diff_trader import DiffTraderGUI
 from DiffTrader.paths import LoginWidgets
+from DiffTrader.messages import (QMessageBoxMessage as Msg)
 
 from Util.pyinstaller_patch import debugger, check_status, evt
 
@@ -34,11 +35,11 @@ class LoginWidget(QWidget, LoginWidgets.LOGIN_WIDGET):
 
     def is_valid_form(self):
         if self.idEdit.text() == '':
-            QMessageBox.about(self, "Invalid", "아이디를 입력하세요")
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.EMPTY_ID)
             return False
 
         if self.passwordEdit.text() == '':
-            QMessageBox.about(self, "Invalid", "비밀번호를 입력하세요")
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.EMPTY_PASSWORD)
             return False
 
         return True
@@ -50,14 +51,14 @@ class LoginWidget(QWidget, LoginWidgets.LOGIN_WIDGET):
                                                'program': self.pid})
             data = r.json()
         except:
-            QMessageBox.about(self, "Closed", "서버가 닫혀 있습니다.")
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.SERVER_IS_CLOSED)
             return False
 
         if data['valid_id'] is False:
-            QMessageBox.about(self, "로그인 실패", "아이디가 없거나, 패스워드가 틀렸습니다.")
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.WRONG_ID)
             return False
         elif data['expired']:
-            QMessageBox.about(self, "로그인 실패", "기간이 만료된 ID입니다.\n관리자에게 문의하세요.")
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.EXPIRED_ID)
             return False
         elif data['duplicated_connection']:
             box = QMessageBox()
@@ -108,7 +109,7 @@ class LoginWidget(QWidget, LoginWidgets.LOGIN_WIDGET):
                                          'first_login': first_login})
             data = r.json()
         except:
-            QMessageBox.about(self, "Closed", "서버가 닫혀 있습니다.")
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.SERVER_IS_CLOSED)
             return False
 
         return True
@@ -117,7 +118,7 @@ class LoginWidget(QWidget, LoginWidgets.LOGIN_WIDGET):
         self.show()
 
     def status_check_fail(self, msg):
-        QMessageBox.about(self, "Closed", msg)
+        QMessageBox.about(self, Msg.Title.LOGIN_FAILED, msg)
         self.mainWidget.close()
 
 

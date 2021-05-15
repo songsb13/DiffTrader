@@ -7,7 +7,7 @@ from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNA
 from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog, LoadSettingsDialog
 from DiffTrader.trading.widgets.utils import base_item_setter, number_type_converter
 from DiffTrader.trading.threads.trade_thread import TradeThread
-from DiffTrader.trading.messages import QMessageBoxMessage as Msg
+from DiffTrader.messages import QMessageBoxMessage as Msg
 
 from PyQt5.QtWidgets import QApplication
 
@@ -23,8 +23,8 @@ import logging
     For the next clean up
         sending expected profit should be done in a different thread? sending a POST may cost a lot
         remove one way exchanges and related logics
-
 """
+
 
 class TradeObject(object):
     def __init__(self, trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent):

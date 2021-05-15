@@ -19,7 +19,7 @@ from Util.pyinstaller_patch import *
 from . import *
 from DiffTrader.trading.apis import send_expected_profit
 from DiffTrader.trading.threads.utils import calculate_withdraw_amount, check_deposit_addrs, loop_wrapper
-from DiffTrader.trading.messages import (Logs, Messages as Msg)
+from DiffTrader.messages import (Logs, Messages as Msg)
 from DiffTrader.trading.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY)
 
 # Third parties

@@ -4,7 +4,7 @@ from PyQt5 import (QtWidgets)
 
 from DiffTrader.trading.widgets.utils import save, load
 from DiffTrader.paths import DialogWidgets as widgets
-from DiffTrader.trading.messages import (QMessageBoxMessage as Msg)
+from DiffTrader.messages import (QMessageBoxMessage as Msg)
 
 from Util.pyinstaller_patch import debugger
 
