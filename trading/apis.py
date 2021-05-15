@@ -1,8 +1,9 @@
-from DiffTrader.trading.threads import time, datetime
 from DiffTrader.trading.settings import SAI_URL, PROFIT_SAI_URL, SAVE_DATA_URL, LOAD_DATA_URL
 
 import requests
 import copy
+import time
+from datetime import datetime
 
 
 def get_expected_profit(user_id):

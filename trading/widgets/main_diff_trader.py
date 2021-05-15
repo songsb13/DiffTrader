@@ -1,4 +1,4 @@
-from DiffTrader.trading.widgets import *
+from PyQt5 import (QtWidgets, QtCore)
 
 from DiffTrader.paths import ProgramSettingWidgets
 from DiffTrader.trading.apis import (save_total_data_to_database, load_total_data_to_database,
@@ -10,6 +10,9 @@ from DiffTrader.trading.threads.trade_thread import TradeThread
 from DiffTrader.trading.messages import QMessageBoxMessage as Msg
 
 from PyQt5.QtWidgets import QApplication
+
+from Util.pyinstaller_patch import debugger, close_program
+
 
 import logging
 

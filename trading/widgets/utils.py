@@ -1,5 +1,6 @@
-from . import *
+from PyQt5 import (QtWidgets)
 
+import os
 import json
 from Crypto.Cipher import AES
 import hashlib
