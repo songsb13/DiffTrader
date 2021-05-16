@@ -388,7 +388,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 return
 
             else:
-                self.dialog.save(exchange_name, key=key, secret=secret)
+                self.dialog.show_encrypt(exchange_name, key=key, secret=secret)
 
             exchange_config = {exchange_name: {
                 'key': key,
