@@ -26,29 +26,36 @@ def get_expected_profit(user_id):
                 date_[-1] = profit_date
 
             return result
-    except:
+    except Exception as ex:
+        debugger.debug('get_expected_profit error, [{}]'.format(ex))
         return list()
 
 
 def send_expected_profit(profit_object):
-    """
-    """
-    res = requests.post(SAI_URL, data=profit_object.information)
-
-    return True if res.status_code == 200 else False
+    try:
+        res = requests.post(SAI_URL, data=profit_object.information)
+    
+        return True if res.status_code == 200 else False
+    except Exception as ex:
+        debugger.debug('send_expected_profit error, [{}]'.format(ex))
+        return False
 
 
 def save_total_data_to_database(id_key, min_profit_percent, min_profit_btc, is_withdraw):
-    dic = dict()
-    row = [id_key, min_profit_percent, min_profit_btc, is_withdraw]
-    for num, each in enumerate(['id_key', 'min_profit_percent', 'min_profit_btc', 'is_withdraw']):
-        dic.setdefault(each, row[num])
-
-    rq = requests.get(SAVE_DATA_URL, json=dic)
-
-    result = rq.json()
-
-    return True if result.get('success') else False
+    try:
+        dic = dict()
+        row = [id_key, min_profit_percent, min_profit_btc, is_withdraw]
+        for num, each in enumerate(['id_key', 'min_profit_percent', 'min_profit_btc', 'is_withdraw']):
+            dic.setdefault(each, row[num])
+    
+        rq = requests.get(SAVE_DATA_URL, json=dic)
+    
+        result = rq.json()
+    
+        return True if result.get('success') else False
+    except Exception as ex:
+        debugger.debug('save_total_data_to_database error, [{}]'.format(ex))
+        return False
 
 
 def load_total_data_to_database(id_key):
@@ -67,5 +74,6 @@ def load_total_data_to_database(id_key):
             min_profit_btc=min_profit_btc,
             auto_withdrawal=is_withdraw
         )
-    except:
+    except Exception as ex:
+        debugger.debug('load_total_data_to_database error, [{}]'.format(ex))
         return dict()
