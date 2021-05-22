@@ -19,7 +19,7 @@ def get_expected_profit(user_id, data_receive_queue, after_process=None):
                     '%Y{} %m{} %d{} %H{} %M{}').format('년', '월', '일', '시', '분')
                 date_[-1] = profit_date
 
-            return result
+        return result if result else list()
 
     now_date = time.time()
     yesterday = now_date - 24 * 60 * 60
@@ -30,13 +30,13 @@ def get_expected_profit(user_id, data_receive_queue, after_process=None):
         'callback': callback
     }
 
-    data_receive_queue.put(PROFIT_SAI_URL, MethodType.GET, information_dict)
+    data_receive_queue.put((PROFIT_SAI_URL, MethodType.GET, information_dict))
 
 
 def send_expected_profit(profit_object, data_receive_queue, after_process=None):
     information_dict = {'parameter': profit_object.information}
 
-    data_receive_queue.put(SAI_URL, MethodType.POST, information_dict)
+    data_receive_queue.put((SAI_URL, MethodType.POST, information_dict))
 
 
 def save_total_data_to_database(id_key, min_profit_percent, min_profit_btc, is_withdraw, data_receive_queue,
@@ -49,7 +49,7 @@ def save_total_data_to_database(id_key, min_profit_percent, min_profit_btc, is_w
     information_dict = {'parameter': dic,
                         'after_process': after_process}
 
-    data_receive_queue.put(SAVE_DATA_URL, MethodType.GET, information_dict)
+    data_receive_queue.put((SAVE_DATA_URL, MethodType.GET, information_dict))
 
 
 def load_total_data_to_database(id_key, data_receive_queue, after_process=None):
@@ -70,5 +70,5 @@ def load_total_data_to_database(id_key, data_receive_queue, after_process=None):
         'after_process': after_process,
         'parameter': dict(id_key=id_key)
     }
-    data_receive_queue.put(LOAD_DATA_URL, MethodType.GET, information_dict)
+    data_receive_queue.put((LOAD_DATA_URL, MethodType.GET, information_dict))
 

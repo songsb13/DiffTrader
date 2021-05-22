@@ -1,3 +1,4 @@
+from DiffTrader.settings import DEBUG
 from DiffTrader.trading.settings import MethodType
 from Util.pyinstaller_patch import debugger
 
@@ -14,20 +15,24 @@ class SenderThread(threading.Thread):
     def run(self):
         while True:
             try:
-                method, url, information_dict = self._data_receive_queue
+                method, url, information_dict = self._data_receive_queue.get()
 
                 parameter = information_dict.get('parameter', dict())
                 after_process = information_dict.get('after_process', None)
                 callback = information_dict.get('callback', None)
                 callback_kwargs = information_dict.get('callback_kwargs', dict())
-
-                if method == MethodType.GET:
-                    rq = requests.get(url, json=parameter)
-                elif method == MethodType.POST:
-                    rq = requests.post(url, data=parameter)
-
-                result = rq.json()
-
+                
+                if not DEBUG:
+                    if method == MethodType.GET:
+                        rq = requests.get(url, json=parameter)
+                    elif method == MethodType.POST:
+                        rq = requests.post(url, data=parameter)
+                    else:
+                        continue
+    
+                    result = rq.json()
+                else:
+                    result = dict()
                 if callback:
                     callback_result = callback(result) if not callback_kwargs \
                         else callback(**callback_kwargs)
