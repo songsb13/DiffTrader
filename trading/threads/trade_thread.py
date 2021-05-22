@@ -16,14 +16,13 @@ from Util.pyinstaller_patch import *
 # END
 
 # Domain parties
-from . import *
 from DiffTrader.trading.apis import send_expected_profit
 from DiffTrader.trading.threads.utils import calculate_withdraw_amount, check_deposit_addrs, loop_wrapper
 from DiffTrader.messages import (Logs, Messages as Msg)
 from DiffTrader.trading.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY)
 
 # Third parties
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QThread
 
 
 """
@@ -49,7 +48,6 @@ class MaxProfits(object):
                 alt_amount: to_object's ALT amount
                 currency: It will be a customize symbol like {MARKET}_{COIN} ( BTC_ETH )
                 trade: Trade type that primary to secondary or secondary to primary.
-                information: It is profit data and sending to SAI server for collecting it
         """
         self.btc_profit = btc_profit
         self.tradable_btc = tradable_btc

@@ -51,6 +51,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
         self.data_receive_queue = queue.Queue()
         self.sender_thread = SenderThread(self.data_receive_queue)
+        self.sender_thread.start()
 
         self.setupUi(self)
         
@@ -268,19 +269,21 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             """
                 It is self.trade_object_set setting function.
             """
-            result_data_list = get_expected_profit(self._user_id)
-            for data_list in result_data_list:
-                trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent = data_list
-
-                trade_object = TradeObject(
-                    trade_date,
-                    symbol,
-                    primary_exchange,
-                    secondary_exchange,
-                    profit_btc,
-                    profit_percent
-                )
-                self.trade_object_set.add(trade_object)
+            def after_process(result_data_list):
+                for data_list in result_data_list:
+                    trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent = data_list
+        
+                    trade_object = TradeObject(
+                        trade_date,
+                        symbol,
+                        primary_exchange,
+                        secondary_exchange,
+                        profit_btc,
+                        profit_percent
+                    )
+                    self.trade_object_set.add(trade_object)
+                
+            get_expected_profit(self._user_id, self._diff_gui.data_receive_queue, after_process)
 
         def top_ten_by_profits(self):
             """
