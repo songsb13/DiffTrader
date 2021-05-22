@@ -1,5 +1,7 @@
 class SqlInfo(object):
-    HOST = 'localhost'
-    USER = 'root'
-    PASSWORD = 'root'
-    DATABASE = 'kiwoom'
+    POOL_CONFIG = {
+        'database': 'difftrader',
+        'user': 'root',
+        'password': 'root',
+        'host': 'localhost',
+    }
