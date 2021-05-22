@@ -19,13 +19,12 @@ def get_expected_profit(user_id):
         rq = requests.get(PROFIT_SAI_URL, json={'user_id': user_id, 'from': yesterday, 'to': now_date})
         result = rq.json()
         if result:
-            copied_result = copy.deepcopy(result)
-            for date_ in enumerate(copied_result):
+            for date_ in enumerate(result):
                 profit_date = datetime.fromtimestamp(date_[-1]).strftime(
                     '%Y{} %m{} %d{} %H{} %M{}').format('년', '월', '일', '시', '분')
                 date_[-1] = profit_date
 
-            return result
+            return result if result else list()
     except:
         return list()
 
