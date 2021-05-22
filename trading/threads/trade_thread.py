@@ -33,6 +33,9 @@ from PyQt5.QtCore import pyqtSignal
     
     def send():
         self.primary_obj.exchange ... 로 처리
+    For the next clean up:
+    do you think this should be done in a different thread? sending a POST may cost a lot
+
 """
 
 
@@ -67,7 +70,6 @@ class MaxProfits(object):
             secondary_market=secondary_market,
             currency_name=currency_name
         )
-
 
 
 class TradeHistoryObject(object):
@@ -184,7 +186,8 @@ class TradeThread(QThread):
     stopped = pyqtSignal()
     profit_signal = pyqtSignal(str, float)
 
-    def __init__(self, email, primary_info, secondary_info, min_profit_per, min_profit_btc, auto_withdrawal):
+    def __init__(self, email, primary_info, secondary_info, min_profit_per, min_profit_btc, auto_withdrawal,
+                 data_receive_queue):
         """
             Thread for calculating the profit and sending coins between primary exchange and secondary exchange.
             Args:
@@ -194,6 +197,7 @@ class TradeThread(QThread):
                 min_profit_btc: Minimum BTC profit config
                 min_profit_per: Minimum profit percent config
                 auto_withdrawal: auto withdrawal config
+                data_receive_queue: commuication queue with SenderThread
         """
         super().__init__()
         self.stop_flag = True
@@ -202,6 +206,7 @@ class TradeThread(QThread):
         self.min_profit_per = min_profit_per
         self.min_profit_btc = min_profit_btc
         self.auto_withdrawal = auto_withdrawal
+        self.data_receive_queue = data_receive_queue
 
         self.primary_obj = ExchangeInfo(cfg=primary_info, name=list(primary_info.keys())[0], log=self.log)
         self.secondary_obj = ExchangeInfo(cfg=secondary_info, name=list(secondary_info.keys())[0], log=self.log)
@@ -292,7 +297,7 @@ class TradeThread(QThread):
                     if profit_object.btc_profit >= self.min_profit_btc:
                         try:
                             trade_success = self.trade(profit_object)
-                            send_expected_profit(profit_object)
+                            send_expected_profit(profit_object, self.data_receive_queue)
 
                             if not trade_success:
                                 self.log.send(Msg.Trade.FAIL)
@@ -302,12 +307,12 @@ class TradeThread(QThread):
                         except:
                             debugger.exception(Msg.Error.EXCEPTION)
                             self.log.send_error(Msg.Error.EXCEPTION)
-                            send_expected_profit(profit_object)
+                            send_expected_profit(profit_object, self.data_receive_queue)
 
                             return False
                     else:
                         self.log.send(Msg.Trade.NO_MIN_BTC)
-                        send_expected_profit(profit_object)
+                        send_expected_profit(profit_object, self.data_receive_queue)
 
                 except:
                     debugger.exception(Msg.Error.EXCEPTION)
@@ -327,15 +332,8 @@ class TradeThread(QThread):
             exchange = Binance(cfg['key'], cfg['secret'])
             exchange.get_exchange_info()
             return exchange
-        elif exchange_str == 'Bitfinex':
-            return Bitfinex(cfg['key'], cfg['secret'])
         elif exchange_str.startswith('Upbit'):
-            # todo 차후 리팩토링에서 수정 예정임
             return BaseUpbit(cfg['key'], cfg['secret'])
-        elif exchange_str == 'Huobi':
-            exchange = Huobi(cfg['key'], cfg['secret'])
-            exchange.get_account_id()
-            return exchange
 
     @loop_wrapper
     async def deposits(self):

@@ -15,3 +15,10 @@ AVAILABLE_EXCHANGES = ['Binance', 'Bithumb', 'Upbit']
 
 ENABLE_SETTING = '설정'
 UNABLE_SETTING = '미설정'
+
+
+class MethodType(object):
+    POST = 'POST'
+    GET = 'GET'
+    PUT = 'PUT'
+    DELETE = 'DELETE'

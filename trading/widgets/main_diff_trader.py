@@ -7,6 +7,7 @@ from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNA
 from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog, LoadSettingsDialog
 from DiffTrader.trading.widgets.utils import base_item_setter, number_type_converter
 from DiffTrader.trading.threads.trade_thread import TradeThread
+from DiffTrader.trading.threads.sender import SenderThread
 from DiffTrader.messages import QMessageBoxMessage as Msg
 from DiffTrader.settings import DEBUG
 
@@ -16,6 +17,7 @@ from Util.pyinstaller_patch import debugger, close_program
 
 
 import logging
+import queue
 
 """
     controller로 보내야 하는 기준 명확하게 정의해야함.
@@ -46,6 +48,9 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         self.user_id = _id
         self.email = email
         self.parent = parent
+
+        self.data_receive_queue = queue.Queue()
+        self.sender_thread = SenderThread(self.data_receive_queue)
 
         self.setupUi(self)
         
@@ -417,22 +422,32 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self.profit_settings = self.load_and_set_profit_settings()
 
         def load_and_set_profit_settings(self):
-            result_dict = load_total_data_to_database(self._user_id)
-
-            if not result_dict:
-                return dict()
-            else:
-                self._diff_gui.minProfitPercent.setValue(result_dict['min_profit_percent'])
-                self._diff_gui.minProfitBTC.setValue(result_dict['min_profit_percent'])
-
-                if result_dict['auto_withdrawal'] is True:
-                    self._diff_gui.autowithdrawal.setCurrentText(ENABLE_SETTING)
+            def after_process(result_dict):
+                if not result_dict:
+                    return dict()
                 else:
-                    self._diff_gui.autowithdrawal.setCurrentText(UNABLE_SETTING)
+                    self._diff_gui.minProfitPercent.setValue(result_dict['min_profit_percent'])
+                    self._diff_gui.minProfitBTC.setValue(result_dict['min_profit_percent'])
 
-                self.profit_settings = result_dict
+                    if result_dict['auto_withdrawal'] is True:
+                        self._diff_gui.autowithdrawal.setCurrentText(ENABLE_SETTING)
+                    else:
+                        self._diff_gui.autowithdrawal.setCurrentText(UNABLE_SETTING)
+
+                    self.profit_settings = result_dict
+            load_total_data_to_database(self._user_id, self._diff_gui.data_receive_queue, after_process)
 
         def save_profit_settings(self):
+            def after_process(result):
+                if result:
+                    QtWidgets.QMessageBox.about(self._diff_gui,
+                                                Msg.Title.SAVE_RESULT,
+                                                Msg.Content.SAVE_SUCCESS)
+                else:
+                    QtWidgets.QMessageBox.about(self._diff_gui,
+                                                Msg.Title.SAVE_RESULT,
+                                                Msg.Content.SAVE_FAIL)
+
             min_profit_percent_str = self._diff_gui.minProfitPercent.text()
             min_profit_btc_str = self._diff_gui.minProfitBTC.text()
             auto_withdrawal = True if self._diff_gui.autoWithdrawal.currentText() == ENABLE_SETTING else False
@@ -457,16 +472,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 min_profit_btc=min_profit_btc,
                 auto_withdrawal=auto_withdrawal
             )
-            result = save_total_data_to_database(self._user_id, min_profit_percent_to_float, min_profit_btc, auto_withdrawal)
-
-            if result:
-                QtWidgets.QMessageBox.about(self._diff_gui,
-                                            Msg.Title.SAVE_RESULT,
-                                            Msg.Content.SAVE_SUCCESS)
-            else:
-                QtWidgets.QMessageBox.about(self._diff_gui,
-                                            Msg.Title.SAVE_RESULT,
-                                            Msg.Content.SAVE_FAIL)
+            save_total_data_to_database(self._user_id, min_profit_percent_to_float, min_profit_btc, auto_withdrawal,
+                                        self._diff_gui.data_receive_queue, after_process)
 
 
 if __name__ == '__main__':
