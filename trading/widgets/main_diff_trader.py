@@ -106,6 +106,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             QtWidgets.QMessageBox.warning(self,
                                           Msg.Title.EXCHANGE_SETTING_ERROR,
                                           Msg.Content.WRONG_PROFIT_SETTING)
+            return False
+
         return True
 
     def start_trade(self):
@@ -131,7 +133,10 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             secondary_info=secondary_settings,
             min_profit_per=min_profit_percent,
             min_profit_btc=min_profit_btc,
-            auto_withdrawal=auto_withdrawal
+            auto_withdrawal=auto_withdrawal,
+            primary_name=self.primaryExchange.currentText(),
+            secondary_name=self.secondaryExchange.currentText(),
+            data_receive_queue=self.data_receive_queue
         )
 
         self.trade_thread.log_signal.connect(self._main_tab.write_logs)

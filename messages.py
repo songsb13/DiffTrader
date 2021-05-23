@@ -15,9 +15,8 @@ import datetime
 """
 
 
-class Logs(logging.Logger):
+class Logs(object):
     def __init__(self, signal):
-        super(Logs, self).__init__()
         self.signal = signal
 
     def send(self, message):
