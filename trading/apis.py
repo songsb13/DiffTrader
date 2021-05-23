@@ -47,13 +47,16 @@ def save_total_data_to_database(id_key, min_profit_percent, min_profit_btc, is_w
         dic.setdefault(each, row[num])
 
     information_dict = {'parameter': dic,
-                        'after_process': after_process}
+                        'callback': after_process}
 
     data_receive_queue.put((SAVE_DATA_URL, MethodType.GET, information_dict))
 
 
 def load_total_data_to_database(id_key, data_receive_queue, after_process=None):
     def callback(raw_result):
+        if not raw_result:
+            return dict()
+        
         result = raw_result[0]
 
         min_profit_percent = result.get('min_profit_percent')
