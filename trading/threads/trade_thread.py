@@ -185,7 +185,7 @@ class TradeThread(QThread):
     profit_signal = pyqtSignal(str, float)
 
     def __init__(self, email, primary_info, secondary_info, min_profit_per, min_profit_btc, auto_withdrawal,
-                 data_receive_queue):
+                 primary_name, secondary_name, data_receive_queue):
         """
             Thread for calculating the profit and sending coins between primary exchange and secondary exchange.
             Args:
@@ -206,8 +206,8 @@ class TradeThread(QThread):
         self.auto_withdrawal = auto_withdrawal
         self.data_receive_queue = data_receive_queue
 
-        self.primary_obj = ExchangeInfo(cfg=primary_info, name=list(primary_info.keys())[0], log=self.log)
-        self.secondary_obj = ExchangeInfo(cfg=secondary_info, name=list(secondary_info.keys())[0], log=self.log)
+        self.primary_obj = ExchangeInfo(cfg=primary_info, name=primary_name, log=self.log)
+        self.secondary_obj = ExchangeInfo(cfg=secondary_info, name=secondary_name, log=self.log)
 
         self.collected_data = dict()
         self.currencies = None
@@ -327,9 +327,7 @@ class TradeThread(QThread):
         if exchange_str == 'Bithumb':
             return Bithumb(cfg['key'], cfg['secret'])
         elif exchange_str == 'Binance':
-            exchange = Binance(cfg['key'], cfg['secret'])
-            exchange.get_exchange_info()
-            return exchange
+            return Binance(cfg['key'], cfg['secret'])
         elif exchange_str.startswith('Upbit'):
             return BaseUpbit(cfg['key'], cfg['secret'])
 
