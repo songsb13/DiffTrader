@@ -437,19 +437,19 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 if not result_dict:
                     return dict()
                 else:
-                    self._diff_gui.minProfitPercent.setValue(result_dict['min_profit_percent'])
-                    self._diff_gui.minProfitBTC.setValue(result_dict['min_profit_percent'])
+                    self._diff_gui.minProfitPercent.setValue(result_dict['min_profit_percent'] * 100)
+                    self._diff_gui.minProfitBTC.setValue(result_dict['min_profit_btc'])
 
                     if result_dict['auto_withdrawal'] is True:
-                        self._diff_gui.autowithdrawal.setCurrentText(ENABLE_SETTING)
+                        self._diff_gui.autoWithdrawal.setCurrentText(ENABLE_SETTING)
                     else:
-                        self._diff_gui.autowithdrawal.setCurrentText(UNABLE_SETTING)
+                        self._diff_gui.autoWithdrawal.setCurrentText(UNABLE_SETTING)
 
                     self.profit_settings = result_dict
             load_total_data_to_database(self._user_id, self._diff_gui.data_receive_queue, after_process)
 
-        def test_emit(self, tuple):
-            title, contents = tuple
+        def test_emit(self, tuple_):
+            title, contents = tuple_
             QtWidgets.QMessageBox.about(self._diff_gui,
                                         title, contents)
 
