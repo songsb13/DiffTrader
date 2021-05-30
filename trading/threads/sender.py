@@ -1,6 +1,9 @@
 from DiffTrader.settings import DEBUG
-from DiffTrader.trading.settings import MethodType
 from Util.pyinstaller_patch import debugger
+from DiffTrader.trading.settings import SAI_URL, PROFIT_SAI_URL, \
+    SAVE_DATA_URL, LOAD_DATA_URL, MethodType
+
+from DiffTrader.trading.mockup import profit_table_mock, profit_setting_mock
 
 import threading
 import requests
@@ -15,7 +18,7 @@ class SenderThread(threading.Thread):
     def run(self):
         while True:
             try:
-                method, url, information_dict = self._data_receive_queue.get()
+                url, method, information_dict = self._data_receive_queue.get()
 
                 parameter = information_dict.get('parameter', dict())
                 after_process = information_dict.get('after_process', None)
@@ -32,7 +35,12 @@ class SenderThread(threading.Thread):
     
                     result = rq.json()
                 else:
-                    result = dict()
+                    if url == PROFIT_SAI_URL:
+                        result = profit_table_mock()
+                    elif url == LOAD_DATA_URL:
+                        result = profit_setting_mock()
+                    else:
+                        result = dict()
                 if callback:
                     callback_result = callback(result) if not callback_kwargs \
                         else callback(**callback_kwargs)

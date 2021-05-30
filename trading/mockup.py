@@ -18,6 +18,7 @@ def profit_table_mock():
 
 def profit_setting_mock():
     return {
-        'min_profit_percent': 0.3,
-        'min_profit_btc': 0.0075
+        'min_profit_percent': 0.03,
+        'min_profit_btc': 0.0075,
+        'is_withdraw': False
     }

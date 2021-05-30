@@ -13,11 +13,11 @@ def get_expected_profit(user_id, data_receive_queue, after_process=None):
     """
     def callback(result):
         if result:
-            copied_result = copy.deepcopy(result)
-            for date_ in enumerate(copied_result):
+            result = copy.deepcopy(result)
+            for date_ in result:
                 profit_date = datetime.fromtimestamp(date_[-1]).strftime(
                     '%Y{} %m{} %d{} %H{} %M{}').format('년', '월', '일', '시', '분')
-                date_[-1] = profit_date
+                date_[0] = profit_date
 
         return result if result else list()
 
@@ -57,7 +57,7 @@ def load_total_data_to_database(id_key, data_receive_queue, after_process=None):
         if not raw_result:
             return dict()
         
-        result = raw_result[0]
+        result = raw_result
 
         min_profit_percent = result.get('min_profit_percent')
         min_profit_btc = result.get('min_profit_btc')
