@@ -256,6 +256,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                     trade_object.profit_btc,
                     trade_object.profit_percent,
                 ]
+                # todo 거래내역 정상적으로 안나옴.
+                self._diff_gui.tradeHistoryView.insertRow(0)
                 base_item_setter(row_count, self._diff_gui.tradeHistoryView, data_list)
                 row_count += 1
 
@@ -299,7 +301,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc)
             
             row_count = self._diff_gui.profitRankView.rowCount()
-            
+
+            # todo 거래내역 정상적으로 안나옴
             for trade_object in sorted_objects:
                 item_list = [
                     trade_object.trade_date,
@@ -450,8 +453,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
 
         def test_emit(self, tuple_):
             title, contents = tuple_
-            QtWidgets.QMessageBox.about(self._diff_gui,
-                                        title, contents)
+            QtWidgets.QMessageBox.about(self._diff_gui, title, contents)
 
         def save_profit_settings(self):
             def after_process(result):

@@ -318,10 +318,19 @@
                 <number>0</number>
                </property>
                <property name="columnCount">
-                <number>0</number>
+                <number>6</number>
                </property>
                <attribute name="horizontalHeaderVisible">
+                <bool>true</bool>
+               </attribute>
+               <attribute name="horizontalHeaderCascadingSectionResizes">
                 <bool>false</bool>
+               </attribute>
+               <attribute name="horizontalHeaderMinimumSectionSize">
+                <number>40</number>
+               </attribute>
+               <attribute name="horizontalHeaderDefaultSectionSize">
+                <number>160</number>
                </attribute>
                <attribute name="horizontalHeaderHighlightSections">
                 <bool>true</bool>
@@ -330,7 +339,7 @@
                 <bool>false</bool>
                </attribute>
                <attribute name="horizontalHeaderStretchLastSection">
-                <bool>false</bool>
+                <bool>true</bool>
                </attribute>
                <attribute name="verticalHeaderVisible">
                 <bool>false</bool>
@@ -350,6 +359,12 @@
                <attribute name="verticalHeaderStretchLastSection">
                 <bool>false</bool>
                </attribute>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
               </widget>
              </item>
             </layout>
