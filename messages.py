@@ -122,6 +122,8 @@ class QMessageBoxMessage(object):
         SERVER_IS_CLOSED = '서버가 닫혀 있습니다.'
         
         SAVE_SUCCESS = '저장에 성공했습니다.'
+        SAVE_SUCCESS_TO_SERVER = '서버로의 데이터 저장이 성공했습니다.'
+        SAVE_FAIL_TO_SERVER = '서버로의 데이터 저장에 실패했습니다.'
         SAVE_FAIL = '저장에 실패했습니다.'
         WRONG_SECRET_KEY = '암호화키가 다릅니다. 세팅 파일을 초기화 하시겠습니까?'
         CANNOT_BE_SAME_EXCHANGE = '거래소 1과 거래소 2가 동일한 값이 될 수 없습니다.'

@@ -11,6 +11,7 @@ from DiffTrader.trading.threads.sender import SenderThread
 from DiffTrader.messages import QMessageBoxMessage as Msg
 from DiffTrader.settings import DEBUG
 
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QApplication
 
 from Util.pyinstaller_patch import debugger, close_program
@@ -41,6 +42,7 @@ class TradeObject(object):
 
 class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WIDGET):
     closed = QtCore.pyqtSignal()
+    message_signal = pyqtSignal(tuple)
 
     def __init__(self, _id, email, parent=None):
         super().__init__()
@@ -426,6 +428,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._parent = diff_gui.parent
 
             self._diff_gui.saveProgramSettingBtn.clicked.connect(self.save_profit_settings)
+            self._diff_gui.message_signal.connect(self.test_emit)
 
             self.profit_settings = self.load_and_set_profit_settings()
 
@@ -445,16 +448,19 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                     self.profit_settings = result_dict
             load_total_data_to_database(self._user_id, self._diff_gui.data_receive_queue, after_process)
 
+        def test_emit(self, tuple):
+            title, contents = tuple
+            QtWidgets.QMessageBox.about(self._diff_gui,
+                                        title, contents)
+
         def save_profit_settings(self):
             def after_process(result):
                 if result:
-                    QtWidgets.QMessageBox.about(self._diff_gui,
-                                                Msg.Title.SAVE_RESULT,
-                                                Msg.Content.SAVE_SUCCESS)
+                    self._diff_gui.message_signal.emit((Msg.Title.SAVE_RESULT, Msg.Content.SAVE_SUCCESS_TO_SERVER))
+                    return
                 else:
-                    QtWidgets.QMessageBox.about(self._diff_gui,
-                                                Msg.Title.SAVE_RESULT,
-                                                Msg.Content.SAVE_FAIL)
+                    self._diff_gui.message_signal.emit((Msg.Title.SAVE_RESULT, Msg.Content.SAVE_FAIL_TO_SERVER))
+                    return
 
             min_profit_percent_str = self._diff_gui.minProfitPercent.text()
             min_profit_btc_str = self._diff_gui.minProfitBTC.text()
