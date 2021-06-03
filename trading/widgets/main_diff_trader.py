@@ -257,7 +257,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                     trade_object.profit_percent,
                 ]
                 # todo 거래내역 정상적으로 안나옴.
-                self._diff_gui.tradeHistoryView.insertRow(0)
+                self._diff_gui.tradeHistoryView.insertRow(row_count)
                 base_item_setter(row_count, self._diff_gui.tradeHistoryView, data_list)
                 row_count += 1
 
@@ -298,7 +298,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             """
                 It is profitRankView setter when trading is done and received its data.
             """
-            sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc)
+            sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc, reverse=True)
             
             row_count = self._diff_gui.profitRankView.rowCount()
 
@@ -312,7 +312,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                     trade_object.profit_btc,
                     trade_object.profit_percent,
                 ]
-
+                
+                self._diff_gui.profitRankView.insertRow(row_count)
                 base_item_setter(row_count, self._diff_gui.profitRankView, item_list)
                 row_count += 1
 
