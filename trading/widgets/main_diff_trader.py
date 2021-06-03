@@ -189,12 +189,13 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._diff_gui.secondaryExchange.currentIndexChanged.connect(lambda: self.same_exchange_checker(
                 self._diff_gui.primaryExchange
             ))
-
-            # Initiation for setting tables
+            
             self.set_trade_object_set_from_server()
+
+        def initiation_for_set_table(self):
             self.set_all_trade_history()
             self.top_ten_by_profits()
-
+        
         def same_exchange_checker(self, exchange_combobox):
             """
                 Check the exchange is selected twice from primary and secondary.
@@ -291,6 +292,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                         profit_percent
                     )
                     self.trade_object_set.add(trade_object)
+                self.initiation_for_set_table()
                 
             get_expected_profit(self._user_id, self._diff_gui.data_receive_queue, after_process)
 
@@ -312,7 +314,6 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                     trade_object.profit_btc,
                     trade_object.profit_percent,
                 ]
-                
                 self._diff_gui.profitRankView.insertRow(row_count)
                 base_item_setter(row_count, self._diff_gui.profitRankView, item_list)
                 row_count += 1
