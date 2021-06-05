@@ -326,8 +326,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._diff_gui.logBox.setText(
                 '\n'.join(self._diff_gui.logBox.toPlainText().split('\n')[-500:]) + '\n' + str(msg)
             )
-            self._diff_gui.logBox.verticalScrollBar().setValue(
-                self._diff_gui.logBox.verticalScrollBar().maximum())
+            # self._diff_gui.logBox.verticalScrollBar().setValue(
+            #     self._diff_gui.logBox.verticalScrollBar().maximum())
 
     class ExchangeSettingTab(object):
         def __init__(self, diff_gui):

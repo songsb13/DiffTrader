@@ -76,7 +76,7 @@ class Messages(object):
         
         FAIL_WITHDRAWAL = '{from_exchange} -> {to_exchange}로 {alt}를 이체하는데 실패했습니다.'
         FAIL_BTC_WITHDRAWAL = '{to_exchange} -> {from_exchange}로 BTC를 이체하는데 실패했습니다.'
-        ERROR_CONTENTS = '거래에 실패했습니다. 에러 내용은 다음과 같습니다. [{error_string}]'
+        ERROR_CONTENTS = '거래에 실패했습니다. 에러 내용은 다음과 같습니다. [{}]'
         
         REQUEST_MANUAL_STOP = '에러가 계속되면 수동정지를 해주세요.'
         MANUAL_STOP = '수동정지 되었습니다. 아래 안내대로 수동 이체를 부탁드립니다.'
