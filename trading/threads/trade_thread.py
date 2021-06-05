@@ -180,7 +180,7 @@ class ExchangeInfo(object):
 
 
 class TradeThread(QThread):
-    log_signal = pyqtSignal(int, str)
+    log_signal = pyqtSignal(str, int)
     stopped = pyqtSignal()
     profit_signal = pyqtSignal(str, float)
 

@@ -20,10 +20,10 @@ class Logs(object):
         self.signal = signal
 
     def send(self, message):
-        self.signal.emit(logging.INFO, message)
+        self.signal.emit(message, logging.INFO)
 
     def send_error(self, message):
-        self.signal.emit(logging.ERROR, message)
+        self.signal.emit(message, logging.ERROR)
 
 
 class Messages(object):
