@@ -32,18 +32,16 @@ def loop_wrapper(func):
         wrapper that try loop up to 3 times
         It is used when defining variable information, fee, deposits, compare_orderbook and etc.
     """
-    def _except_wrapper():
-        def _wrap_func(self, *args):
-            for _ in range(3):
-                result_object = func(self, *args)
-                if result_object.success:
-                    return result_object
-                else:
-                    debugger.debug(
-                        'function [{}] is failed to setting a function.'.format(func.__name__))
-                    time.sleep(result_object.wait_time)
+    def _wrap_func(self, *args):
+        for _ in range(3):
+            result_object = func(self, *args)
+            if result_object.success:
+                return result_object
             else:
-                debugger.debug('function [{}] is failed to setting a function, please try later.'.format(func.__name__))
-                raise
-        return _wrap_func
-    return _except_wrapper
+                debugger.debug(
+                    'function [{}] is failed to setting a function.'.format(func.__name__))
+                time.sleep(result_object.wait_time)
+        else:
+            debugger.debug('function [{}] is failed to setting a function, please try later.'.format(func.__name__))
+            raise
+    return _wrap_func
