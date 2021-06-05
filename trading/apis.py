@@ -14,8 +14,9 @@ def get_expected_profit(user_id, data_receive_queue, after_process=None):
     def callback(result):
         if result:
             result = copy.deepcopy(result)
+            # todo 차후에 QUERY 날릴때 DATETIME DESC로 가져오기
             for date_ in result:
-                profit_date = datetime.fromtimestamp(date_[-1]).strftime(
+                profit_date = datetime.fromtimestamp(date_[0]).strftime(
                     '%Y{} %m{} %d{} %H{} %M{}').format('년', '월', '일', '시', '분')
                 date_[0] = profit_date
 
