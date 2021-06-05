@@ -16,10 +16,12 @@ from Util.pyinstaller_patch import *
 # END
 
 # Domain parties
+from DiffTrader import settings
 from DiffTrader.trading.apis import send_expected_profit
 from DiffTrader.trading.threads.utils import calculate_withdraw_amount, check_deposit_addrs, loop_wrapper
 from DiffTrader.messages import (Logs, Messages as Msg)
 from DiffTrader.trading.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY)
+from DiffTrader.trading.mockup import *
 
 # Third parties
 from PyQt5.QtCore import pyqtSignal, QThread
@@ -256,7 +258,7 @@ class TradeThread(QThread):
             while evt.is_set() and not self.stop_flag:
                 try:
                     if time.time() >= fee_refresh_time + 600:
-                        tx_res = await self.get_transaciton_fees()
+                        tx_res = await self.get_transaction_fees()
                         td_res = await self.get_trading_fees()
 
                         if not (tx_res and td_res):
@@ -329,10 +331,14 @@ class TradeThread(QThread):
         elif exchange_str == 'Binance':
             return Binance(cfg['key'], cfg['secret'])
         elif exchange_str.startswith('Upbit'):
-            return BaseUpbit(cfg['key'], cfg['secret'])
+            return BaseUpbit(cfg['key'], cfg['secret'], '1', ['BTC_ETH, BTC_XRP'])
 
-    @loop_wrapper
     async def deposits(self):
+        if settings.DEBUG:
+            self.primary_obj.deposit = None
+            self.secondary_obj.deposit = None
+            return True
+
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_deposit_addrs(), self.secondary_obj.exchange.get_deposit_addrs()
         )
@@ -348,8 +354,13 @@ class TradeThread(QThread):
 
         return True
 
-    @loop_wrapper
     async def get_trading_fees(self):
+        if settings.DEBUG:
+            # mocking if set the debug.
+            self.primary_obj.trading_fee = trading_fee_mock()
+            self.secondary_obj.trading_fee = trading_fee_mock()
+            return True
+
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_trading_fee(),
             self.secondary_obj.exchange.get_trading_fee(),
@@ -367,8 +378,13 @@ class TradeThread(QThread):
 
         return True
 
-    @loop_wrapper
-    async def get_transaciton_fees(self):
+    async def get_transaction_fees(self):
+        if settings.DEBUG:
+            # mocking if set the debug.
+            self.primary_obj.transaction_fee = transaction_mock()
+            self.secondary_obj.transaction_fee = transaction_mock()
+            return True
+
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_transaction_fee(),
             self.secondary_obj.exchange.get_transaction_fee()
@@ -408,11 +424,17 @@ class TradeThread(QThread):
     def get_currencies(self):
         return list(set(self.secondary_obj.balance).intersection(self.primary_obj.balance))
 
-    @loop_wrapper
     async def balance_and_currencies(self):
         """
             All balance values require type int, float.
         """
+
+        if settings.DEBUG:
+            self.primary_obj.balance = primary_balance_mock()
+            self.secondary_obj.balance = secondary_balance_mock()
+            self.currencies = currencies_mock()
+            return True
+
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.balance(),
             self.secondary_obj.exchange.balance()
@@ -432,7 +454,6 @@ class TradeThread(QThread):
 
         return True
 
-    @loop_wrapper
     async def compare_orderbook(self, default_btc=1.0):
         """
             It is for getting arbitrage profit primary to secondary or secondary to primary.
