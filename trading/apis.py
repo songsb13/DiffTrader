@@ -40,6 +40,18 @@ def send_expected_profit(profit_object, data_receive_queue, after_process=None):
     data_receive_queue.put((SAI_URL, MethodType.POST, information_dict))
 
 
+def send_slippage_data(user_id, data_dict, data_receive_queue, after_process=None):
+    """
+        data_dict:
+            coin, market, exchange, amount, orderbooks, tradings, orderbooks_timestamp, trading_timestamp
+    """
+    information_dict = {
+        'parameter': {'user_id': user_id, **data_dict}
+    }
+
+    data_receive_queue.put((SAI_URL, MethodType.POST, information_dict))
+
+
 def save_total_data_to_database(id_key, min_profit_percent, min_profit_btc, is_withdraw, data_receive_queue,
                                 after_process=None):
     dic = dict()

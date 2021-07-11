@@ -17,7 +17,7 @@ from Util.pyinstaller_patch import *
 
 # Domain parties
 from DiffTrader import settings
-from DiffTrader.trading.apis import send_expected_profit
+from DiffTrader.trading.apis import send_expected_profit, send_slippage_data
 from DiffTrader.trading.threads.utils import calculate_withdraw_amount, check_deposit_addrs, loop_wrapper
 from DiffTrader.messages import (Logs, Messages as Msg)
 from DiffTrader.trading.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY)
@@ -303,6 +303,12 @@ class TradeThread(QThread):
                                 self.log.send(Msg.Trade.FAIL)
                                 continue
                             self.log.send(Msg.Trade.SUCCESS)
+
+                            trading_timestamp = datetime.datetime.now()
+                            data_dict = {
+                                'trading_timestamp': trading_timestamp
+                            }
+                            send_slippage_data(self.email, data_dict, self.data_receive_queue)
 
                         except:
                             debugger.exception(Msg.Error.EXCEPTION)
