@@ -289,7 +289,6 @@ class TradeThread(QThread):
                         self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=error))
                         time.sleep(time_)
                         continue
-
                     profit_object = self.get_max_profit(data)
                     if not profit_object:
                         self.log.send(Msg.Trade.NO_PROFIT)
@@ -298,16 +297,12 @@ class TradeThread(QThread):
                         try:
                             trade_success = self.trade(profit_object)
                             send_expected_profit(profit_object, self.data_receive_queue)
-
                             if not trade_success:
                                 self.log.send(Msg.Trade.FAIL)
                                 continue
                             self.log.send(Msg.Trade.SUCCESS)
-
-                            trading_timestamp = datetime.datetime.now()
-                            data_dict = {
-                                'trading_timestamp': trading_timestamp
-                            }
+                            
+                            data_dict = self.set_raw_data_set(profit_object, data)
                             send_slippage_data(self.email, data_dict, self.data_receive_queue)
 
                         except:
@@ -487,7 +482,8 @@ class TradeThread(QThread):
             primary_bid = primary_res.data[currency_pair]['bids']
             secondary_ask = secondary_res.data[currency_pair]['asks']
             secondary_to_primary[currency_pair] = float(((primary_bid - secondary_ask) / secondary_ask))
-
+        
+        # todo primary, secondary orderbooks raw data
         res = primary_res.data, secondary_res.data, {PRIMARY_TO_SECONDARY: primary_to_secondary,
                                                      SECONDARY_TO_PRIMARY: secondary_to_primary}
 
@@ -528,7 +524,26 @@ class TradeThread(QThread):
         ))
 
         return tradable_btc, alt_amount, btc_profit
-
+    
+    def set_raw_data_set(self, profit_object, data):
+        primary_orderbook, secondary_orderbook, _ = data
+        profit_information = profit_object.information
+        raw_orderbooks = primary_orderbook + secondary_orderbook
+        
+        trading_timestamp = datetime.datetime.now()
+        data_dict = {
+            'user_id': profit_information['user_id'],
+            'coin': profit_information['currency_name'],
+            'market': profit_information['currency_name'],
+            'exchange': profit_information['primary_market'],
+            'tradings': '',
+            'trading_type': profit_object.trade_type,
+            'orderbooks': raw_orderbooks,
+            'trading_timestamp': trading_timestamp
+        }
+        
+        return data_dict
+    
     def get_max_profit(self, data):
         """
             Args:
