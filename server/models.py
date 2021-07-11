@@ -77,3 +77,25 @@ class ExpectedProfitQueries(object):
         """
 
         return execute_db(query, value=[user_id, *value_list])
+
+
+class SlippageDataQueries(object):
+    @staticmethod
+    def get_slippage_data(user_id):
+        query = """
+        SELECT user_id, coin, market, exchange, orderbooks, tradings, trading_type, orderbook_timestamp, trading_timestamp
+        FROM expected_porift_table
+        WHERE user_id = %s
+        """
+
+        return execute_db(query, value=[user_id])
+    
+    @staticmethod
+    def put_slippage_data(user_id, value_list):
+        query = """
+        INSERT INTO slippage_data_table(user_id, coin, market, exchange, orderbooks, tradings,
+        trading_type, orderbook_timestamp, trading_timestamp)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+
+        return execute_db(query, value=[user_id, *value_list])

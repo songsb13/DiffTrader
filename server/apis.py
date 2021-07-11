@@ -1,4 +1,4 @@
-from DiffTrader.server.models import ProfitSettingQueries, ExpectedProfitQueries
+from DiffTrader.server.models import ProfitSettingQueries, ExpectedProfitQueries, SlippageDataQueries
 from flask_restful import Resource
 from flask import jsonify, request
 
@@ -75,3 +75,32 @@ class ExpectedProfitTable(Resource):
         ]
 
         ExpectedProfitQueries.put_expected_profit_table(user_id, value_list)
+
+
+class SlippageDataTable(Resource):
+    def get(self):
+        args = request.args
+        user_id = args.get('user_id', None)
+        if user_id:
+            result = SlippageDataQueries.get_slippage_data(user_id)
+            return result
+
+    def put(self):
+        args = request.args
+        user_id = args.get('user_id', None)
+        
+        coin = args.get('coin')
+        market = args.get('market')
+        exchange = args.get('exchange')
+        orderbooks = args.get('orderbooks')
+        tradings = args.get('tradings')
+        trading_type = args.get('trading_type')
+        orderbook_timestamp = args.get('orderbook_timestamp')
+        trading_timestamp = args.get('trading_timestamp')
+        
+        value_list = [
+            user_id, coin, market, exchange, orderbooks, tradings,
+            trading_type, orderbook_timestamp, trading_timestamp
+        ]
+        
+        SlippageDataQueries.put_slippage_data(user_id, value_list)
