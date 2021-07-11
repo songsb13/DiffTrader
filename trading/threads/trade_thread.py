@@ -484,9 +484,9 @@ class TradeThread(QThread):
 
         secondary_to_primary = dict()
         for currency_pair in self.currencies:
-            primary_bid= primary_res.data[currency_pair]['bids']
+            primary_bid = primary_res.data[currency_pair]['bids']
             secondary_ask = secondary_res.data[currency_pair]['asks']
-            secondary_to_primary[currency_pair] = float(((primary_bid- secondary_ask) / secondary_ask))
+            secondary_to_primary[currency_pair] = float(((primary_bid - secondary_ask) / secondary_ask))
 
         res = primary_res.data, secondary_res.data, {PRIMARY_TO_SECONDARY: primary_to_secondary,
                                                      SECONDARY_TO_PRIMARY: secondary_to_primary}
