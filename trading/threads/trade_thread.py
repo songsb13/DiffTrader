@@ -530,10 +530,11 @@ class TradeThread(QThread):
     def set_raw_data_set(self, profit_object, orderbooks):
         profit_information = profit_object.information
         trading_timestamp = datetime.datetime.now()
+        market, coin = profit_information['currency_name'].split('_')
         data_dict = {
             'user_id': profit_information['user_id'],
-            'coin': profit_information['currency_name'],
-            'market': profit_information['currency_name'],
+            'coin': coin,
+            'market': market,
             'exchange': profit_information['primary_market'],
             'tradings': '',
             'trading_type': profit_object.trade_type,
