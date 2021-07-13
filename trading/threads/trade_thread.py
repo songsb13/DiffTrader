@@ -301,9 +301,11 @@ class TradeThread(QThread):
                                 self.log.send(Msg.Trade.FAIL)
                                 continue
                             self.log.send(Msg.Trade.SUCCESS)
-                            
-                            data_dict = self.set_raw_data_set(profit_object, data)
-                            send_slippage_data(self.email, data_dict, self.data_receive_queue)
+
+                            primary_orderbook, secondary_orderbook, _ = data
+                            for orderbook in [primary_orderbook, secondary_orderbook]:
+                                data_dict = self.set_raw_data_set(profit_object, orderbook)
+                                send_slippage_data(self.email, data_dict, self.data_receive_queue)
 
                         except:
                             debugger.exception(Msg.Error.EXCEPTION)
@@ -525,11 +527,8 @@ class TradeThread(QThread):
 
         return tradable_btc, alt_amount, btc_profit
     
-    def set_raw_data_set(self, profit_object, data):
-        primary_orderbook, secondary_orderbook, _ = data
+    def set_raw_data_set(self, profit_object, orderbooks):
         profit_information = profit_object.information
-        raw_orderbooks = primary_orderbook + secondary_orderbook
-        
         trading_timestamp = datetime.datetime.now()
         data_dict = {
             'user_id': profit_information['user_id'],
@@ -538,7 +537,7 @@ class TradeThread(QThread):
             'exchange': profit_information['primary_market'],
             'tradings': '',
             'trading_type': profit_object.trade_type,
-            'orderbooks': raw_orderbooks,
+            'orderbooks': orderbooks,
             'trading_timestamp': trading_timestamp
         }
         
