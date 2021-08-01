@@ -59,6 +59,8 @@ class MaxProfits(object):
 
         self.information = dict()
 
+        self.order_information = dict()
+
     def set_information(self, user_id, profit_percent, profit_btc, currency_time,
                         primary_market, secondary_market, currency_name):
         self.information = dict(
@@ -536,7 +538,7 @@ class TradeThread(QThread):
             'coin': coin,
             'market': market,
             'exchange': profit_information['primary_market'],
-            'tradings': '',
+            'tradings': profit_object.order_information,
             'trading_type': profit_object.trade_type,
             'orderbooks': orderbooks,
             'trading_timestamp': trading_timestamp
@@ -747,7 +749,7 @@ class TradeThread(QThread):
         if not res_object.success:
             raise
 
-        from_object_alt_amount = res_object.data
+        from_object_alt_amount = res_object.data['amount']
 
         debugger.debug(Msg.Debug.BUY_ALT.format(from_exchange=from_object.name, alt=alt))
 
@@ -763,6 +765,13 @@ class TradeThread(QThread):
         btc_send_amount = calculate_withdraw_amount(profit_object.tradable_btc, to_object.transaction_fee['BTC'])
         self._withdraw(to_object, from_object, profit_object, btc_send_amount, 'BTC')
 
+        order_result = from_object.check_order(res_object.data['result_parameter'])
+
+        if order_result:
+            profit_object.order_information = order_result
+
+        return True
+
     def trade(self, profit_object):
         self.log.send(Msg.Trade.START_TRADE)
         if self.auto_withdrawal:
@@ -776,3 +785,26 @@ class TradeThread(QThread):
             self._trade(self.secondary_obj, self.primary_obj, profit_object)
 
         return True
+
+
+"""
+    [Simon] [오후 5:44] orderbook은 그대로 다 넣으면 좋을것같아
+[송기모] [오후 5:44] 그대로 다 넣는다?
+[Simon] [오후 5:44] 10개
+[Simon] [오후 5:44] 아니 총 40개
+[송기모] [오후 5:44] 무슨 말인지 잘 모르겟네
+[송기모] [오후 5:44] 40개?
+[Simon] [오후 5:45] 매수10 물량, 가격
+...
+매수1 물량 가격
+매도1 물량 가격
+...
+매도10 물량 가격
+[송기모] [오후 5:45] 아 그냥 평균을 내지말고?
+[Simon] [오후 5:45] 엉
+[송기모] [오후 5:45] 각 column으로 넣어야 하나?
+
+[송기모] [오후 5:53] result로 order ID가 올건데
+[송기모] [오후 5:53] 그 orderID로 체결내역을 가져오면
+[송기모] [오후 5:54] 값을 알아낼 수 있을거 같긴해
+"""
