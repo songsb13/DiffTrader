@@ -62,7 +62,7 @@ class MaxProfits(object):
         self.order_information = dict()
 
     def set_information(self, user_id, profit_percent, profit_btc, currency_time,
-                        primary_market, secondary_market, currency_name):
+                        primary_market, secondary_market, currency_name, raw_orderbooks):
         self.information = dict(
             user_id=user_id,
             profit_percent=profit_percent,
@@ -70,7 +70,8 @@ class MaxProfits(object):
             currency_time=currency_time,
             primary_market=primary_market,
             secondary_market=secondary_market,
-            currency_name=currency_name
+            currency_name=currency_name,
+            raw_orderbooks=raw_orderbooks
         )
 
 
@@ -286,12 +287,11 @@ class TradeThread(QThread):
                         self.log.send(Msg.Trade.NO_BALANCE_BTC)
                         continue
 
-                    success, data, error, time_ = await self.compare_orderbook(default_btc)
-                    if not success:
-                        self.log.send(Msg.Trade.ERROR_CONTENTS.format(error_string=error))
-                        time.sleep(time_)
+                    orderbook_data = await self.compare_orderbook(default_btc)
+                    if not orderbook_data:
                         continue
-                    profit_object = self.get_max_profit(data)
+
+                    profit_object = self.get_max_profit(orderbook_data)
                     if not profit_object:
                         self.log.send(Msg.Trade.NO_PROFIT)
                         continue
@@ -304,7 +304,7 @@ class TradeThread(QThread):
                                 continue
                             self.log.send(Msg.Trade.SUCCESS)
 
-                            primary_orderbook, secondary_orderbook, _ = data
+                            primary_orderbook, secondary_orderbook, _ = orderbook_data
                             for orderbook in [primary_orderbook, secondary_orderbook]:
                                 data_dict = self.set_raw_data_set(profit_object, orderbook)
                                 send_slippage_data(self.email, data_dict, self.data_receive_queue)
@@ -473,20 +473,20 @@ class TradeThread(QThread):
                 self.log.send(Msg.Trade.ERROR_CONTENTS.format(res.message))
 
         if not primary_res.success or not secondary_res.success:
-            return False
+            return None
 
         primary_to_secondary = dict()
         for currency_pair in self.currencies:
             primary_ask = primary_res.data[currency_pair]['asks']
             secondary_bid = secondary_res.data[currency_pair]['bids']
-            primary_to_secondary[currency_pair] = float(((secondary_bid - primary_ask) / primary_ask))
-
+            primary_to_secondary[currency_pair]['profit_percent'] = float(((secondary_bid - primary_ask) / primary_ask))
+            primary_to_secondary[currency_pair]['raw_orderbooks'] = primary_res.data[currency_pair]['raw_orderbooks']
         secondary_to_primary = dict()
         for currency_pair in self.currencies:
             primary_bid = primary_res.data[currency_pair]['bids']
             secondary_ask = secondary_res.data[currency_pair]['asks']
-            secondary_to_primary[currency_pair] = float(((primary_bid - secondary_ask) / secondary_ask))
-        
+            secondary_to_primary[currency_pair]['profit_percent'] = float(((primary_bid - secondary_ask) / secondary_ask))
+            secondary_to_primary[currency_pair]['raw_orderbooks'] = secondary_res.data[currency_pair]['raw_orderbooks']
         # todo primary, secondary orderbooks raw data
         res = primary_res.data, secondary_res.data, {PRIMARY_TO_SECONDARY: primary_to_secondary,
                                                      SECONDARY_TO_PRIMARY: secondary_to_primary}
@@ -532,7 +532,8 @@ class TradeThread(QThread):
     def set_raw_data_set(self, profit_object, orderbooks):
         profit_information = profit_object.information
         trading_timestamp = datetime.datetime.now()
-        market, coin = profit_information['currency_name'].split('_')
+        currency_name = profit_information['currency_name']
+        market, coin = currency_name.split('_')
         data_dict = {
             'user_id': profit_information['user_id'],
             'coin': coin,
@@ -540,7 +541,7 @@ class TradeThread(QThread):
             'exchange': profit_information['primary_market'],
             'tradings': profit_object.order_information,
             'trading_type': profit_object.trade_type,
-            'orderbooks': orderbooks,
+            'orderbooks': orderbooks[currency_name]['raw_orderbooks'],
             'trading_timestamp': trading_timestamp
         }
         
@@ -555,7 +556,7 @@ class TradeThread(QThread):
                     exchanges_coin_profit_set: dict, profit percent by currencies
         """
         profit_object = None
-        primary_orderbook, secondary_orderbook, exchanges_coin_profit_set = data
+        primary_orderbook, secondary_orderbook, exchanges_coin_profit_set, *_ = data
         for trade in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
             for currency in self.currencies:
                 alt = currency.split('_')[1]
@@ -566,7 +567,7 @@ class TradeThread(QThread):
                     self.log.send(Msg.Trade.NO_BALANCE_ALT.format(exchange=self.secondary_obj.name, alt=alt))
                     continue
 
-                expect_profit_percent = data.get(trade, dict()).get(currency, int())
+                expect_profit_percent = exchanges_coin_profit_set[currency]['profit_percent']
 
                 if trade == PRIMARY_TO_SECONDARY and expect_profit_percent >= 0:
                     sender, receiver = self.primary_obj.name, self.secondary_obj.name
@@ -603,7 +604,7 @@ class TradeThread(QThread):
                 # get precision of BTC and ALT
                 precision_set = self.get_precision(currency)
                 if not precision_set:
-                    return False
+                    return None
                 btc_precision, alt_precision = precision_set
 
                 try:
@@ -642,7 +643,8 @@ class TradeThread(QThread):
                     currency_time=datetime.now().strftime('%d-%m-%Y %H:%M:%S'),
                     primary_market=self.primary_obj.name,
                     secondary_market=self.secondary_obj.name,
-                    currency_name=currency
+                    currency_name=currency,
+                    raw_orderbooks=exchanges_coin_profit_set[currency]['raw_orderbooks']
                 )
 
         return profit_object
