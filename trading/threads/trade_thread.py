@@ -767,7 +767,7 @@ class TradeThread(QThread):
         btc_send_amount = calculate_withdraw_amount(profit_object.tradable_btc, to_object.transaction_fee['BTC'])
         self._withdraw(to_object, from_object, profit_object, btc_send_amount, 'BTC')
 
-        order_result = from_object.check_order(res_object.data['result_parameter'])
+        order_result = from_object.exchange.check_order(res_object.data['result_parameter'])
 
         if order_result:
             profit_object.order_information = order_result
