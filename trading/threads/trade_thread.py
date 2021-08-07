@@ -4,6 +4,7 @@
 
 # Python Inner parties
 import asyncio
+import json
 
 from decimal import Decimal, ROUND_DOWN
 
@@ -539,9 +540,9 @@ class TradeThread(QThread):
             'coin': coin,
             'market': market,
             'exchange': profit_information['primary_market'],
-            'tradings': profit_object.order_information,
+            'tradings': json.dumps(profit_object.order_information),
             'trading_type': profit_object.trade_type,
-            'orderbooks': orderbooks[currency_name]['raw_orderbooks'],
+            'orderbooks': json.dumps(orderbooks[currency_name]['raw_orderbooks']),
             'trading_timestamp': trading_timestamp
         }
         
