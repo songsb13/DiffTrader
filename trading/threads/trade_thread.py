@@ -641,7 +641,7 @@ class TradeThread(QThread):
                     user_id=self.email,
                     profit_percent=real_diff,
                     profit_btc=btc_profit,
-                    currency_time=datetime.now().strftime('%d-%m-%Y %H:%M:%S'),
+                    currency_time=datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S'),
                     primary_market=self.primary_obj.name,
                     secondary_market=self.secondary_obj.name,
                     currency_name=currency,
