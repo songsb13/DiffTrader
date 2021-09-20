@@ -1,62 +1,82 @@
+import os
+import sys
+import requests
+import hashlib
+
 from PyQt5 import uic
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import pyqtSignal, QThread
-from diff_trader import DiffTraderGUI
+from DiffTrader.settings import LOGIN_URL, UPDATE_IP_URL, VERSION, DEBUG
+from DiffTrader.trading.widgets.main_diff_trader import DiffTraderGUI
+from DiffTrader.paths import LoginWidgets
+from DiffTrader.messages import (QMessageBoxMessage as Msg)
 
-from pyinstaller_patch import *
-
-login_form = uic.loadUiType(os.path.join(sys._MEIPASS, 'ui/Loggin.ui'), from_imports=True, import_from='ui')[0]
-
-VERSION = '0.2.0'
+from Util.pyinstaller_patch import debugger, check_status, evt
 
 
-class LoginWidget(QWidget, login_form):
+class LoginWidget(QWidget, LoginWidgets.LOGIN_WIDGET):
     def __init__(self, pid, widget_after_login):
         super().__init__()
-        if 'pydevd' in sys.modules:
+        if DEBUG:
             pid = 'SAIDiffTrader'
         self.setupUi(self)
         self.pid = hashlib.sha256(pid.encode()).hexdigest()
         self.widget_after_login = widget_after_login
 
-        self.PassEdit.returnPressed.connect(self.sign_in)
-        self.LogginBtn.clicked.connect(self.sign_in)                # 로그인 버튼
-        # self.RegisterBtn.clicked.connect(self.register_clicked)     # 회원가입 버튼
+        self.passwordEdit.returnPressed.connect(self.sign_in)
+        self.loginBtn.clicked.connect(self.sign_in)
 
-    def sign_in(self):                                              # 로그인
-        if self.is_valid_form():
-            username = self.IdEdit.text()
-            password = self.PassEdit.text()
+    def sign_in(self):
+        if DEBUG:
+            id_ = '533'
+            email = 'goodmoskito@gmail.com'
+            data = dict(id=id_)
+            self.after_login(data, email)
+        else:
+            if self.is_valid_form():
+                username = self.idEdit.text()
+                password = self.passwordEdit.text()
 
-            self.submit(username, password)
+                self.submit(username, password)
 
-    def is_valid_form(self):                                          # 폼 체크
-        if self.IdEdit.text() == '':
-            QMessageBox.about(self, "Invalid", "아이디를 입력하세요")
+    def is_valid_form(self):
+        if self.idEdit.text() == '':
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.EMPTY_ID)
             return False
 
-        if self.PassEdit.text() == '':
-            QMessageBox.about(self, "Invalid", "비밀번호를 입력하세요")
+        if self.passwordEdit.text() == '':
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.EMPTY_PASSWORD)
             return False
 
         return True
 
-    def submit(self, _id, _pw):
-        url = 'http://saiblockchain.com:8877/login'
+    def after_login(self, data, email):
+        t = StatusCheck(data['id']) #threading.Thread(target=check_status, args=(data['id'], evt,))
+        t.start()
+        t.msg.connect(self.status_check_fail)
         try:
-            r = requests.post(url, json={'username': _id,
-                                         'password': hashlib.sha256(_pw.encode()).hexdigest(),
-                                         'program': self.pid})
+            self.mainWidget = self.widget_after_login(_id=data['id'], email=email)
+            self.mainWidget.closed.connect(self.main_closed)
+        except:
+            debugger.exception("FATAL")
+        self.close()
+        self.mainWidget.show()
+
+    def submit(self, _id, _pw):
+        try:
+            r = requests.post(LOGIN_URL, json={'username': _id,
+                                               'password': hashlib.sha256(_pw.encode()).hexdigest(),
+                                               'program': self.pid})
             data = r.json()
         except:
-            QMessageBox.about(self, "Closed", "서버가 닫혀 있습니다.")
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.SERVER_IS_CLOSED)
             return False
 
         if data['valid_id'] is False:
-            QMessageBox.about(self, "로그인 실패", "아이디가 없거나, 패스워드가 틀렸습니다.")
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.WRONG_ID)
             return False
         elif data['expired']:
-            QMessageBox.about(self, "로그인 실패", "기간이 만료된 ID입니다.\n관리자에게 문의하세요.")
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.EXPIRED_ID)
             return False
         elif data['duplicated_connection']:
             box = QMessageBox()
@@ -90,25 +110,15 @@ class LoginWidget(QWidget, login_form):
                               )
             return False
 
-        self.close()
-        t = StatusCheck(data['id']) #threading.Thread(target=check_status, args=(data['id'], evt,))
-        t.start()
-        t.msg.connect(self.status_check_fail)
-        try:
-            self.mainWidget = self.widget_after_login(_id=data['id'], email=_id)
-            self.mainWidget.closed.connect(self.main_closed)
-        except:
-            debugger.exception("FATAL")
-        self.mainWidget.show()
+        self.after_login(data, _id)
 
     def update_ip(self, data, first_login=False):
-        url = 'http://songsb13.cafe24.com:8877/update_ip'
         try:
-            r = requests.post(url, json={'id': data['id'],
+            r = requests.post(UPDATE_IP_URL, json={'id': data['id'],
                                          'first_login': first_login})
             data = r.json()
         except:
-            QMessageBox.about(self, "Closed", "서버가 닫혀 있습니다.")
+            QMessageBox.about(self, Msg.Title.LOGIN_FAILED, Msg.Content.SERVER_IS_CLOSED)
             return False
 
         return True
@@ -117,7 +127,7 @@ class LoginWidget(QWidget, login_form):
         self.show()
 
     def status_check_fail(self, msg):
-        QMessageBox.about(self, "Closed", msg)
+        QMessageBox.about(self, Msg.Title.LOGIN_FAILED, msg)
         self.mainWidget.close()
 
 

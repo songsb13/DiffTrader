@@ -1,4 +1,5 @@
-from PyQt5.QtCore import *
+from PyQt5.QtCore import (Qt, QAbstractTableModel,
+                          QVariant, QModelIndex)
 
 
 class TradeTableModel(QAbstractTableModel):

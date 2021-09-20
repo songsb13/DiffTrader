@@ -1,18 +1,15 @@
-from pyinstaller_patch import *
-from save_settings import save, load
-from PyQt5 import QtWidgets, uic
-
-import sys
 import os
 
-KEY_DIALOG_PATH = os.path.join(sys._MEIPASS, 'ui/SettingEncryptKeyDialog.ui')
-CONFIRM_DIALOG_PATH = os.path.join(sys._MEIPASS, 'ui/DifferentKeyInputDialog.ui')
+from PyQt5 import (QtWidgets)
 
-key_dialog = uic.loadUiType(KEY_DIALOG_PATH)[0]
-confirm_dialog = uic.loadUiType(CONFIRM_DIALOG_PATH)[0]
+from DiffTrader.trading.widgets.utils import save, load
+from DiffTrader.paths import DialogWidgets as widgets
+from DiffTrader.messages import (QMessageBoxMessage as Msg)
+
+from Util.pyinstaller_patch import debugger
 
 
-class SettingEncryptKeyDialog(QtWidgets.QDialog, key_dialog):
+class SettingEncryptKeyDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
@@ -26,11 +23,13 @@ class SettingEncryptKeyDialog(QtWidgets.QDialog, key_dialog):
             self.gui = DifferentKeyInputDialog(exchange, key, **kwargs)
             self.gui.show()
         else:
-            QtWidgets.QMessageBox.about(None, "Success", "저장에 성공했습니다.")
+            log = (Msg.Title.SAVE_RESULT, Msg.Content.SAVE_SUCCESS)
+            debugger.debug(log)
+            QtWidgets.QMessageBox.about(self, *log)
             self.close()
 
 
-class DifferentKeyInputDialog(QtWidgets.QDialog, confirm_dialog):
+class DifferentKeyInputDialog(QtWidgets.QDialog, widgets.CONFIRM_DIALOG_WIDGET):
     def __init__(self, exchange, password, **kwargs):
         super().__init__()
         self.setupUi(self)
@@ -43,14 +42,13 @@ class DifferentKeyInputDialog(QtWidgets.QDialog, confirm_dialog):
         while os.path.exists('Settings'):
             pass
         success = save(exchange, password, **kwargs)
-        if success:
-            QtWidgets.QMessageBox.about(None, "Success", "저장에 성공했습니다.")
-        else:
-            QtWidgets.QMessageBox.about(None, "Failed", "저장에 실패했습니다.")
+        log = (Msg.Title.SAVE_RESULT, Msg.Content.SAVE_SUCCESS if success else Msg.Content.SAVE_FAIL)
+        debugger.debug(log)
+        QtWidgets.QMessageBox.about(self, *log)
         self.close()
 
 
-class LoadSettingsDialog(QtWidgets.QDialog, key_dialog):
+class LoadSettingsDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
@@ -63,8 +61,10 @@ class LoadSettingsDialog(QtWidgets.QDialog, key_dialog):
         if not success:
             box = QtWidgets.QMessageBox()
             box.setIcon(QtWidgets.QMessageBox.Question)
-            box.setWindowTitle('로딩 실패')
-            box.setText('암호화키가 틀렸습니다. 세팅파일을 초기화 하시겠습니까?')
+            box.setWindowTitle(Msg.Title.FAIL_LOAD)
+            box.setText(Msg.Content.WRONG_SECRET_KEY)
+
+            debugger.debug(Msg.Title.FAIL_LOAD, Msg.Content.WRONG_SECRET_KEY)
 
             box.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
             buttonY = box.button(QtWidgets.QMessageBox.Yes)

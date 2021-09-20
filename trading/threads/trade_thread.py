@@ -3,34 +3,27 @@
 """
 
 # Python Inner parties
-import time
 import asyncio
 
 from decimal import Decimal, ROUND_DOWN
-from datetime import datetime
 
 # SAI parties
-from Bithumb.bithumb import Bithumb
-from Binance.binance import Binance
-from Bitfinex.bitfinex import Bitfinex
-from Upbit.upbit import BaseUpbit
-from Huobi.huobi import Huobi
+from Exchanges.Bithumb.bithumb import Bithumb
+from Exchanges.Binance.binance import Binance
+from Exchanges.Upbit.upbit import BaseUpbit
 
-from pyinstaller_patch import *
+from Util.pyinstaller_patch import *
 # END
 
 # Domain parties
-from settings.messages import Logs
-from settings.messages import Messages as Msg
-from settings.defaults import TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, ONE_WAY_EXCHANGES
-from trade_utils import calculate_withdraw_amount, send_expected_profit, \
-    check_deposit_addrs
-
-from wrapper import loop_wrapper
-
+from . import *
+from DiffTrader.trading.apis import send_expected_profit
+from DiffTrader.trading.threads.utils import calculate_withdraw_amount, check_deposit_addrs, loop_wrapper
+from DiffTrader.messages import (Logs, Messages as Msg)
+from DiffTrader.trading.settings import (TAG_COINS, PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY)
 
 # Third parties
-from PyQt5.QtCore import pyqtSignal, QThread
+from PyQt5.QtCore import pyqtSignal
 
 
 """
@@ -62,7 +55,7 @@ class MaxProfits(object):
         self.trade_type = trade
 
         self.information = dict()
-    
+
     def set_information(self, user_id, profit_percent, profit_btc, currency_time,
                         primary_market, secondary_market, currency_name):
         self.information = dict(
@@ -74,6 +67,21 @@ class MaxProfits(object):
             secondary_market=secondary_market,
             currency_name=currency_name
         )
+
+
+
+class TradeHistoryObject(object):
+    def __init__(self, trade_date, symbol, primary_exchange, secondary_exchange,
+                 profit_btc, profit_percent):
+        """
+            trade history, top 10 profits에 들어가는 정보 집합 object
+        """
+        self.trade_date = trade_date
+        self.symbol = symbol
+        self.primary_exchange = primary_exchange
+        self.secondary_exchange = secondary_exchange
+        self.profit_btc = profit_btc
+        self.profit_percent = profit_percent
 
 
 class ExchangeInfo(object):
@@ -329,7 +337,7 @@ class TradeThread(QThread):
             exchange.get_account_id()
             return exchange
 
-    @loop_wrapper(debugger=debugger)
+    @loop_wrapper
     async def deposits(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_deposit_addrs(), self.secondary_obj.exchange.get_deposit_addrs()
@@ -346,7 +354,7 @@ class TradeThread(QThread):
 
         return True
 
-    @loop_wrapper(debugger=debugger)
+    @loop_wrapper
     async def get_trading_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_trading_fee(),
@@ -365,7 +373,7 @@ class TradeThread(QThread):
 
         return True
 
-    @loop_wrapper(debugger=debugger)
+    @loop_wrapper
     async def get_transaciton_fees(self):
         primary_res, secondary_res = await asyncio.gather(
             self.primary_obj.exchange.get_transaction_fee(),
@@ -402,11 +410,11 @@ class TradeThread(QThread):
         alt_precision = max(secondary_btc_precision, secondary_alt_precision)
 
         return btc_precision, alt_precision
-    
+
     def get_currencies(self):
         return list(set(self.secondary_obj.balance).intersection(self.primary_obj.balance))
-    
-    @loop_wrapper(debugger=debugger)
+
+    @loop_wrapper
     async def balance_and_currencies(self):
         """
             All balance values require type int, float.
@@ -430,7 +438,7 @@ class TradeThread(QThread):
 
         return True
 
-    @loop_wrapper(debugger=debugger)
+    @loop_wrapper
     async def compare_orderbook(self, default_btc=1.0):
         """
             It is for getting arbitrage profit primary to secondary or secondary to primary.
@@ -511,9 +519,6 @@ class TradeThread(QThread):
         profit_object = None
         primary_orderbook, secondary_orderbook, exchanges_coin_profit_set = data
         for trade in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
-            if self.primary_obj.name in ONE_WAY_EXCHANGES and trade == PRIMARY_TO_SECONDARY:
-                # 특정 거래소의 경우 한 방향에서의 거래밖에 적용되지 않음.
-                continue
             for currency in self.currencies:
                 alt = currency.split('_')[1]
                 if not self.primary_obj.balance.get(alt):
@@ -529,7 +534,7 @@ class TradeThread(QThread):
                     sender, receiver = self.primary_obj.name, self.secondary_obj.name
                     asks, bids = primary_orderbook[currency]['asks'], secondary_orderbook[currency]['bids']
                     profit_per = expect_profit_percent * 100
-                    
+
                 else:  # trade == SECONDARY_TO_PRIMARY and expect_profit_percent >= 0:
                     sender, receiver = self.secondary_obj.name, self.primary_obj.name
                     asks, bids = secondary_orderbook[currency]['asks'], primary_orderbook[currency]['bids']

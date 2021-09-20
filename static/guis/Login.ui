@@ -32,7 +32,7 @@
    <string>로그인</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="main.qrc">
+   <iconset>
     <normaloff>:/img/img/blockchain24.png</normaloff>
     <normalon>:/img/img/blockchain24.png</normalon>
     <disabledoff>:/img/img/blockchain24.png</disabledoff>
@@ -111,7 +111,7 @@ QLineEdit {
     <bool>false</bool>
    </property>
   </widget>
-  <widget class="QLineEdit" name="IdEdit">
+  <widget class="QLineEdit" name="idEdit">
    <property name="geometry">
     <rect>
      <x>30</x>
@@ -127,7 +127,7 @@ QLineEdit {
     <string>아이디</string>
    </property>
   </widget>
-  <widget class="QLineEdit" name="PassEdit">
+  <widget class="QLineEdit" name="passwordEdit">
    <property name="geometry">
     <rect>
      <x>30</x>
@@ -152,7 +152,7 @@ QLineEdit {
     <string>패스워드</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="LogginBtn">
+  <widget class="QPushButton" name="loginBtn">
    <property name="geometry">
     <rect>
      <x>30</x>
@@ -165,7 +165,7 @@ QLineEdit {
     <string notr="true">image: url(:/loggin/img/login.gif);</string>
    </property>
    <property name="text">
-    <string/>
+    <string>로그인</string>
    </property>
    <property name="autoDefault">
     <bool>true</bool>
@@ -178,8 +178,6 @@ QLineEdit {
    </property>
   </widget>
  </widget>
- <resources>
-  <include location="main.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

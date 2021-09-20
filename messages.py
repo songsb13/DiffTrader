@@ -7,7 +7,6 @@ import os, sys
 import datetime
 
 
-# todo log 방식에 대한 저장 명시 필요
 # JSON, pickle 등으로 저장?
 """
     Logs 정책
@@ -21,7 +20,6 @@ class Logs(logging.Logger):
         super(Logs, self).__init__()
         self.signal = signal
 
-    # todo debug level에 대한 정의도 필요함
     def send(self, message):
         self.signal.emit(logging.INFO, message)
 
@@ -105,3 +103,33 @@ class Messages(object):
     class Error(object):
         EXCEPTION = '프로그램에 예기치 못한 문제가 발생하였습니다. 로그를 개발자에게 즉시 보내주세요.'
         FATAL = 'FATAL, TradeThread'
+
+
+class QMessageBoxMessage(object):
+    class Title(object):
+        LOGIN_FAILED = '로그인 실패'
+        SAVE_RESULT = '저장 결과'
+        FAIL_LOAD = '로딩 오류'
+        EXCHANGE_SETTING_ERROR = '거래소 설정 오류'
+        UNEXPECTED_ERROR = '예기치 못한 오류'
+
+    class Content(object):
+        EMPTY_ID = '아이디가 빈 값입니다.'
+        EMPTY_PASSWORD = '비밀번호가 빈 값입니다.'
+        
+        WRONG_ID = '아이디가 없거나, 잘못된 패스워드입니다.'
+        EXPIRED_ID = '기간이 만료된 ID입니다.\n관리자에게 문의하세요.'
+        
+        SERVER_IS_CLOSED = '서버가 닫혀 있습니다.'
+        
+        SAVE_SUCCESS = '저장에 성공했습니다.'
+        SAVE_FAIL = '저장에 실패했습니다.'
+        WRONG_SECRET_KEY = '암호화키가 다릅니다. 세팅 파일을 초기화 하시겠습니까?'
+        CANNOT_BE_SAME_EXCHANGE = '거래소 1과 거래소 2가 동일한 값이 될 수 없습니다.'
+        SET_MINIMUM_TWO_EXCHANGE = '최소 거래소가 2개 이상 세팅되어 있어야 합니다.'
+        REQUIRE_EXCHANGE_SETTING = '거래소 1과 거래소 2의 세팅 값이 정상적으로 입력되지 않았습니다.'
+        SEND_TO_DEVELOPER = '개발자에게 debugger.log를 보내주세요.'
+        WRONG_PROFIT_SETTING = '수익 설정 값이 정상적으로 입력되지 않았습니다.'
+        WRONG_PROFIT_PERCENT = '최소 수익 %가 정상적으로 입력되지 않았습니다.'
+        WRONG_PROFIT_BTC = '최소 수익 BTC가 정상적으로 입력되지 않았습니다.'
+        WRONG_KEY_SECRET = 'API KEY나 API SECRET이 정상적으로 입력되지 않았습니다.'
