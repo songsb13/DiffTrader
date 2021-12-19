@@ -7,15 +7,18 @@ from DiffTrader.trading.settings import AVAILABLE_EXCHANGES, ENABLE_SETTING, UNA
 from DiffTrader.trading.widgets.dialogs import SettingEncryptKeyDialog, LoadSettingsDialog
 from DiffTrader.trading.widgets.utils import base_item_setter, number_type_converter
 from DiffTrader.trading.threads.trade_thread import TradeThread
+from DiffTrader.trading.threads.sender import SenderThread
 from DiffTrader.messages import QMessageBoxMessage as Msg
 from DiffTrader.settings import DEBUG
 
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QApplication
 
 from Util.pyinstaller_patch import debugger, close_program
 
 
 import logging
+import queue
 
 """
     controller로 보내야 하는 기준 명확하게 정의해야함.
@@ -39,6 +42,7 @@ class TradeObject(object):
 
 class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WIDGET):
     closed = QtCore.pyqtSignal()
+    message_signal = pyqtSignal(tuple)
 
     def __init__(self, _id, email, parent=None):
         super().__init__()
@@ -46,6 +50,10 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
         self.user_id = _id
         self.email = email
         self.parent = parent
+
+        self.data_receive_queue = queue.Queue()
+        self.sender_thread = SenderThread(self.data_receive_queue)
+        self.sender_thread.start()
 
         self.setupUi(self)
         
@@ -100,6 +108,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             QtWidgets.QMessageBox.warning(self,
                                           Msg.Title.EXCHANGE_SETTING_ERROR,
                                           Msg.Content.WRONG_PROFIT_SETTING)
+            return False
+
         return True
 
     def start_trade(self):
@@ -125,7 +135,10 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             secondary_info=secondary_settings,
             min_profit_per=min_profit_percent,
             min_profit_btc=min_profit_btc,
-            auto_withdrawal=auto_withdrawal
+            auto_withdrawal=auto_withdrawal,
+            primary_name=self.primaryExchange.currentText(),
+            secondary_name=self.secondaryExchange.currentText(),
+            data_receive_queue=self.data_receive_queue
         )
 
         self.trade_thread.log_signal.connect(self._main_tab.write_logs)
@@ -176,12 +189,13 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._diff_gui.secondaryExchange.currentIndexChanged.connect(lambda: self.same_exchange_checker(
                 self._diff_gui.primaryExchange
             ))
-
-            # Initiation for setting tables
+            
             self.set_trade_object_set_from_server()
+
+        def initiation_for_set_table(self):
             self.set_all_trade_history()
             self.top_ten_by_profits()
-
+        
         def same_exchange_checker(self, exchange_combobox):
             """
                 Check the exchange is selected twice from primary and secondary.
@@ -243,6 +257,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                     trade_object.profit_btc,
                     trade_object.profit_percent,
                 ]
+                # todo 거래내역 정상적으로 안나옴.
+                self._diff_gui.tradeHistoryView.insertRow(row_count)
                 base_item_setter(row_count, self._diff_gui.tradeHistoryView, data_list)
                 row_count += 1
 
@@ -263,28 +279,32 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             """
                 It is self.trade_object_set setting function.
             """
-            result_data_list = get_expected_profit(self._user_id)
-            for data_list in result_data_list:
-                trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent = data_list
-
-                trade_object = TradeObject(
-                    trade_date,
-                    symbol,
-                    primary_exchange,
-                    secondary_exchange,
-                    profit_btc,
-                    profit_percent
-                )
-                self.trade_object_set.add(trade_object)
+            def after_process(result_data_list):
+                for data_list in result_data_list:
+                    trade_date, symbol, primary_exchange, secondary_exchange, profit_btc, profit_percent = data_list
+        
+                    trade_object = TradeObject(
+                        trade_date,
+                        symbol,
+                        primary_exchange,
+                        secondary_exchange,
+                        profit_btc,
+                        profit_percent
+                    )
+                    self.trade_object_set.add(trade_object)
+                self.initiation_for_set_table()
+                
+            get_expected_profit(self._user_id, self._diff_gui.data_receive_queue, after_process)
 
         def top_ten_by_profits(self):
             """
                 It is profitRankView setter when trading is done and received its data.
             """
-            sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc)
+            sorted_objects = sorted(self.trade_object_set, key=lambda x: x.profit_btc, reverse=True)
             
             row_count = self._diff_gui.profitRankView.rowCount()
-            
+
+            # todo 거래내역 정상적으로 안나옴
             for trade_object in sorted_objects:
                 item_list = [
                     trade_object.trade_date,
@@ -294,7 +314,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                     trade_object.profit_btc,
                     trade_object.profit_percent,
                 ]
-
+                self._diff_gui.profitRankView.insertRow(row_count)
                 base_item_setter(row_count, self._diff_gui.profitRankView, item_list)
                 row_count += 1
 
@@ -306,8 +326,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._diff_gui.logBox.setText(
                 '\n'.join(self._diff_gui.logBox.toPlainText().split('\n')[-500:]) + '\n' + str(msg)
             )
-            self._diff_gui.logBox.verticalScrollBar().setValue(
-                self._diff_gui.logBox.verticalScrollBar().maximum())
+            # self._diff_gui.logBox.verticalScrollBar().setValue(
+            #     self._diff_gui.logBox.verticalScrollBar().maximum())
 
     class ExchangeSettingTab(object):
         def __init__(self, diff_gui):
@@ -388,7 +408,7 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 return
 
             else:
-                self.dialog.save(exchange_name, key=key, secret=secret)
+                self.dialog.show_encrypt(exchange_name, key=key, secret=secret)
 
             exchange_config = {exchange_name: {
                 'key': key,
@@ -413,26 +433,39 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
             self._parent = diff_gui.parent
 
             self._diff_gui.saveProgramSettingBtn.clicked.connect(self.save_profit_settings)
+            self._diff_gui.message_signal.connect(self.test_emit)
 
             self.profit_settings = self.load_and_set_profit_settings()
 
         def load_and_set_profit_settings(self):
-            result_dict = load_total_data_to_database(self._user_id)
-
-            if not result_dict:
-                return dict()
-            else:
-                self._diff_gui.minProfitPercent.setValue(result_dict['min_profit_percent'])
-                self._diff_gui.minProfitBTC.setValue(result_dict['min_profit_percent'])
-
-                if result_dict['auto_withdrawal'] is True:
-                    self._diff_gui.autowithdrawal.setCurrentText(ENABLE_SETTING)
+            def after_process(result_dict):
+                if not result_dict:
+                    return dict()
                 else:
-                    self._diff_gui.autowithdrawal.setCurrentText(UNABLE_SETTING)
+                    self._diff_gui.minProfitPercent.setValue(result_dict['min_profit_percent'] * 100)
+                    self._diff_gui.minProfitBTC.setValue(result_dict['min_profit_btc'])
 
-                self.profit_settings = result_dict
+                    if result_dict['auto_withdrawal'] is True:
+                        self._diff_gui.autoWithdrawal.setCurrentText(ENABLE_SETTING)
+                    else:
+                        self._diff_gui.autoWithdrawal.setCurrentText(UNABLE_SETTING)
+
+                    self.profit_settings = result_dict
+            load_total_data_to_database(self._user_id, self._diff_gui.data_receive_queue, after_process)
+
+        def test_emit(self, tuple_):
+            title, contents = tuple_
+            QtWidgets.QMessageBox.about(self._diff_gui, title, contents)
 
         def save_profit_settings(self):
+            def after_process(result):
+                if result:
+                    self._diff_gui.message_signal.emit((Msg.Title.SAVE_RESULT, Msg.Content.SAVE_SUCCESS_TO_SERVER))
+                    return
+                else:
+                    self._diff_gui.message_signal.emit((Msg.Title.SAVE_RESULT, Msg.Content.SAVE_FAIL_TO_SERVER))
+                    return
+
             min_profit_percent_str = self._diff_gui.minProfitPercent.text()
             min_profit_btc_str = self._diff_gui.minProfitBTC.text()
             auto_withdrawal = True if self._diff_gui.autoWithdrawal.currentText() == ENABLE_SETTING else False
@@ -457,16 +490,8 @@ class DiffTraderGUI(QtWidgets.QMainWindow, ProgramSettingWidgets.DIFF_TRADER_WID
                 min_profit_btc=min_profit_btc,
                 auto_withdrawal=auto_withdrawal
             )
-            result = save_total_data_to_database(self._user_id, min_profit_percent_to_float, min_profit_btc, auto_withdrawal)
-
-            if result:
-                QtWidgets.QMessageBox.about(self._diff_gui,
-                                            Msg.Title.SAVE_RESULT,
-                                            Msg.Content.SAVE_SUCCESS)
-            else:
-                QtWidgets.QMessageBox.about(self._diff_gui,
-                                            Msg.Title.SAVE_RESULT,
-                                            Msg.Content.SAVE_FAIL)
+            save_total_data_to_database(self._user_id, min_profit_percent_to_float, min_profit_btc, auto_withdrawal,
+                                        self._diff_gui.data_receive_queue, after_process)
 
 
 if __name__ == '__main__':

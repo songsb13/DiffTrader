@@ -1,15 +1,17 @@
 from DiffTrader.server.settings import SqlInfo as info
-import mysql.connector
+from mysql.connector import pooling
 
 from Util.pyinstaller_patch import debugger
 
-con = mysql.connector.connect(host=info.HOST, user=info.USER, password=info.PASSWORD, charset='utf8', db=info.DATABASE)
+CONNECTION_POOL = pooling.MySQLConnectionPool(
+    pool_name='server_pool',
+    pool_size=3,
+    **info.POOL_CONFIG
+)
 
 
 def execute_db(query, value=None, custom_cursor=None):
-    global con
-    if not con.open:
-        con = mysql.connector.connect(host=info.HOST, user=info.USER, password=info.PASSWORD, charset='utf8', db=info.DATABASE)
+    con = CONNECTION_POOL.get_connection()
 
     with con.cursor(custom_cursor) as cursor:
         if value:
@@ -27,11 +29,7 @@ def execute_db(query, value=None, custom_cursor=None):
 
 def execute_db_many(query, value_list, *args):
     try:
-        global con
-        if not con.open:
-            con = mysql.connector.connect(host=info.HOST, user=info.USER, password=info.PASSWORD, charset='utf8',
-                                  db=info.DATABASE)
-
+        con = CONNECTION_POOL.get_connection()
         with con.cursor() as cursor:
             if value_list:
                 cursor.executemany(query, [tuple(list(args) + each) for each in value_list])

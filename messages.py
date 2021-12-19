@@ -15,16 +15,15 @@ import datetime
 """
 
 
-class Logs(logging.Logger):
+class Logs(object):
     def __init__(self, signal):
-        super(Logs, self).__init__()
         self.signal = signal
 
     def send(self, message):
-        self.signal.emit(logging.INFO, message)
+        self.signal.emit(message, logging.INFO)
 
     def send_error(self, message):
-        self.signal.emit(logging.ERROR, message)
+        self.signal.emit(message, logging.ERROR)
 
 
 class Messages(object):
@@ -77,7 +76,7 @@ class Messages(object):
         
         FAIL_WITHDRAWAL = '{from_exchange} -> {to_exchange}로 {alt}를 이체하는데 실패했습니다.'
         FAIL_BTC_WITHDRAWAL = '{to_exchange} -> {from_exchange}로 BTC를 이체하는데 실패했습니다.'
-        ERROR_CONTENTS = '거래에 실패했습니다. 에러 내용은 다음과 같습니다. [{error_string}]'
+        ERROR_CONTENTS = '거래에 실패했습니다. 에러 내용은 다음과 같습니다. [{}]'
         
         REQUEST_MANUAL_STOP = '에러가 계속되면 수동정지를 해주세요.'
         MANUAL_STOP = '수동정지 되었습니다. 아래 안내대로 수동 이체를 부탁드립니다.'
@@ -123,6 +122,8 @@ class QMessageBoxMessage(object):
         SERVER_IS_CLOSED = '서버가 닫혀 있습니다.'
         
         SAVE_SUCCESS = '저장에 성공했습니다.'
+        SAVE_SUCCESS_TO_SERVER = '서버로의 데이터 저장이 성공했습니다.'
+        SAVE_FAIL_TO_SERVER = '서버로의 데이터 저장에 실패했습니다.'
         SAVE_FAIL = '저장에 실패했습니다.'
         WRONG_SECRET_KEY = '암호화키가 다릅니다. 세팅 파일을 초기화 하시겠습니까?'
         CANNOT_BE_SAME_EXCHANGE = '거래소 1과 거래소 2가 동일한 값이 될 수 없습니다.'

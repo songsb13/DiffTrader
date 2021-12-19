@@ -1,8 +1,8 @@
 from PyQt5 import (QtWidgets)
+from Crypto.Cipher import AES
 
 import os
 import json
-from Crypto.Cipher import AES
 import hashlib
 
 

@@ -13,14 +13,24 @@ class SettingEncryptKeyDialog(QtWidgets.QDialog, widgets.KEY_DIALOG_WIDGET):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+        
+        self.save_exchange = None
+        self.kwargs = dict()
 
         self.btn.rejected.connect(self.close)
-
-    def save(self, exchange, **kwargs):
+        self.btn.accepted.connect(self.save)
+    
+    def show_encrypt(self, exchange, **kwargs):
+        self.save_exchange = exchange
+        self.kwargs = kwargs
+        
+        self.show()
+    
+    def save(self):
         key = self.enc_key.text()
-        success = save(exchange, key, **kwargs)
+        success = save(self.save_exchange, key, **self.kwargs)
         if not success:
-            self.gui = DifferentKeyInputDialog(exchange, key, **kwargs)
+            self.gui = DifferentKeyInputDialog(self.save_exchange, key, **self.kwargs)
             self.gui.show()
         else:
             log = (Msg.Title.SAVE_RESULT, Msg.Content.SAVE_SUCCESS)

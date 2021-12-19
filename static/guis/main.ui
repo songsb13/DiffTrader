@@ -315,22 +315,31 @@
                 <bool>true</bool>
                </property>
                <property name="rowCount">
-                <number>0</number>
+                <number>1</number>
                </property>
                <property name="columnCount">
-                <number>0</number>
+                <number>6</number>
                </property>
                <attribute name="horizontalHeaderVisible">
                 <bool>false</bool>
                </attribute>
+               <attribute name="horizontalHeaderCascadingSectionResizes">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="horizontalHeaderDefaultSectionSize">
+                <number>160</number>
+               </attribute>
                <attribute name="horizontalHeaderHighlightSections">
                 <bool>true</bool>
+               </attribute>
+               <attribute name="horizontalHeaderMinimumSectionSize">
+                <number>40</number>
                </attribute>
                <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
                 <bool>false</bool>
                </attribute>
                <attribute name="horizontalHeaderStretchLastSection">
-                <bool>false</bool>
+                <bool>true</bool>
                </attribute>
                <attribute name="verticalHeaderVisible">
                 <bool>false</bool>
@@ -338,11 +347,11 @@
                <attribute name="verticalHeaderCascadingSectionResizes">
                 <bool>false</bool>
                </attribute>
-               <attribute name="verticalHeaderMinimumSectionSize">
-                <number>1</number>
-               </attribute>
                <attribute name="verticalHeaderHighlightSections">
                 <bool>true</bool>
+               </attribute>
+               <attribute name="verticalHeaderMinimumSectionSize">
+                <number>1</number>
                </attribute>
                <attribute name="verticalHeaderShowSortIndicator" stdset="0">
                 <bool>false</bool>
@@ -350,6 +359,47 @@
                <attribute name="verticalHeaderStretchLastSection">
                 <bool>false</bool>
                </attribute>
+               <row>
+                <property name="text">
+                 <string>header</string>
+                </property>
+               </row>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <item row="0" column="0">
+                <property name="text">
+                 <string>거래일</string>
+                </property>
+               </item>
+               <item row="0" column="1">
+                <property name="text">
+                 <string>코인명</string>
+                </property>
+               </item>
+               <item row="0" column="2">
+                <property name="text">
+                 <string>메인거래소</string>
+                </property>
+               </item>
+               <item row="0" column="3">
+                <property name="text">
+                 <string>서브거래소</string>
+                </property>
+               </item>
+               <item row="0" column="4">
+                <property name="text">
+                 <string>BTC수익</string>
+                </property>
+               </item>
+               <item row="0" column="5">
+                <property name="text">
+                 <string>수익 %</string>
+                </property>
+               </item>
               </widget>
              </item>
             </layout>
@@ -397,10 +447,13 @@
              <item row="0" column="0" colspan="2">
               <widget class="QTableWidget" name="profitRankView">
                <property name="columnCount">
-                <number>1</number>
+                <number>6</number>
                </property>
                <attribute name="horizontalHeaderVisible">
                 <bool>false</bool>
+               </attribute>
+               <attribute name="horizontalHeaderDefaultSectionSize">
+                <number>160</number>
                </attribute>
                <attribute name="horizontalHeaderMinimumSectionSize">
                 <number>1</number>
@@ -414,7 +467,47 @@
                <attribute name="verticalHeaderMinimumSectionSize">
                 <number>1</number>
                </attribute>
+               <row>
+                <property name="text">
+                 <string>header</string>
+                </property>
+               </row>
                <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <item row="0" column="0">
+                <property name="text">
+                 <string>거래일</string>
+                </property>
+               </item>
+               <item row="0" column="1">
+                <property name="text">
+                 <string>코인명</string>
+                </property>
+               </item>
+               <item row="0" column="2">
+                <property name="text">
+                 <string>메인거래소</string>
+                </property>
+               </item>
+               <item row="0" column="3">
+                <property name="text">
+                 <string>서브거래소</string>
+                </property>
+               </item>
+               <item row="0" column="4">
+                <property name="text">
+                 <string>BTC수익</string>
+                </property>
+               </item>
+               <item row="0" column="5">
+                <property name="text">
+                 <string>수익 %</string>
+                </property>
+               </item>
               </widget>
              </item>
             </layout>
