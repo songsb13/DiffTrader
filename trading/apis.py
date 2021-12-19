@@ -33,6 +33,9 @@ def get_expected_profit(user_id, data_receive_queue, after_process=None):
 
     data_receive_queue.put((PROFIT_SAI_URL, MethodType.GET, information_dict))
 
+            return result if result else list()
+    except:
+        return list()
 
 def send_expected_profit(profit_object, data_receive_queue, after_process=None):
     information_dict = {'parameter': profit_object.information}
