@@ -2,11 +2,9 @@ from Exchanges.upbit.upbit import BaseUpbit
 from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
 from Exchanges.settings import *
-from DiffTrader.Util.utils import get_exchanges, FunctionExecutor
+from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis
 from DiffTrader.GlobalSetting.settings import *
 from Util.pyinstaller_patch import *
-
-import redis
 
 
 class Trading(object):
@@ -15,10 +13,6 @@ class Trading(object):
         High Priority
 
     """
-    def __init__(self, primary_str, secondary_str, profit_information):
-        self._primary_str = primary_str
-        self._secondary_str = secondary_str
-        self._profit_information = profit_information
 
     def checking_order(self, exchange, order_id, **additional):
         for _ in range(10):
@@ -28,23 +22,23 @@ class Trading(object):
                 return result.data
             time.sleep(1)
 
-    def _trade(self, from_exchange, to_exchange):
+    def _trade(self, from_exchange, to_exchange, profit_information):
         """
             from_exchange: A object that will be buying the ALT coin
             to_exchange: A object that will be selling the ALT coin
         """
-        market, coin = self._profit_information['sai_symbol'].split('_')[1]
+        market, coin = profit_information['sai_symbol'].split('_')[1]
 
-        if self._profit_information['']:
+        if profit_information['']:
             pass
 
         with FunctionExecutor(from_exchange.base_to_alt) as executor:
             from_result = executor.loop_executor(
-                self._profit_information['sai_symbol'],
-                self._profit_information['tradable_btc'],
-                self._profit_information['coin_amount'],
-                self._profit_information['from_object_trading_fee'],
-                self._profit_information['to_object_trading_fee']
+                profit_information['sai_symbol'],
+                profit_information['tradable_btc'],
+                profit_information['coin_amount'],
+                profit_information['from_object_trading_fee'],
+                profit_information['to_object_trading_fee']
             )
             if not from_result:
                 debugger.debug()
@@ -53,7 +47,7 @@ class Trading(object):
             buy_check_result = self.checking_order(
                 from_exchange,
                 from_result.data['sai_order_id'],
-                symbol=self._profit_information['sai_symbol']
+                symbol=profit_information['sai_symbol']
             )
 
         from_exchange_coin_price = buy_check_result['sai_average_price']
@@ -61,15 +55,15 @@ class Trading(object):
 
         with FunctionExecutor(to_exchange.alt_to_base) as executor:
             to_result = executor.loop_executor(
-                self._profit_information['sai_symbol'],
-                self._profit_information['tradable_btc'],
+                profit_information['sai_symbol'],
+                profit_information['tradable_btc'],
                 from_exchange_coin_amount
             )
 
             sell_check_result = self.checking_order(
                 to_exchange,
                 to_result.data['sai_order_id'],
-                symbol=self._profit_information['sai_symbol']
+                symbol=profit_information['sai_symbol']
             )
 
             if not to_result:
@@ -92,16 +86,28 @@ class Trading(object):
         return trading_information
 
     def trading(self):
-        exchange_dict = get_exchanges()
+        while True:
+            profit_information = get_redis('profit_information')
 
-        if self._profit_information['trade_type'] == PRIMARY_TO_SECONDARY:
-            trading_information = self._trade(exchange_dict[self._primary_str], exchange_dict[self._secondary_str])
-        else:
-            trading_information = self._trade(exchange_dict[self._secondary_str], exchange_dict[self._primary_str])
+            if not profit_information:
+                continue
 
-        debugger.debug('trading information: [{}]'.format(trading_information))
-        if trading_information is None:
-            raise
+            primary_str, secondary_str = profit_information['primary_str'], profit_information['secondary_str']
+            exchange_dict = get_exchanges()
 
-        redis_container = redis.StrictRedis(host='localhost', port=6379, db=0)
-        redis_container.set('trading_information', trading_information)
+            if profit_information['trade_type'] == PRIMARY_TO_SECONDARY:
+                trading_information = self._trade(exchange_dict[primary_str],
+                                                  exchange_dict[secondary_str],
+                                                  profit_information)
+            else:
+                trading_information = self._trade(exchange_dict[secondary_str],
+                                                  exchange_dict[primary_str],
+                                                  profit_information)
+
+            debugger.debug('trading information: [{}]'.format(trading_information))
+            if trading_information is None:
+                raise
+
+            set_redis('trading_information', trading_information)
+
+            time.sleep(0.1)

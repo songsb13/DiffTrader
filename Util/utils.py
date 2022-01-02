@@ -6,6 +6,42 @@ from Exchanges.bithumb.bithumb import BaseBithumb
 
 from Util.pyinstaller_patch import *
 
+import redis
+import json
+
+
+def get_redis(key):
+    """
+        key: str
+    """
+    try:
+        rd = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+        value = rd.get(key)
+
+        if not value:
+            return None
+
+        json_to_dict_value = json.loads(value)
+
+        return json_to_dict_value
+    except:
+        return None
+
+
+def set_redis(key, value):
+    """
+        key: str
+        value: dict
+    """
+    rd = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+    dict_to_json_value = json.dumps(value)
+
+    rd.set(key, dict_to_json_value)
+
+    return
+
 
 def get_exchanges():
     cfg = configparser.ConfigParser()
