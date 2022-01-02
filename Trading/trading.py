@@ -84,7 +84,7 @@ class Trading(object):
 
     def trading(self):
         while True:
-            profit_information = get_redis('profit_information')
+            profit_information = get_redis(RedisKey.ProfitInformation)
 
             if not profit_information:
                 continue
@@ -105,6 +105,6 @@ class Trading(object):
             if trading_information is None:
                 raise
 
-            set_redis('trading_information', trading_information)
+            set_redis(RedisKey.TradingInformation, trading_information)
 
             time.sleep(0.1)

@@ -22,3 +22,9 @@ class MethodType(object):
     GET = 'GET'
     PUT = 'PUT'
     DELETE = 'DELETE'
+
+
+class RedisKey(object):
+    UserInformation = 'user_information'
+    TradingInformation = 'trading_information'
+    ProfitInformation = 'profit_information'
