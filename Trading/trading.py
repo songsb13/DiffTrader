@@ -29,9 +29,6 @@ class Trading(object):
         """
         market, coin = profit_information['sai_symbol'].split('_')[1]
 
-        if profit_information['']:
-            pass
-
         with FunctionExecutor(from_exchange.base_to_alt) as executor:
             from_result = executor.loop_executor(
                 profit_information['sai_symbol'],
