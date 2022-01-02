@@ -6,6 +6,8 @@ from DiffTrader.Util.utils import get_exchanges, FunctionExecutor
 from DiffTrader.GlobalSetting.settings import *
 from Util.pyinstaller_patch import *
 
+import redis
+
 
 class Trading(object):
     """
@@ -24,7 +26,7 @@ class Trading(object):
 
             if result.success and result.data['sai_status'] == SaiOrderStatus.CLOSED:
                 return result.data
-            time.sleep(3)
+            time.sleep(1)
 
     def _trade(self, from_exchange, to_exchange):
         """
@@ -87,9 +89,6 @@ class Trading(object):
                 amount=to_exchange_coin_amount
             )
         )
-
-        debugger.debug('trading information: [{}]'.format(trading_information))
-
         return trading_information
 
     def trading(self):
@@ -100,7 +99,9 @@ class Trading(object):
         else:
             trading_information = self._trade(exchange_dict[self._secondary_str], exchange_dict[self._primary_str])
 
+        debugger.debug('trading information: [{}]'.format(trading_information))
         if trading_information is None:
-            pass
+            raise
 
-        return trading_information
+        redis_container = redis.StrictRedis(host='localhost', port=6379, db=0)
+        redis_container.set('trading_information', trading_information)
