@@ -1,5 +1,5 @@
 from Exchanges.settings import *
-from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis
+from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis
 from DiffTrader.GlobalSetting.settings import *
 from Util.pyinstaller_patch import *
 
@@ -23,8 +23,8 @@ class Trading(object):
 
     def _trade(self, exchange, trade_func, trade_type, profit_information):
         """
-            from_exchange: A object that will be buying the ALT coin
-            to_exchange: A object that will be selling the ALT coin
+            from_exchange: Exchange that will be buying the ALT coin
+            to_exchange: Exchange that will be selling the ALT coin
         """
         with FunctionExecutor(trade_func) as executor:
             result = executor.loop_executor(
@@ -84,10 +84,12 @@ class Trading(object):
 
             trading_information = dict(
                 from_exchange=dict(
+                    name=primary_str,
                     price=from_exchange_coin_price,
                     amount=from_exchange_coin_amount
                 ),
                 to_exchange=dict(
+                    name=secondary_str,
                     price=to_exchange_coin_price,
                     amount=to_exchange_coin_amount
                 )
@@ -97,6 +99,7 @@ class Trading(object):
             if trading_information is None:
                 raise
 
-            set_redis(RedisKey.TradingInformation, trading_information)
+            if get_auto_withdrawal():
+                set_redis(RedisKey.TradingInformation, trading_information)
 
             time.sleep(0.1)

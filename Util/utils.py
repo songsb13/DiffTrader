@@ -10,6 +10,10 @@ import redis
 import json
 
 
+cfg = configparser.ConfigParser()
+cfg.read('../GlobalSetting/Settings.ini')
+
+
 def get_redis(key):
     """
         key: str
@@ -44,9 +48,6 @@ def set_redis(key, value):
 
 
 def get_exchanges():
-    cfg = configparser.ConfigParser()
-    cfg.read('../GlobalSetting/Settings.ini')
-
     obj = dict()
     if cfg['Upbit']['Run'] == 'True':
         obj['Upbit'] = BaseUpbit(cfg['Upbit']['Key'], cfg['Upbit']['Secret'])
@@ -56,6 +57,10 @@ def get_exchanges():
         obj['Bithumb'] = BaseBithumb(cfg['Bithumb']['Key'], cfg['Bithumb']['Secret'])
 
     return obj
+
+
+def get_auto_withdrawal():
+    return True if cfg['general']['auto withdrawal'].upper() == 'Y' else False
 
 
 class FunctionExecutor(object):
