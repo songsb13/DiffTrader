@@ -19,7 +19,9 @@ class Trading(object):
 
             if result.success and result.data['sai_status'] == SaiOrderStatus.CLOSED:
                 return result.data
-            time.sleep(1)
+            time.sleep(2)
+        else:
+            return dict()
 
     def _trade(self, exchange, trade_func, trade_type, profit_information):
         """
@@ -36,11 +38,15 @@ class Trading(object):
                 debugger.debug()
                 return None, None
 
-            order_result = self.checking_order(
-                exchange,
-                result.data['sai_order_id'],
-                symbol=profit_information['sai_symbol']
-            )
+        order_result = self.checking_order(
+            exchange,
+            result.data['sai_order_id'],
+            symbol=profit_information['sai_symbol']
+        )
+
+        if not order_result:
+            # 매매 실패시의 별도 시퀀스?
+            pass
 
         exchange_coin_price = order_result['sai_average_price']
         exchange_coin_amount = order_result['sai_amount']
