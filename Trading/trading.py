@@ -1,6 +1,7 @@
 from Exchanges.settings import *
 from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis
 from DiffTrader.GlobalSetting.settings import *
+from DiffTrader.GlobalSetting.messages import *
 from Util.pyinstaller_patch import *
 
 from concurrent.futures import ThreadPoolExecutor
@@ -14,29 +15,31 @@ class Trading(object):
     """
 
     def checking_order(self, exchange, order_id, **additional):
-        for _ in range(10):
+        debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
+        for _ in range(60):
             result = exchange.get_order_history(order_id, additional)
 
             if result.success and result.data['sai_status'] == SaiOrderStatus.CLOSED:
-                return result.data
-            time.sleep(2)
-        else:
-            return dict()
+                return result
+            time.sleep(1)
+        return result
 
     def _trade(self, exchange, trade_func, trade_type, profit_information):
         """
             from_exchange: Exchange that will be buying the ALT coin
             to_exchange: Exchange that will be selling the ALT coin
         """
+        debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
         with FunctionExecutor(trade_func) as executor:
             result = executor.loop_executor(
                 profit_information['sai_symbol'],
                 trade_type,
                 profit_information['base_to_alt_amount'],
             )
-            if not result:
-                debugger.debug()
+            if not result.success:
+                debugger.debug(TradingMessage.Debug.FAIL_TO_TRADING.format())
                 return None, None
+            debugger.debug(TradingMessage.Debug.TRADING_RESULT.format(result.data))
 
         order_result = self.checking_order(
             exchange,
@@ -54,6 +57,7 @@ class Trading(object):
         return exchange_coin_price, exchange_coin_amount
 
     def trading(self):
+        debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
         thread_executor = ThreadPoolExecutor(max_workers=2)
         while True:
             profit_information = get_redis(RedisKey.ProfitInformation)
@@ -101,8 +105,9 @@ class Trading(object):
                 )
             )
 
-            debugger.debug('trading information: [{}]'.format(trading_information))
+            debugger.debug(TradingMessage.Debug.TRADING_INFORMATION)
             if trading_information is None:
+                debugger.debug(TradingMessage.Debug.INFORMATION_NOT_FOUND)
                 raise
 
             if get_auto_withdrawal():
