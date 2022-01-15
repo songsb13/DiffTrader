@@ -1,4 +1,5 @@
 TAG_COINS = ['XRP', 'XMR']
+
 SAI_URL = 'http://www.saiblockchain.com/api/pft_data'
 PROFIT_SAI_URL = 'http://saiblockchain.com/api/expected_profit'
 
@@ -15,6 +16,17 @@ AVAILABLE_EXCHANGES = ['Binance', 'Bithumb', 'Upbit']
 
 ENABLE_SETTING = '설정'
 UNABLE_SETTING = '미설정'
+
+# set default refresh time
+DEFAULT_REFRESH_TIME = 3600
+
+
+class SaiUrls(object):
+    BASE = 'https://www.saiblockchain.com'
+
+    class Information(object):
+        TRADING = '/api/v1/information/trading'
+        WITHDRAW = '/api/v1/information/withdraw'
 
 
 class MethodType(object):

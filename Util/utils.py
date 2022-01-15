@@ -1,10 +1,12 @@
 import configparser
+import requests
 
 from Exchanges.upbit.upbit import BaseUpbit
 from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
+from DiffTrader.GlobalSetting.settings import SaiUrls
 
-from Util.pyinstaller_patch import *
+from Util.pyinstaller_patch import debugger
 
 import redis
 import json
@@ -61,6 +63,13 @@ def get_exchanges():
 
 def get_auto_withdrawal():
     return True if cfg['general']['auto withdrawal'].upper() == 'Y' else False
+
+
+def send_to_sai_server(path, data):
+    rq = requests.post(url=SaiUrls.BASE + path, json=json.dumps(data))
+    result = rq.json()
+
+    return result
 
 
 class FunctionExecutor(object):
