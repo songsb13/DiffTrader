@@ -115,4 +115,7 @@ class Trading(object):
             if get_auto_withdrawal():
                 set_redis(RedisKey.TradingInformation, trading_information)
 
+            send_information = {**trading_information, **dict(full_url_path=SaiUrls.BASE + SaiUrls.TRADING)}
+            set_redis(RedisKey.SendInformation, send_information)
+
             time.sleep(0.1)

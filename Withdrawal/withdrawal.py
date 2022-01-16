@@ -1,7 +1,7 @@
 import time
 
 from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis
-from DiffTrader.GlobalSetting.settings import DEFAULT_REFRESH_TIME, RedisKey
+from DiffTrader.GlobalSetting.settings import DEFAULT_REFRESH_TIME, RedisKey, SaiUrls
 from Util.pyinstaller_patch import debugger
 
 from concurrent.futures import ThreadPoolExecutor
@@ -61,8 +61,10 @@ class Withdrawal(object):
             to_exchange_withdrawal_result = thread_executor.submit(self.start_withdrawal, *to_exchange_args)
 
             total = dict(
-                from_exchange_information=dict(exchange=primary_str, data=from_exchange_withdrawal_result),
-                to_exchange_information=dict(exchange=secondary_str, data=to_exchange_withdrawal_result)
+                full_url_path=SaiUrls.BASE + SaiUrls.WITHDRAW,
+                data=dict(
+                    from_exchange_information=dict(exchange=primary_str, data=from_exchange_withdrawal_result),
+                    to_exchange_information=dict(exchange=secondary_str, data=to_exchange_withdrawal_result)
+                )
             )
-
-            send_to_sai_server(SaiUrls.Information.WITHDRAW, total)
+            set_redis(RedisKey.SendInformation, total)
