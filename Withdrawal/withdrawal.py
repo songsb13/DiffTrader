@@ -1,7 +1,8 @@
-from Exchanges.settings import *
-from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis, send_to_sai_server
-from DiffTrader.GlobalSetting.settings import *
-from Util.pyinstaller_patch import *
+import time
+
+from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis
+from DiffTrader.GlobalSetting.settings import DEFAULT_REFRESH_TIME, RedisKey
+from Util.pyinstaller_patch import debugger
 
 from concurrent.futures import ThreadPoolExecutor
 

@@ -1,7 +1,5 @@
-from Exchanges.settings import *
-from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis
-from DiffTrader.GlobalSetting.settings import *
-from Util.pyinstaller_patch import *
+from DiffTrader.Util.utils import get_exchanges, get_redis
+from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey
 
 from decimal import Decimal, ROUND_DOWN
 

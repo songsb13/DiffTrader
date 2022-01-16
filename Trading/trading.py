@@ -1,8 +1,10 @@
-from Exchanges.settings import *
+import time
+
+from Exchanges.settings import BaseTradeType, SaiOrderStatus
 from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis
 from DiffTrader.GlobalSetting.settings import *
 from DiffTrader.GlobalSetting.messages import *
-from Util.pyinstaller_patch import *
+from Util.pyinstaller_patch import debugger
 
 from concurrent.futures import ThreadPoolExecutor
 

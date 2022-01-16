@@ -4,7 +4,6 @@ import requests
 from Exchanges.upbit.upbit import BaseUpbit
 from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
-from DiffTrader.GlobalSetting.settings import SaiUrls
 
 from Util.pyinstaller_patch import debugger
 
