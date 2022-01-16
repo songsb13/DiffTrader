@@ -1,10 +1,5 @@
 TAG_COINS = ['XRP', 'XMR']
 
-SAI_URL = 'http://www.saiblockchain.com/api/pft_data'
-PROFIT_SAI_URL = 'http://saiblockchain.com/api/expected_profit'
-
-SAVE_DATA_URL = 'http://songsb13.cafe24.com:8081/save_data'
-LOAD_DATA_URL = 'http://songsb13.cafe24.com:8081/get_data'
 # Selling the BTC from primary, Selling the ALT from secondary
 PRIMARY_TO_SECONDARY = 'primary_to_secondary'
 
@@ -27,6 +22,11 @@ class SaiUrls(object):
 
     TRADING = '/api/v1/information/trading'
     WITHDRAW = '/api/v1/information/withdraw'
+
+    EXPECTED_PROFIT = '/api/v1/information/expected-profit'
+    REAL_PROFIT = '/api/v1/information/real-profit'
+
+    USER_DATA = '/api/v1/information/user-data'
 
 
 class MethodType(object):
