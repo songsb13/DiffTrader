@@ -7,8 +7,11 @@ from Exchanges.bithumb.bithumb import BaseBithumb
 
 from Util.pyinstaller_patch import debugger
 
+from DiffTrader.GlobalSetting.settings import ServerInformation
+
 import redis
 import json
+import time
 
 
 cfg = configparser.ConfigParser()
@@ -20,7 +23,7 @@ def get_redis(key):
         key: str
     """
     try:
-        rd = redis.StrictRedis(host='localhost', port=6379, db=0)
+        rd = redis.StrictRedis(**ServerInformation.REDIS)
 
         value = rd.get(key)
 
@@ -39,7 +42,7 @@ def set_redis(key, value):
         key: str
         value: dict
     """
-    rd = redis.StrictRedis(host='localhost', port=6379, db=0)
+    rd = redis.StrictRedis(**ServerInformation.REDIS)
 
     dict_to_json_value = json.dumps(value)
 
@@ -62,13 +65,6 @@ def get_exchanges():
 
 def get_auto_withdrawal():
     return True if cfg['general']['auto withdrawal'].upper() == 'Y' else False
-
-
-def send_to_sai_server(path, data):
-    rq = requests.post(url=SaiUrls.BASE + path, json=json.dumps(data))
-    result = rq.json()
-
-    return result
 
 
 class FunctionExecutor(object):

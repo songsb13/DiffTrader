@@ -14,19 +14,19 @@ SECONDARY_TO_PRIMARY = 'secondary_to_primary'
 # Exchange list of available trading in SAI programs.
 AVAILABLE_EXCHANGES = ['Binance', 'Bithumb', 'Upbit']
 
-ENABLE_SETTING = '설정'
-UNABLE_SETTING = '미설정'
-
 # set default refresh time
 DEFAULT_REFRESH_TIME = 3600
+
+
+class ServerInformation(object):
+    REDIS = dict(host='localhost', port=6379, db=0)
 
 
 class SaiUrls(object):
     BASE = 'https://www.saiblockchain.com'
 
-    class Information(object):
-        TRADING = '/api/v1/information/trading'
-        WITHDRAW = '/api/v1/information/withdraw'
+    TRADING = '/api/v1/information/trading'
+    WITHDRAW = '/api/v1/information/withdraw'
 
 
 class MethodType(object):
@@ -40,3 +40,4 @@ class RedisKey(object):
     UserInformation = 'user_information'
     TradingInformation = 'trading_information'
     ProfitInformation = 'profit_information'
+    SendInformation = 'send_information'
