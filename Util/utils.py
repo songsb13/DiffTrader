@@ -72,10 +72,11 @@ def send_to_sai_server(path, data):
 
 
 class FunctionExecutor(object):
-    def __init__(self, func):
+    def __init__(self, func, sleep_time=0):
         self._func = func
         self._success = False
         self._trace = list()
+        self._sleep_time = sleep_time
 
     def loop_executor(self, *args, **kwargs):
         self._trace.append('loop_executor')
@@ -87,7 +88,7 @@ class FunctionExecutor(object):
 
             if result.success:
                 return result
-
+            time.sleep(self._sleep_time)
         return result
 
     def __enter__(self):
