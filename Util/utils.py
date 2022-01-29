@@ -16,6 +16,27 @@ import time
 
 cfg = configparser.ConfigParser()
 cfg.read('../GlobalSetting/Settings.ini')
+rd = redis.StrictRedis(**ServerInformation.REDIS)
+
+
+def publish_redis(key, value):
+    """
+        key: str
+        value: dict
+    """
+    dict_to_json_value = json.dumps(value)
+
+    rd.publish(key, dict_to_json_value)
+
+
+def subscribe_redis(key):
+    """
+        (n-1)+(n-2) ... +1
+    """
+    ps = rd.pubsub()
+
+    ps.subscribe(key)
+    return ps
 
 
 def get_redis(key):
@@ -23,8 +44,6 @@ def get_redis(key):
         key: str
     """
     try:
-        rd = redis.StrictRedis(**ServerInformation.REDIS)
-
         value = rd.get(key)
 
         if not value:
@@ -42,8 +61,6 @@ def set_redis(key, value):
         key: str
         value: dict
     """
-    rd = redis.StrictRedis(**ServerInformation.REDIS)
-
     dict_to_json_value = json.dumps(value)
 
     rd.set(key, dict_to_json_value)
