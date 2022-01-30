@@ -1,6 +1,3 @@
-import configparser
-import requests
-
 from Exchanges.upbit.upbit import BaseUpbit
 from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
@@ -9,9 +6,11 @@ from Util.pyinstaller_patch import debugger
 
 from DiffTrader.GlobalSetting.settings import ServerInformation
 
+from decimal import Decimal
 import redis
 import json
 import time
+import configparser
 
 
 cfg = configparser.ConfigParser()
@@ -82,6 +81,10 @@ def get_exchanges():
 
 def get_auto_withdrawal():
     return True if cfg['general']['auto withdrawal'].upper() == 'Y' else False
+
+
+def get_min_profit():
+    return Decimal(cfg['Profit']['Withdrawal Percent']).quantize(Decimal(10) ** -6)
 
 
 class FunctionExecutor(object):
