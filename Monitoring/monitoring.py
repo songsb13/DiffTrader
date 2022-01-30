@@ -1,18 +1,17 @@
 from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis
 from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey
+from Exchanges.settings import Consts
+from Util.pyinstaller_patch import debugger
 
 from multiprocessing import Process
-
-from Exchanges.settings import Consts
+from concurrent.futures import ThreadPoolExecutor
 
 from decimal import Decimal
 
-import asyncio
 import time
 import json
 import datetime
 
-from Util.pyinstaller_patch import debugger
 
 
 class Monitoring(Process):
@@ -27,7 +26,12 @@ class Monitoring(Process):
         self._primary_subscriber = subscribe_redis(primary_str)
         self._secondary_subscriber = subscribe_redis(secondary_str)
 
+        self._min_profit = get_min_profit()
+
+        self._thread_executor = ThreadPoolExecutor(max_workers=2)
+
     def run(self) -> None:
+
         while True:
             primary_information_raw = self._primary_subscriber.get_message()
             secondary_information_raw = self._secondary_subscriber.get_message()
@@ -43,8 +47,7 @@ class Monitoring(Process):
                 primary_information['sai_symbol_set']
             ).intersection(secondary_information['sai_symbol_set'])
 
-            loop = asyncio.new_event_loop()
-            orderbook_success, total_orderbooks = loop.run_until_complete(self._compare_orderbook(sai_symbol_intersection))
+            orderbook_success, total_orderbooks = self._compare_orderbook(sai_symbol_intersection)
 
             if not orderbook_success:
                 continue
@@ -54,15 +57,17 @@ class Monitoring(Process):
                 debugger.debug()
                 continue
 
-            if profit_dict['btc_profit'] >= get_min_profit():
-                set_redis(RedisKey.TradingInformation, profit_dict)
+            if profit_dict['btc_profit'] >= self._min_profit:
+                set_redis(RedisKey.ProfitInformation, profit_dict)
 
-    async def _compare_orderbook(self, sai_symbol_intersection, default_btc=1):
-        primary_result, secondary_result = await asyncio.gather(
-            self._primary.get_curr_avg_orderbook(sai_symbol_intersection, default_btc),
-            self._secondary.get_curr_avg_orderbook(sai_symbol_intersection, default_btc)
-        )
+    def _compare_orderbook(self, sai_symbol_intersection, default_btc=1):
+        result_list = list()
+        for func in [self._primary.get_curr_avg_orderbook, self._secondary.get_curr_avg_orderbook]:
+            result = self._thread_executor.submit(func, [sai_symbol_intersection, default_btc])
+            result_list.append(result)
+            time.sleep(0.3)
 
+        primary_result, secondary_result = result_list
         success = primary_result.success and secondary_result.success
         if success:
             primary_to_secondary = dict()
@@ -115,7 +120,7 @@ class Monitoring(Process):
 
                 expect_profit_percent = total_orderbooks['expected_profit_dict'][exchange_running_type][sai_symbol]
 
-                if expect_profit_percent < get_min_profit():
+                if expect_profit_percent < self._min_profit:
                     continue
 
                 if exchange_running_type == PRIMARY_TO_SECONDARY:
