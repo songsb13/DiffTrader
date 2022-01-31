@@ -2,11 +2,6 @@
 Logging Messages
 """
 
-import logging
-import os
-import sys
-import datetime
-
 """
     Logs 정책
     debug들은 내부에서 다 처리하고, 윗단 값들 (trade_thread.py) 등은 debug 최소화.
@@ -20,7 +15,13 @@ class GlobalMessage(object):
 
 
 class MonitoringMessage(object):
-    pass
+    START = 'start monitoring process, primary={}, secondary={}, user={}'
+    RUNNING = 'running monitoring process, primary={}, secondary={}, user={}'
+    GET_ERROR_MESSAGE_IN_COMPARE = 'get error message in _compare_orderbook. error_message={}'
+    FAIL_TO_GET_ORDERBOOK = 'fail to get orderbook data from _compare_orderbook.'
+    BALANCE_NOT_FOUND = '{}, has not {} in currency balance.'
+    EXPECTED_PROFIT = "expected profit is not enough to reach setting's profit. {} < {}"
+    TRADABLE_INFO = "tradable={}, coin_amount={}, btc_profit={}, real_difference={}"
 
 
 class SenderMessage(object):

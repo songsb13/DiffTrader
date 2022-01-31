@@ -1,5 +1,6 @@
 from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis
 from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey
+from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
 from Exchanges.settings import Consts
 from Util.pyinstaller_patch import debugger
 
@@ -13,9 +14,10 @@ import json
 import datetime
 
 
-
 class Monitoring(Process):
     def __init__(self, user, primary_str, secondary_str):
+        debugger.debug(primary_str, secondary_str, user)
+
         super(Monitoring, self).__init__()
         self._user = user
         self._exchanges = get_exchanges()
@@ -26,12 +28,15 @@ class Monitoring(Process):
         self._primary_subscriber = subscribe_redis(primary_str)
         self._secondary_subscriber = subscribe_redis(secondary_str)
 
+        self._primary_str = primary_str
+        self._secondary_str = secondary_str
+
         self._min_profit = get_min_profit()
 
         self._thread_executor = ThreadPoolExecutor(max_workers=2)
 
     def run(self) -> None:
-
+        debugger.debug(Msg.RUNNING.format(self._primary_str, self._secondary_str, self._user))
         while True:
             primary_information_raw = self._primary_subscriber.get_message()
             secondary_information_raw = self._secondary_subscriber.get_message()
@@ -50,7 +55,7 @@ class Monitoring(Process):
             orderbook_success, total_orderbooks = self._compare_orderbook(sai_symbol_intersection)
 
             if not orderbook_success:
-                continue
+                debugger.debug(Msg.FAIL_TO_GET_ORDERBOOK)
 
             profit_dict = self._get_max_profit(primary_information, secondary_information, sai_symbol_intersection, total_orderbooks)
             if not profit_dict:
@@ -102,6 +107,7 @@ class Monitoring(Process):
             wait_time = max(primary_result.wait_time, secondary_result.wait_time)
             time.sleep(wait_time)
             error_message = '\n'.join([primary_result.message, secondary_result.message])
+            debugger.debug(Msg.GET_ERROR_MESSAGE_IN_COMPARE.format(error_message))
             return False, error_message
 
     def _get_max_profit(self, primary_information, secondary_information, sai_symbol_intersection, total_orderbooks):
@@ -111,16 +117,15 @@ class Monitoring(Process):
                 market, coin = sai_symbol.split('_')
 
                 if not primary_information['balance'].get(coin):
-                    # todo add log
-                    pass
+                    debugger.debug(Msg.BALANCE_NOT_FOUND.format(self._primary_str, sai_symbol))
 
                 elif not secondary_information['balance'].get(coin):
-                    # todo add log
-                    pass
+                    debugger.debug(Msg.BALANCE_NOT_FOUND.format(self._secondary, sai_symbol))
 
                 expect_profit_percent = total_orderbooks['expected_profit_dict'][exchange_running_type][sai_symbol]
 
                 if expect_profit_percent < self._min_profit:
+                    Msg.EXPECTED_PROFIT.format(expect_profit_percent, self._min_profit)
                     continue
 
                 if exchange_running_type == PRIMARY_TO_SECONDARY:
@@ -145,13 +150,13 @@ class Monitoring(Process):
                             'orderbook': total_orderbooks['primary']
                         }
                     }
-                tradable_btc, coin_amount, btc_profit = self._get_expectation(
+                tradable_btc, coin_amount, btc_profit, real_difference = self._get_expectation(
                     expectation_data,
                     expect_profit_percent,
                     sai_symbol,
                 )
 
-                debugger.debug()
+                debugger.debug(Msg.TRADABLE_INFO(tradable_btc, coin_amount, btc_profit, real_difference))
 
                 if not profit_dict and (tradable_btc, coin_amount):
                     refresh_profit_dict = True
@@ -167,10 +172,10 @@ class Monitoring(Process):
                         'coin_amount': coin_amount,
                         'additional_information': {
                             'user': self._user,
-                            'real_difference': '',
+                            'real_difference': real_difference,
                             'created_time': datetime.datetime.now(),
-                            'primary': self._primary.name,
-                            'secondary': self._secondary.name,
+                            'primary': self._primary_str,
+                            'secondary': self._secondary_str,
                             'sai_symbol': sai_symbol,
                             'total_orderbooks': total_orderbooks
                         }
@@ -197,7 +202,7 @@ class Monitoring(Process):
                      (from_['information'][sai_symbol][coin] * from_['orderbook'][sai_symbol][Consts.ASKS]) - \
                      to_['information']['transaction_fee']['BTC']
 
-        return tradable_btc, alt_amount, btc_profit
+        return tradable_btc, alt_amount, btc_profit, real_difference
 
     def _get_real_difference(self, from_information, to_information, expected_profit_percent):
         # transaction fee에 대한 검증은 get_expectation 에서 진행
@@ -216,4 +221,3 @@ class Monitoring(Process):
             return btc_amount, result
         else:
             return coin_to_btc_price, coin_amount
-
