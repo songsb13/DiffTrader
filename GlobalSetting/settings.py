@@ -1,3 +1,7 @@
+import configparser
+import redis
+import os
+
 TAG_COINS = ['XRP', 'XMR']
 
 # Selling the BTC from primary, Selling the ALT from secondary
@@ -12,9 +16,12 @@ AVAILABLE_EXCHANGES = ['Binance', 'Bithumb', 'Upbit']
 # set default refresh time
 DEFAULT_REFRESH_TIME = 3600
 
+TEST_USER = 'gimo@naver.com'
 
-class ServerInformation(object):
-    REDIS = dict(host='localhost', port=6379, db=0)
+CONFIG = configparser.ConfigParser()
+CONFIG.read(os.path.join(os.path.dirname(__file__), 'config.cfg'))
+
+REDIS_SERVER = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 
 class SaiUrls(object):

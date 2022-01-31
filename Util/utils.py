@@ -1,21 +1,13 @@
 from Exchanges.upbit.upbit import BaseUpbit
 from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
+from DiffTrader.GlobalSetting.settings import REDIS_SERVER, CONFIG
 
 from Util.pyinstaller_patch import debugger
 
-from DiffTrader.GlobalSetting.settings import ServerInformation
-
 from decimal import Decimal
-import redis
 import json
 import time
-import configparser
-
-
-cfg = configparser.ConfigParser()
-cfg.read('../GlobalSetting/Settings.ini')
-rd = redis.StrictRedis(**ServerInformation.REDIS)
 
 
 def publish_redis(key, value):
@@ -25,14 +17,14 @@ def publish_redis(key, value):
     """
     dict_to_json_value = json.dumps(value)
 
-    rd.publish(key, dict_to_json_value)
+    REDIS_SERVER.publish(key, dict_to_json_value)
 
 
 def subscribe_redis(key):
     """
         (n-1)+(n-2) ... +1
     """
-    ps = rd.pubsub()
+    ps = REDIS_SERVER.pubsub()
 
     ps.subscribe(key)
     return ps
@@ -43,7 +35,7 @@ def get_redis(key):
         key: str
     """
     try:
-        value = rd.get(key)
+        value = REDIS_SERVER.get(key)
 
         if not value:
             return None
@@ -62,29 +54,29 @@ def set_redis(key, value):
     """
     dict_to_json_value = json.dumps(value)
 
-    rd.set(key, dict_to_json_value)
+    REDIS_SERVER.set(key, dict_to_json_value)
 
     return
 
 
 def get_exchanges():
     obj = dict()
-    if cfg['Upbit']['Run'] == 'True':
-        obj['Upbit'] = BaseUpbit(cfg['Upbit']['Key'], cfg['Upbit']['Secret'])
-    if cfg['Binance']['Run'] == 'True':
-        obj['Binance'] = Binance(cfg['Binance']['Key'], cfg['Binance']['Secret'])
-    if cfg['Bithumb']['Run'] == 'True':
-        obj['Bithumb'] = BaseBithumb(cfg['Bithumb']['Key'], cfg['Bithumb']['Secret'])
+    if CONFIG['Upbit']['Run'] == 'True':
+        obj['Upbit'] = BaseUpbit(CONFIG['Upbit']['Key'], CONFIG['Upbit']['Secret'])
+    if CONFIG['Binance']['Run'] == 'True':
+        obj['Binance'] = Binance(CONFIG['Binance']['Key'], CONFIG['Binance']['Secret'])
+    if CONFIG['Bithumb']['Run'] == 'True':
+        obj['Bithumb'] = BaseBithumb(CONFIG['Bithumb']['Key'], CONFIG['Bithumb']['Secret'])
 
     return obj
 
 
 def get_auto_withdrawal():
-    return True if cfg['general']['auto withdrawal'].upper() == 'Y' else False
+    return True if CONFIG['general']['auto withdrawal'].upper() == 'Y' else False
 
 
 def get_min_profit():
-    return Decimal(cfg['Profit']['Withdrawal Percent']).quantize(Decimal(10) ** -6)
+    return Decimal(CONFIG['Profit']['Withdrawal Percent']).quantize(Decimal(10) ** -6)
 
 
 class FunctionExecutor(object):
