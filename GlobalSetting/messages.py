@@ -18,10 +18,14 @@ class MonitoringMessage(object):
     START = 'start monitoring process, primary={}, secondary={}, user={}'
     RUNNING = 'running monitoring process, primary={}, secondary={}, user={}'
     GET_ERROR_MESSAGE_IN_COMPARE = 'get error message in _compare_orderbook. error_message={}'
-    FAIL_TO_GET_ORDERBOOK = 'fail to get orderbook data from _compare_orderbook.'
     BALANCE_NOT_FOUND = '{}, has not {} in currency balance.'
     EXPECTED_PROFIT = "expected profit is not enough to reach setting's profit. {} < {}"
     TRADABLE_INFO = "tradable={}, coin_amount={}, btc_profit={}, real_difference={}"
+
+    FAIL_TO_GET_ORDERBOOK = 'fail to get orderbook data from _compare_orderbook.'
+    FAIL_TO_GET_SUITABLE_PROFIT = 'fail to get suitable profit in _max_profit'
+
+    SET_PROFIT_DICT = 'btc profit has reached the min_profit. min_profit={}, profit_dict={}'
 
 
 class SenderMessage(object):

@@ -56,13 +56,15 @@ class Monitoring(Process):
 
             if not orderbook_success:
                 debugger.debug(Msg.FAIL_TO_GET_ORDERBOOK)
+                continue
 
             profit_dict = self._get_max_profit(primary_information, secondary_information, sai_symbol_intersection, total_orderbooks)
             if not profit_dict:
-                debugger.debug()
+                debugger.debug(Msg.FAIL_TO_GET_SUITABLE_PROFIT)
                 continue
 
             if profit_dict['btc_profit'] >= self._min_profit:
+                debugger.debug(Msg.SET_PROFIT_DICT(self._min_profit, profit_dict))
                 set_redis(RedisKey.ProfitInformation, profit_dict)
 
     def _compare_orderbook(self, sai_symbol_intersection, default_btc=1):
@@ -118,9 +120,11 @@ class Monitoring(Process):
 
                 if not primary_information['balance'].get(coin):
                     debugger.debug(Msg.BALANCE_NOT_FOUND.format(self._primary_str, sai_symbol))
+                    continue
 
                 elif not secondary_information['balance'].get(coin):
                     debugger.debug(Msg.BALANCE_NOT_FOUND.format(self._secondary, sai_symbol))
+                    continue
 
                 expect_profit_percent = total_orderbooks['expected_profit_dict'][exchange_running_type][sai_symbol]
 
