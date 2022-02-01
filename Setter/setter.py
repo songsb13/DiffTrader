@@ -1,5 +1,6 @@
 from DiffTrader.Util.utils import get_exchanges, publish_redis
 from DiffTrader.GlobalSetting.messages import SetterMessage as Msg
+from DiffTrader.GlobalSetting.settings import DEFAULT_REFRESH_TIME
 from Util.pyinstaller_patch import debugger
 
 from multiprocessing import Process
@@ -26,7 +27,7 @@ class Setter(Process):
 
         one_time_data = self._get_one_time_fresh_data()
         while True:
-            if not lazy_data or (now_time + 3000) <= time.time():
+            if not lazy_data or (now_time + DEFAULT_REFRESH_TIME) <= time.time():
                 lazy_data = self._get_lazy_refresh_data()
 
             quick_data = self._get_quick_refresh_data()
