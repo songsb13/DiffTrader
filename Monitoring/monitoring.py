@@ -16,43 +16,55 @@ import datetime
 
 class Monitoring(Process):
     def __init__(self, user, primary_str, secondary_str):
-        debugger.debug(primary_str, secondary_str, user)
+        debugger.debug(Msg.START.format(primary_str, secondary_str, user))
 
         super(Monitoring, self).__init__()
         self._user = user
-        self._exchanges = get_exchanges()
-
-        self._primary = self._exchanges[primary_str]
-        self._secondary = self._exchanges[secondary_str]
-
-        self._primary_subscriber = subscribe_redis(primary_str)
-        self._secondary_subscriber = subscribe_redis(secondary_str)
 
         self._primary_str = primary_str
         self._secondary_str = secondary_str
 
         self._min_profit = get_min_profit()
 
-        self._thread_executor = ThreadPoolExecutor(max_workers=2)
+        self._thread_executor = None
+        self._exchanges = None
+        self._primary = None
+        self._secondary = None
 
     def run(self) -> None:
         debugger.debug(Msg.RUNNING.format(self._primary_str, self._secondary_str, self._user))
-        while True:
-            primary_information_raw = self._primary_subscriber.get_message()
-            secondary_information_raw = self._secondary_subscriber.get_message()
+        _primary_subscriber = subscribe_redis(self._primary_str)
+        _secondary_subscriber = subscribe_redis(self._secondary_str)
 
-            if not primary_information_raw or not secondary_information_raw:
+        self._exchanges = get_exchanges()
+
+        primary = self._exchanges[self._primary_str]
+        secondary = self._exchanges[self._secondary_str]
+        self._thread_executor = ThreadPoolExecutor(max_workers=2)
+
+        while True:
+            primary_contents = _primary_subscriber.get_message()
+            secondary_contents = _secondary_subscriber.get_message()
+
+            if not primary_contents or not secondary_contents:
                 time.sleep(1)
                 continue
 
-            primary_information = json.loads(primary_information_raw)
-            secondary_information = json.loads(secondary_information_raw)
+            primary_information = primary_contents.get('data', 1)
+            secondary_information = secondary_contents.get('data', 1)
+
+            if primary_information == 1 or secondary_information == 1:
+                time.sleep(1)
+                continue
+
+            primary_information = json.loads(primary_information)
+            secondary_information = json.loads(secondary_information)
 
             sai_symbol_intersection = set(
                 primary_information['sai_symbol_set']
             ).intersection(secondary_information['sai_symbol_set'])
 
-            orderbook_success, total_orderbooks = self._compare_orderbook(sai_symbol_intersection)
+            orderbook_success, total_orderbooks = self._compare_orderbook(primary, secondary, sai_symbol_intersection)
 
             if not orderbook_success:
                 debugger.debug(Msg.FAIL_TO_GET_ORDERBOOK)
@@ -67,9 +79,9 @@ class Monitoring(Process):
                 debugger.debug(Msg.SET_PROFIT_DICT(self._min_profit, profit_dict))
                 set_redis(RedisKey.ProfitInformation, profit_dict)
 
-    def _compare_orderbook(self, sai_symbol_intersection, default_btc=1):
+    def _compare_orderbook(self, primary, secondary, sai_symbol_intersection, default_btc=1):
         result_list = list()
-        for func in [self._primary.get_curr_avg_orderbook, self._secondary.get_curr_avg_orderbook]:
+        for func in [primary.get_curr_avg_orderbook, secondary.get_curr_avg_orderbook]:
             result = self._thread_executor.submit(func, [sai_symbol_intersection, default_btc])
             result_list.append(result)
             time.sleep(0.3)
