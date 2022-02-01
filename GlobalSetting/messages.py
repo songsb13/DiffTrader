@@ -14,6 +14,10 @@ class GlobalMessage(object):
     FATAL = 'FATAL'
 
 
+class SetterMessage(object):
+    START = 'start setter process, user={}, exchange_str={}'
+
+
 class MonitoringMessage(object):
     START = 'start monitoring process, primary={}, secondary={}, user={}'
     RUNNING = 'running monitoring process, primary={}, secondary={}, user={}'
@@ -33,10 +37,6 @@ class SenderMessage(object):
 
 
 class ServerMessage(object):
-    pass
-
-
-class SetterMessage(object):
     pass
 
 
