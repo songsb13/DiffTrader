@@ -1,6 +1,10 @@
 import configparser
 import redis
 import os
+import sys
+
+
+DEBUG = True if 'pydevd' in sys.modules else False
 
 TAG_COINS = ['XRP', 'XMR']
 
