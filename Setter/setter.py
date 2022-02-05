@@ -1,6 +1,6 @@
 from DiffTrader.Util.utils import get_exchanges, publish_redis
 from DiffTrader.GlobalSetting.messages import SetterMessage as Msg
-from DiffTrader.GlobalSetting.settings import DEFAULT_REFRESH_TIME
+from DiffTrader.GlobalSetting.settings import DEFAULT_REFRESH_TIME, TEST_USER, DEBUG
 from Util.pyinstaller_patch import debugger
 
 from multiprocessing import Process
@@ -42,6 +42,7 @@ class Setter(Process):
             time.sleep(10)
 
     def _get_quick_refresh_data(self):
+        # balance
         balance_result = self._exchange.get_balance()
 
         if not balance_result.success:
@@ -55,6 +56,7 @@ class Setter(Process):
         return dic
 
     def _get_lazy_refresh_data(self):
+        # deposits, transaction_fees
         deposit_result = asyncio.run(self._exchange.get_deposit_addrs())
         if not deposit_result.success:
             debugger.debug(deposit_result.message)
@@ -73,12 +75,21 @@ class Setter(Process):
         return dic
 
     def _get_one_time_fresh_data(self):
+        # trading_fee, fee_count
         trading_result = self._exchange.get_trading_fee()
+        trading_fee_count = self._exchange.fee_count()
         if not trading_result.success:
             debugger.debug(trading_result.message)
 
         dic = {
-            'trading_fee': trading_result.data
+            'trading_fee': trading_result.data,
+            'fee_count': trading_fee_count
         }
 
         return dic
+
+
+if __name__ == '__main__':
+    from DiffTrader.Util.utils import get_exchanges
+    st = Setter(TEST_USER, 'Upbit')
+    st.run()
