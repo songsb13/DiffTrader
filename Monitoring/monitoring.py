@@ -1,5 +1,5 @@
 from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis
-from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey
+from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey, DEBUG
 from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
 from Exchanges.settings import Consts
 from Util.pyinstaller_patch import debugger
@@ -60,9 +60,10 @@ class Monitoring(Process):
             primary_information = json.loads(primary_information)
             secondary_information = json.loads(secondary_information)
 
-            sai_symbol_intersection = set(
-                primary_information['sai_symbol_set']
-            ).intersection(secondary_information['sai_symbol_set'])
+            sai_symbol_intersection = self._get_available_symbols(primary_information, secondary_information)
+
+            if DEBUG:
+                pass
 
             orderbook_success, total_orderbooks = self._compare_orderbook(primary, secondary, sai_symbol_intersection)
 
@@ -78,6 +79,20 @@ class Monitoring(Process):
             if profit_dict['btc_profit'] >= self._min_profit:
                 debugger.debug(Msg.SET_PROFIT_DICT(self._min_profit, profit_dict))
                 set_redis(RedisKey.ProfitInformation, profit_dict)
+
+    def _get_available_symbols(self, primary_information, secondary_information):
+        primary_balance_symbols = primary_information['balance'].keys()
+        secondary_balance_symbols = secondary_information['balance'].keys()
+
+        primary_deposit_symbols = primary_information['deposit'].keys()
+        secondary_deposit_symbols = secondary_information['deposit'].keys()
+
+        balance_intersection = set(primary_balance_symbols).intersection(secondary_balance_symbols)
+        deposit_intersection = set(primary_deposit_symbols).intersection(secondary_deposit_symbols)
+
+        sai_symbol_intersection = balance_intersection.intersection(deposit_intersection)
+
+        return sai_symbol_intersection
 
     def _compare_orderbook(self, primary, secondary, sai_symbol_intersection, default_btc=1):
         result_list = list()
