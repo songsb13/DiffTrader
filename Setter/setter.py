@@ -11,7 +11,7 @@ import asyncio
 
 class Setter(Process):
     def __init__(self, user, exchange_str):
-        debugger.debug(Msg.START(user, exchange_str))
+        debugger.debug(Msg.START.format(user, exchange_str))
         super(Setter, self).__init__()
 
         self._user = user
@@ -47,7 +47,7 @@ class Setter(Process):
 
         if not balance_result.success:
             debugger.debug(balance_result.message)
-            return False
+            return dict()
 
         dic = {
             'balance': balance_result.data,
@@ -60,12 +60,12 @@ class Setter(Process):
         deposit_result = asyncio.run(self._exchange.get_deposit_addrs())
         if not deposit_result.success:
             debugger.debug(deposit_result.message)
-            return False
+            return dict()
 
-        transaction_result = self._exchange.get_transaction_fee()
+        transaction_result = asyncio.run(self._exchange.get_transaction_fee())
         if not transaction_result.success:
             debugger.debug(transaction_result.message)
-            return False
+            return dict()
 
         dic = {
             'deposit': deposit_result.data,
@@ -91,5 +91,5 @@ class Setter(Process):
 
 if __name__ == '__main__':
     from DiffTrader.Util.utils import get_exchanges
-    st = Setter(TEST_USER, 'Upbit')
+    st = Setter(TEST_USER, 'Binance')
     st.run()
