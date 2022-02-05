@@ -81,18 +81,11 @@ class Monitoring(Process):
                 set_redis(RedisKey.ProfitInformation, profit_dict)
 
     def _get_available_symbols(self, primary_information, secondary_information):
-        primary_balance_symbols = primary_information['balance'].keys()
-        secondary_balance_symbols = secondary_information['balance'].keys()
-
         primary_deposit_symbols = primary_information['deposit'].keys()
         secondary_deposit_symbols = secondary_information['deposit'].keys()
-
-        balance_intersection = set(primary_balance_symbols).intersection(secondary_balance_symbols)
         deposit_intersection = set(primary_deposit_symbols).intersection(secondary_deposit_symbols)
 
-        sai_symbol_intersection = balance_intersection.intersection(deposit_intersection)
-
-        return sai_symbol_intersection
+        return deposit_intersection
 
     def _compare_orderbook(self, primary, secondary, sai_symbol_intersection, default_btc=1):
         result_list = list()
