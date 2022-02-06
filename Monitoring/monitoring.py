@@ -1,5 +1,5 @@
-from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis
-from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey, DEBUG
+from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder
+from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey, DEBUG, TEST_USER
 from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
 from Exchanges.settings import Consts
 from Util.pyinstaller_patch import debugger
@@ -42,28 +42,32 @@ class Monitoring(Process):
         secondary = self._exchanges[self._secondary_str]
         self._thread_executor = ThreadPoolExecutor(max_workers=2)
 
+        latest_primary_information, latest_secondary_information = dict(), dict()
         while True:
             primary_contents = _primary_subscriber.get_message()
             secondary_contents = _secondary_subscriber.get_message()
 
-            if not primary_contents or not secondary_contents:
+            if primary_contents and secondary_contents:
+                primary_information = primary_contents.get('data', 1)
+                secondary_information = secondary_contents.get('data', 1)
+                if primary_information == 1 or secondary_information == 1:
+                    time.sleep(1)
+                    continue
+                latest_primary_information = json.loads(primary_information)
+                latest_secondary_information = json.loads(secondary_information)
+
+            elif not latest_primary_information and not latest_secondary_information:
                 time.sleep(1)
                 continue
 
-            primary_information = primary_contents.get('data', 1)
-            secondary_information = secondary_contents.get('data', 1)
-
-            if primary_information == 1 or secondary_information == 1:
-                time.sleep(1)
-                continue
-
-            primary_information = json.loads(primary_information)
-            secondary_information = json.loads(secondary_information)
-
-            sai_symbol_intersection = self._get_available_symbols(primary_information, secondary_information)
+            sai_symbol_intersection = self._get_available_symbols(latest_primary_information,
+                                                                  latest_secondary_information)
 
             if DEBUG:
-                pass
+                print(latest_primary_information)
+                print(latest_secondary_information)
+                time.sleep(10)
+                continue
 
             orderbook_success, total_orderbooks = self._compare_orderbook(primary, secondary, sai_symbol_intersection)
 
@@ -71,7 +75,8 @@ class Monitoring(Process):
                 debugger.debug(Msg.FAIL_TO_GET_ORDERBOOK)
                 continue
 
-            profit_dict = self._get_max_profit(primary_information, secondary_information, sai_symbol_intersection, total_orderbooks)
+            profit_dict = self._get_max_profit(latest_primary_information, latest_secondary_information,
+                                               sai_symbol_intersection, total_orderbooks)
             if not profit_dict:
                 debugger.debug(Msg.FAIL_TO_GET_SUITABLE_PROFIT)
                 continue
@@ -245,3 +250,8 @@ class Monitoring(Process):
             return btc_amount, result
         else:
             return coin_to_btc_price, coin_amount
+
+
+if __name__ == '__main__':
+    st = Monitoring(TEST_USER, 'Upbit', 'Binance')
+    st.run()
