@@ -1,4 +1,4 @@
-from DiffTrader.Util.utils import get_exchanges, publish_redis
+from DiffTrader.Util.utils import get_exchanges, publish_redis, task_wrapper
 from DiffTrader.GlobalSetting.messages import SetterMessage as Msg
 from DiffTrader.GlobalSetting.settings import DEFAULT_REFRESH_TIME, TEST_USER, DEBUG
 from Util.pyinstaller_patch import debugger
@@ -38,7 +38,7 @@ class Setter(Process):
                 **one_time_data
             }
 
-            publish_redis(self._exchange_str, total_data)
+            publish_redis(self._exchange_str, total_data, use_decimal=True)
             time.sleep(10)
 
     def _get_quick_refresh_data(self):
@@ -56,13 +56,17 @@ class Setter(Process):
         return dic
 
     def _get_lazy_refresh_data(self):
+        task_list = [
+            {'fn': self._exchange.get_deposit_addrs},
+            {'fn': self._exchange.get_transaction_fee}
+        ]
+
         # deposits, transaction_fees
-        deposit_result = asyncio.run(self._exchange.get_deposit_addrs())
+        deposit_result, transaction_result = asyncio.run(task_wrapper(task_list))
         if not deposit_result.success:
             debugger.debug(deposit_result.message)
             return dict()
 
-        transaction_result = asyncio.run(self._exchange.get_transaction_fee())
         if not transaction_result.success:
             debugger.debug(transaction_result.message)
             return dict()

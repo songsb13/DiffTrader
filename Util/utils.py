@@ -6,16 +6,73 @@ from DiffTrader.GlobalSetting.settings import REDIS_SERVER, CONFIG
 from Util.pyinstaller_patch import debugger
 
 from decimal import Decimal
+
+import asyncio
 import json
 import time
 
 
-def publish_redis(key, value):
+class FunctionExecutor(object):
+    def __init__(self, func, sleep_time=0):
+        self._func = func
+        self._success = False
+        self._trace = list()
+        self._sleep_time = sleep_time
+
+    def loop_executor(self, *args, **kwargs):
+        self._trace.append('loop_executor')
+        debugger.debug(
+            'loop_executor, parameter={}, {}'.format(args, kwargs)
+        )
+        for _ in range(3):
+            result = self._func(*args, **kwargs)
+
+            if result.success:
+                return result
+            time.sleep(self._sleep_time)
+        return result
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        debugger.debug('Exit FunctionExecutor, trace: [{}]'.format(' -> '.format(self._trace)))
+        return None
+
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        return json.JSONEncoder.default(self, obj)
+
+
+async def task_wrapper(fn_data):
+    task_list = list()
+    for data in fn_data:
+        fn = data['fn']
+        kwargs = data.get('kwargs', dict())
+        task = asyncio.create_task(
+            fn(**kwargs)
+        )
+        task_list.append(task)
+
+    result = list()
+    for each in task_list:
+        result.append(await each)
+
+    return result
+
+
+def publish_redis(key, value, use_decimal=False):
     """
         key: str
         value: dict
     """
-    dict_to_json_value = json.dumps(value)
+    if use_decimal:
+        dict_to_json_value = json.dumps(value, cls=DecimalEncoder)
+    else:
+        dict_to_json_value = json.dumps(value)
 
     REDIS_SERVER.publish(key, dict_to_json_value)
 
@@ -77,31 +134,3 @@ def get_auto_withdrawal():
 
 def get_min_profit():
     return Decimal(CONFIG['Profit']['Withdrawal Percent']).quantize(Decimal(10) ** -6)
-
-
-class FunctionExecutor(object):
-    def __init__(self, func, sleep_time=0):
-        self._func = func
-        self._success = False
-        self._trace = list()
-        self._sleep_time = sleep_time
-
-    def loop_executor(self, *args, **kwargs):
-        self._trace.append('loop_executor')
-        debugger.debug(
-            'loop_executor, parameter={}, {}'.format(args, kwargs)
-        )
-        for _ in range(3):
-            result = self._func(*args, **kwargs)
-
-            if result.success:
-                return result
-            time.sleep(self._sleep_time)
-        return result
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        debugger.debug('Exit FunctionExecutor, trace: [{}]'.format(' -> '.format(self._trace)))
-        return None
