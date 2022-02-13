@@ -1,6 +1,7 @@
 from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder
 from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey, DEBUG, TEST_USER
 from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
+from DiffTrader.GlobalSetting.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
 from Exchanges.settings import Consts
 from Util.pyinstaller_patch import debugger
 
@@ -44,31 +45,28 @@ class Monitoring(Process):
 
         latest_primary_information, latest_secondary_information = dict(), dict()
         while True:
-            primary_contents = _primary_subscriber.get_message()
-            secondary_contents = _secondary_subscriber.get_message()
+            if not DEBUG:
+                primary_contents = _primary_subscriber.get_message()
+                secondary_contents = _secondary_subscriber.get_message()
 
-            if primary_contents and secondary_contents:
-                primary_information = primary_contents.get('data', 1)
-                secondary_information = secondary_contents.get('data', 1)
-                if primary_information == 1 or secondary_information == 1:
+                if primary_contents and secondary_contents:
+                    primary_information = primary_contents.get('data', 1)
+                    secondary_information = secondary_contents.get('data', 1)
+                    if primary_information == 1 or secondary_information == 1:
+                        time.sleep(1)
+                        continue
+                    latest_primary_information = json.loads(primary_information, cls=DecimalDecoder)
+                    latest_secondary_information = json.loads(secondary_information, cls=DecimalDecoder)
+
+                elif not latest_primary_information and not latest_secondary_information:
                     time.sleep(1)
                     continue
-                latest_primary_information = json.loads(primary_information)
-                latest_secondary_information = json.loads(secondary_information)
-
-            elif not latest_primary_information and not latest_secondary_information:
-                time.sleep(1)
-                continue
-
+            else:
+                # test code
+                latest_primary_information = json.loads(UPBIT_TEST_INFORMATION, cls=DecimalDecoder)
+                latest_secondary_information = json.loads(BINANCE_TEST_INFORMATION, cls=DecimalDecoder)
             sai_symbol_intersection = self._get_available_symbols(latest_primary_information,
                                                                   latest_secondary_information)
-
-            if DEBUG:
-                print(latest_primary_information)
-                print(latest_secondary_information)
-                time.sleep(10)
-                continue
-
             orderbook_success, total_orderbooks = self._compare_orderbook(primary, secondary, sai_symbol_intersection)
 
             if not orderbook_success:
