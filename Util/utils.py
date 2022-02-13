@@ -91,8 +91,12 @@ class DecimalDecoder(json.JSONDecoder):
 
     def decode(self, s, _w=None):
         decoded = json.JSONDecoder.decode(self, s)
-        decode_with_decimal = list()
-        is_dic = True if isinstance(decoded, dict) else False
+        if isinstance(decoded, dict):
+            decode_with_decimal = dict()
+            is_dic = True
+        else:
+            decode_with_decimal = list()
+            is_dic = False
         self.decode_converter(decode_with_decimal, decoded, is_dic)
 
         return decode_with_decimal
