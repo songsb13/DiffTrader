@@ -1,4 +1,4 @@
-from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder
+from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder, task_wrapper
 from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey, DEBUG, TEST_USER
 from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
 from DiffTrader.GlobalSetting.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
@@ -13,6 +13,7 @@ from decimal import Decimal
 import time
 import json
 import datetime
+import asyncio
 
 
 class Monitoring(Process):
@@ -27,7 +28,6 @@ class Monitoring(Process):
 
         self._min_profit = get_min_profit()
 
-        self._thread_executor = None
         self._exchanges = None
         self._primary = None
         self._secondary = None
@@ -41,7 +41,6 @@ class Monitoring(Process):
 
         primary = self._exchanges[self._primary_str]
         secondary = self._exchanges[self._secondary_str]
-        self._thread_executor = ThreadPoolExecutor(max_workers=2)
 
         latest_primary_information, latest_secondary_information = dict(), dict()
         while True:
@@ -67,6 +66,8 @@ class Monitoring(Process):
                 latest_secondary_information = json.loads(BINANCE_TEST_INFORMATION, cls=DecimalDecoder)
             sai_symbol_intersection = self._get_available_symbols(latest_primary_information,
                                                                   latest_secondary_information)
+
+            self._set_orderbook_subscribe(primary, secondary, sai_symbol_intersection)
             orderbook_success, total_orderbooks = self._compare_orderbook(primary, secondary, sai_symbol_intersection)
 
             if not orderbook_success:
@@ -90,14 +91,22 @@ class Monitoring(Process):
 
         return deposit_intersection
 
-    def _compare_orderbook(self, primary, secondary, sai_symbol_intersection, default_btc=1):
-        result_list = list()
-        for func in [primary.get_curr_avg_orderbook, secondary.get_curr_avg_orderbook]:
-            result = self._thread_executor.submit(func, [sai_symbol_intersection, default_btc])
-            result_list.append(result)
-            time.sleep(0.3)
+    def _set_orderbook_subscribe(self, primary, secondary, symbol_list):
+        primary.set_subscriber()
+        secondary.set_subscriber()
 
-        primary_result, secondary_result = result_list
+        primary.set_subscribe_orderbook(symbol_list)
+        secondary.set_subscribe_orderbook(symbol_list)
+
+        return
+
+    def _compare_orderbook(self, primary, secondary, sai_symbol_intersection, default_btc=1):
+        task_list = [
+            {'fn': primary.get_curr_avg_orderbook},
+            {'fn': secondary.get_curr_avg_orderbook}
+        ]
+
+        primary_result, secondary_result = asyncio.run(task_wrapper(task_list))
         success = primary_result.success and secondary_result.success
         if success:
             primary_to_secondary = dict()
