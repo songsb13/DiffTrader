@@ -95,5 +95,5 @@ class Setter(Process):
 
 if __name__ == '__main__':
     from DiffTrader.Util.utils import get_exchanges
-    st = Setter(TEST_USER, 'Binance')
+    st = Setter(TEST_USER, 'Upbit')
     st.run()
