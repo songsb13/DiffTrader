@@ -32,6 +32,9 @@ class Monitoring(Process):
         self._primary = None
         self._secondary = None
 
+        self._set_orderbook_subscribe_flag = False
+        self._set_candle_subscribe_flag = False
+
     def run(self) -> None:
         debugger.debug(Msg.RUNNING.format(self._primary_str, self._secondary_str, self._user))
         _primary_subscriber = subscribe_redis(self._primary_str)
@@ -67,7 +70,9 @@ class Monitoring(Process):
             sai_symbol_intersection = self._get_available_symbols(latest_primary_information,
                                                                   latest_secondary_information)
 
-            self._set_orderbook_subscribe(primary, secondary, sai_symbol_intersection)
+            if not self._set_orderbook_subscribe_flag:
+                self._set_orderbook_subscribe_flag = True
+                self._set_orderbook_subscribe(primary, secondary, sai_symbol_intersection)
             orderbook_success, total_orderbooks = self._compare_orderbook(primary, secondary, sai_symbol_intersection)
 
             if not orderbook_success:
