@@ -103,18 +103,14 @@ class DecimalDecoder(json.JSONDecoder):
 
 
 async def task_wrapper(fn_data):
-    task_list = list()
+    result = list()
     for data in fn_data:
         fn = data['fn']
         kwargs = data.get('kwargs', dict())
         task = asyncio.create_task(
             fn(**kwargs)
         )
-        task_list.append(task)
-
-    result = list()
-    for each in task_list:
-        result.append(await each)
+        result.append(await task)
 
     return result
 

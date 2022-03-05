@@ -7,6 +7,7 @@ import sys
 DEBUG = True if 'pydevd' in sys.modules else False
 
 TAG_COINS = ['XRP', 'XMR']
+ABLE_MARKETS = ['BTC']
 
 # Selling the BTC from primary, Selling the ALT from secondary
 PRIMARY_TO_SECONDARY = 'primary_to_secondary'

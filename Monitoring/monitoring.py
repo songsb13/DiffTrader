@@ -1,5 +1,5 @@
 from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder, task_wrapper
-from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey, DEBUG, TEST_USER
+from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey, DEBUG, TEST_USER, ABLE_MARKETS
 from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
 from DiffTrader.GlobalSetting.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
 from Exchanges.settings import Consts
@@ -89,7 +89,15 @@ class Monitoring(Process):
         secondary_deposit_symbols = secondary_information['deposit'].keys()
         deposit_intersection = set(primary_deposit_symbols).intersection(secondary_deposit_symbols)
 
-        return deposit_intersection
+        # set market
+        able_markets = set(ABLE_MARKETS).intersection(deposit_intersection)
+        able_sai_symbols = list()
+        for market in able_markets:
+            for coin in deposit_intersection:
+                if market == coin:
+                    continue
+                able_sai_symbols.append(f'{market}_{coin}')
+        return able_sai_symbols
 
     def _set_orderbook_subscribe(self, primary, secondary, symbol_list):
         primary.set_subscriber()
