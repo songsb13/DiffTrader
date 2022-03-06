@@ -174,7 +174,7 @@ class Monitoring(Process):
                 expect_profit_percent = total_orderbooks['expected_profit_dict'][exchange_running_type][sai_symbol]
 
                 if expect_profit_percent < self._min_profit:
-                    Msg.EXPECTED_PROFIT.format(expect_profit_percent, self._min_profit)
+                    debugger.debug(Msg.EXPECTED_PROFIT.format(sai_symbol, expect_profit_percent, self._min_profit))
                     continue
 
                 if exchange_running_type == PRIMARY_TO_SECONDARY:
