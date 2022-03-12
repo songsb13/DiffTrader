@@ -79,8 +79,7 @@ class Monitoring(Process):
                 debugger.debug(Msg.FAIL_TO_GET_ORDERBOOK)
                 continue
 
-            profit_dict = self._get_max_profit(latest_primary_information, latest_secondary_information,
-                                               sai_symbol_intersection, total_orderbooks)
+            profit_dict = self._get_max_profit(latest_primary_information, latest_secondary_information, total_orderbooks)
             if not profit_dict:
                 debugger.debug(Msg.FAIL_TO_GET_SUITABLE_PROFIT)
                 time.sleep(5)
@@ -175,10 +174,10 @@ class Monitoring(Process):
             debugger.debug(Msg.GET_ERROR_MESSAGE_IN_COMPARE.format(error_message))
             return False, error_message
 
-    def _get_max_profit(self, primary_information, secondary_information, sai_symbol_intersection, total_orderbooks):
+    def _get_max_profit(self, primary_information, secondary_information, total_orderbooks):
         profit_dict = dict()
         for exchange_running_type in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
-            for sai_symbol in sai_symbol_intersection:
+            for sai_symbol in total_orderbooks['intersection']:
                 market, coin = sai_symbol.split('_')
 
                 if not primary_information['balance'].get(coin):
