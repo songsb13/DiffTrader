@@ -83,10 +83,15 @@ class Monitoring(Process):
                                                sai_symbol_intersection, total_orderbooks)
             if not profit_dict:
                 debugger.debug(Msg.FAIL_TO_GET_SUITABLE_PROFIT)
+                time.sleep(5)
                 continue
 
-            if profit_dict['btc_profit'] >= self._min_profit:
-                debugger.debug(Msg.SET_PROFIT_DICT(self._min_profit, profit_dict))
+            if not DEBUG:
+                if profit_dict['btc_profit'] >= self._min_profit:
+                    debugger.debug(Msg.SET_PROFIT_DICT(self._min_profit, profit_dict))
+                    set_redis(RedisKey.ProfitInformation, profit_dict)
+            else:
+                # test code
                 set_redis(RedisKey.ProfitInformation, profit_dict)
 
     def _get_available_symbols(self, primary_information, secondary_information):
@@ -165,17 +170,20 @@ class Monitoring(Process):
 
                 if not primary_information['balance'].get(coin):
                     debugger.debug(Msg.BALANCE_NOT_FOUND.format(self._primary_str, sai_symbol))
+                    time.sleep(10)
                     continue
 
                 elif not secondary_information['balance'].get(coin):
-                    debugger.debug(Msg.BALANCE_NOT_FOUND.format(self._secondary, sai_symbol))
+                    debugger.debug(Msg.BALANCE_NOT_FOUND.format(self._secondary_str, sai_symbol))
+                    time.sleep(10)
                     continue
 
                 expect_profit_percent = total_orderbooks['expected_profit_dict'][exchange_running_type][sai_symbol]
 
-                if expect_profit_percent < self._min_profit:
-                    debugger.debug(Msg.EXPECTED_PROFIT.format(sai_symbol, expect_profit_percent, self._min_profit))
-                    continue
+                if not DEBUG:
+                    if expect_profit_percent < self._min_profit:
+                        debugger.debug(Msg.EXPECTED_PROFIT.format(sai_symbol, expect_profit_percent, self._min_profit))
+                        continue
 
                 if exchange_running_type == PRIMARY_TO_SECONDARY:
                     expectation_data = {
