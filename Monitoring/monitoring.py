@@ -119,6 +119,12 @@ class Monitoring(Process):
         return
 
     def _compare_orderbook(self, primary, secondary, sai_symbol_intersection, default_btc=1):
+        def __bid_ask_calculator(bids, asks):
+            if not bids or not asks:
+                return 0
+
+            return Decimal((bids - asks) / asks).quantize(Decimal(10) ** -8)
+
         task_list = [
             {'fn': primary.get_curr_avg_orderbook},
             {'fn': secondary.get_curr_avg_orderbook}
@@ -129,24 +135,31 @@ class Monitoring(Process):
         if success:
             primary_to_secondary = dict()
             secondary_to_primary = dict()
+            intersection = set()
             for sai_symbol in sai_symbol_intersection:
+                if sai_symbol not in primary_result.data or sai_symbol not in secondary_result.data:
+                    # orderbook에 아직 충분한 데이터가 쌓이지 않은 상태인 경우 값에 들어가있지 않으므로 키에러가 발생할 수 있음.
+                    continue
                 primary_asks = primary_result.data[sai_symbol][Consts.ASKS]
                 secondary_bids = secondary_result.data[sai_symbol][Consts.BIDS]
+                primary_to_secondary_result = __bid_ask_calculator(secondary_bids, primary_asks)
 
-                primary_to_secondary[sai_symbol] = Decimal(
-                    (secondary_bids - primary_asks) / primary_asks
-                ).quantize(Decimal(10) ** -8)
+                if not primary_to_secondary_result:
+                    continue
+                primary_to_secondary[sai_symbol] = primary_to_secondary_result
 
                 primary_bids = primary_result.data[sai_symbol][Consts.BIDS]
                 secondary_asks = secondary_result.data[sai_symbol][Consts.ASKS]
+                secondary_to_primary_result = __bid_ask_calculator(primary_bids, secondary_asks)
 
-                secondary_to_primary[sai_symbol] = Decimal(
-                    (primary_bids - secondary_asks) / secondary_asks
-                ).quantize(Decimal(10) ** -8)
-
+                if not secondary_to_primary_result:
+                    continue
+                secondary_to_primary[sai_symbol] = secondary_to_primary_result
+                intersection.add(sai_symbol)
             data = {
-                'primary_orderbook': primary_result.data,
-                'secondary_orderbook': secondary_result.data,
+                'primary': primary_result.data,
+                'secondary': secondary_result.data,
+                'intersection': intersection,
                 'expected_profit_dict': {
                     Consts.PRIMARY_TO_SECONDARY: primary_to_secondary,
                     Consts.SECONDARY_TO_PRIMARY: secondary_to_primary
