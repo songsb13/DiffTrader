@@ -149,7 +149,7 @@ def get_redis(key, use_decimal=False):
             return None
 
         if use_decimal:
-            json_to_dict_value = json.loads(value, parse_float=Decimal)
+            json_to_dict_value = json.loads(value, cls=DecimalDecoder)
         else:
             json_to_dict_value = json.loads(value)
 
@@ -158,12 +158,15 @@ def get_redis(key, use_decimal=False):
         return None
 
 
-def set_redis(key, value):
+def set_redis(key, value, use_decimal=False):
     """
         key: str
         value: dict
     """
-    dict_to_json_value = json.dumps(value)
+    if use_decimal:
+        dict_to_json_value = json.dumps(value, cls=DecimalEncoder)
+    else:
+        dict_to_json_value = json.dumps(value)
 
     REDIS_SERVER.set(key, dict_to_json_value)
 
