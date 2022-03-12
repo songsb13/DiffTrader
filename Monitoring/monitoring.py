@@ -259,28 +259,29 @@ class Monitoring(Process):
         real_difference = self._get_real_difference(
             from_['information'],
             to_['information'],
-            expected_profit_percent
+            expected_profit_percent,
+            market
         )
-        tradable_btc, alt_amount = self._find_min_balance(
-            from_['information']['balance']['BTC'],
+        tradable_btc, coin_amount = self._find_min_balance(
+            from_['information']['balance'][market],
             to_['information']['balance'][coin],
-            to_['orderbook'][sai_symbol],
+            to_['orderbook'][sai_symbol][Consts.BIDS],
         )
 
         btc_profit = (tradable_btc * real_difference) - \
-                     (from_['information'][sai_symbol][coin] * from_['orderbook'][sai_symbol][Consts.ASKS]) - \
-                     to_['information']['transaction_fee']['BTC']
+                     (from_['information']['transaction_fee'][coin] * from_['orderbook'][sai_symbol][Consts.ASKS]) - \
+                      to_['information']['transaction_fee'][market]
 
-        return tradable_btc, alt_amount, btc_profit, real_difference
+        return tradable_btc, coin_amount, btc_profit, real_difference
 
-    def _get_real_difference(self, from_information, to_information, expected_profit_percent):
+    def _get_real_difference(self, from_information, to_information, expected_profit_percent, market):
         # transaction fee에 대한 검증은 get_expectation 에서 진행
-        from_trading_fee_percent = (1 - from_information['trading_fee']) ** from_information['fee_count']
-        to_trading_fee_percent = (1 - to_information['trading_fee']) ** to_information['fee_count']
+        from_trading_fee_percent = (1 - from_information['trading_fee'][market]) ** from_information['fee_count']
+        to_trading_fee_percent = (1 - to_information['trading_fee'][market]) ** to_information['fee_count']
 
         real_diff = ((1 + expected_profit_percent) * from_trading_fee_percent * to_trading_fee_percent) - 1
 
-        return Decimal(real_diff).quantize(Decimal(10) ** -8)
+        return real_diff
 
     def _find_min_balance(self, btc_amount, coin_amount, to_exchange_coin_bid):
         coin_to_btc_price = coin_amount * to_exchange_coin_bid
