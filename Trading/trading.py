@@ -1,7 +1,9 @@
 import time
+import json
 from Exchanges.settings import BaseTradeType, SaiOrderStatus
-from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis
+from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis, DecimalDecoder
 from DiffTrader.GlobalSetting.settings import *
+from DiffTrader.GlobalSetting.test_settings import *
 from DiffTrader.GlobalSetting.messages import *
 from Util.pyinstaller_patch import debugger
 
@@ -13,7 +15,6 @@ class Trading(Process):
     """
         monitoring process에서 넘어온 각종 이벤트 값들에 대한 트레이딩 시도
         High Priority
-
     """
 
     def __init__(self):
@@ -23,15 +24,19 @@ class Trading(Process):
         debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
         thread_executor = ThreadPoolExecutor(max_workers=2)
         while True:
-            profit_information = get_redis(RedisKey.ProfitInformation)
+            if not DEBUG:
+                profit_information = get_redis(RedisKey.ProfitInformation, use_decimal=True)
 
-            if not profit_information:
-                continue
+                if not profit_information:
+                    continue
+            else:
+                profit_information = json.loads(TRADING_TEST_INFORMATION, cls=DecimalDecoder)
 
-            primary_str, secondary_str = profit_information['primary_str'], profit_information['secondary_str']
+            primary_str, secondary_str = (profit_information['additional_information']['primary'],
+                                          profit_information['additional_information']['secondary'])
             exchange_dict = get_exchanges()
 
-            if profit_information['trade_type'] == PRIMARY_TO_SECONDARY:
+            if profit_information['exchange_running_type'] == PRIMARY_TO_SECONDARY:
                 buy_args = [exchange_dict[primary_str],
                             exchange_dict[primary_str].buy,
                             BaseTradeType.BUY_MARKET,
@@ -122,3 +127,8 @@ class Trading(Process):
         exchange_coin_amount = order_result['sai_amount']
 
         return exchange_coin_price, exchange_coin_amount
+
+
+if __name__ == '__main__':
+    trading = Trading()
+    trading.run()
