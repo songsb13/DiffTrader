@@ -236,6 +236,7 @@ class Monitoring(Process):
                         'btc_profit': btc_profit,
                         'tradable_btc': tradable_btc,
                         'coin_amount': coin_amount,
+                        'exchange_running_type': exchange_running_type,
                         'additional_information': {
                             'user': self._user,
                             'real_difference': real_difference,
