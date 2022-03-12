@@ -67,8 +67,8 @@ class DecimalDecoder(json.JSONDecoder):
             else:
                 if dic:
                     if isinstance(tc[k], list):
-                        type_.append(list())
-                        self.decode_converter(type_[-1], tc[k])
+                        type_[k] = list()
+                        self.decode_converter(type_[k], tc[k])
                     elif isinstance(tc[k], dict):
                         type_[k] = dict()
                         self.decode_converter(type_[k], tc[k], True)
