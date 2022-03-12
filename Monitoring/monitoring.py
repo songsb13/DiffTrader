@@ -88,10 +88,7 @@ class Monitoring(Process):
             if not DEBUG:
                 if profit_dict['btc_profit'] >= self._min_profit:
                     debugger.debug(Msg.SET_PROFIT_DICT(self._min_profit, profit_dict))
-                    set_redis(RedisKey.ProfitInformation, profit_dict)
-            else:
-                # test code
-                set_redis(RedisKey.ProfitInformation, profit_dict)
+            set_redis(RedisKey.ProfitInformation, profit_dict, use_decimal=True)
 
     def _get_available_symbols(self, primary_information, secondary_information):
         primary_deposit_symbols = primary_information['deposit'].keys()
@@ -158,7 +155,7 @@ class Monitoring(Process):
             data = {
                 'primary': primary_result.data,
                 'secondary': secondary_result.data,
-                'intersection': intersection,
+                'intersection': list(intersection),
                 'expected_profit_dict': {
                     Consts.PRIMARY_TO_SECONDARY: primary_to_secondary,
                     Consts.SECONDARY_TO_PRIMARY: secondary_to_primary
@@ -225,7 +222,7 @@ class Monitoring(Process):
                     sai_symbol,
                 )
 
-                debugger.debug(Msg.TRADABLE_INFO(tradable_btc, coin_amount, btc_profit, real_difference))
+                debugger.debug(Msg.TRADABLE_INFO.format(tradable_btc, coin_amount, btc_profit, real_difference))
 
                 if not profit_dict and (tradable_btc, coin_amount):
                     refresh_profit_dict = True
@@ -242,7 +239,7 @@ class Monitoring(Process):
                         'additional_information': {
                             'user': self._user,
                             'real_difference': real_difference,
-                            'created_time': datetime.datetime.now(),
+                            'created_time': datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
                             'primary': self._primary_str,
                             'secondary': self._secondary_str,
                             'sai_symbol': sai_symbol,
