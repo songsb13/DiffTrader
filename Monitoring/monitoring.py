@@ -6,7 +6,6 @@ from Exchanges.settings import Consts
 from Util.pyinstaller_patch import debugger
 
 from multiprocessing import Process
-from concurrent.futures import ThreadPoolExecutor
 
 from decimal import Decimal
 
@@ -79,7 +78,11 @@ class Monitoring(Process):
                 debugger.debug(Msg.FAIL_TO_GET_ORDERBOOK)
                 continue
 
-            profit_dict = self._get_max_profit(latest_primary_information, latest_secondary_information, total_orderbooks)
+            profit_dict = self._get_max_profit(primary,
+                                               secondary,
+                                               latest_primary_information,
+                                               latest_secondary_information,
+                                               total_orderbooks)
             if not profit_dict:
                 debugger.debug(Msg.FAIL_TO_GET_SUITABLE_PROFIT)
                 time.sleep(5)
@@ -171,7 +174,7 @@ class Monitoring(Process):
             debugger.debug(Msg.GET_ERROR_MESSAGE_IN_COMPARE.format(error_message))
             return False, error_message
 
-    def _get_max_profit(self, primary_information, secondary_information, total_orderbooks):
+    def _get_max_profit(self, primary, secondary, primary_information, secondary_information, total_orderbooks):
         profit_dict = dict()
         for exchange_running_type in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
             for sai_symbol in total_orderbooks['intersection']:
@@ -197,10 +200,12 @@ class Monitoring(Process):
                 if exchange_running_type == PRIMARY_TO_SECONDARY:
                     expectation_data = {
                         'from': {
+                            'exchange': primary,
                             'information': primary_information,
                             'orderbook': total_orderbooks['primary']
                         },
                         'to': {
+                            'exchange': secondary,
                             'information': secondary_information,
                             'orderbook': total_orderbooks['secondary']
                         }
@@ -208,21 +213,23 @@ class Monitoring(Process):
                 else:
                     expectation_data = {
                         'from': {
+                            'exchange': self._secondary,
                             'information': secondary_information,
                             'orderbook': total_orderbooks['secondary']
                         },
                         'to': {
+                            'exchange': self._primary,
                             'information': primary_information,
                             'orderbook': total_orderbooks['primary']
                         }
                     }
-                tradable_btc, coin_amount, btc_profit, real_difference = self._get_expectation(
+                tradable_btc, coin_amount, sell_coin_amount, btc_profit, real_difference = self._get_expectation(
                     expectation_data,
                     expect_profit_percent,
                     sai_symbol,
                 )
 
-                debugger.debug(Msg.TRADABLE_INFO.format(tradable_btc, coin_amount, btc_profit, real_difference))
+                debugger.debug(Msg.TRADABLE_INFO.format(tradable_btc, coin_amount, sell_coin_amount, btc_profit, real_difference))
 
                 if not profit_dict and (tradable_btc, coin_amount):
                     refresh_profit_dict = True
@@ -236,6 +243,7 @@ class Monitoring(Process):
                         'btc_profit': btc_profit,
                         'tradable_btc': tradable_btc,
                         'coin_amount': coin_amount,
+                        'sell_coin_amount': sell_coin_amount,
                         'exchange_running_type': exchange_running_type,
                         'additional_information': {
                             'user': self._user,
@@ -266,11 +274,18 @@ class Monitoring(Process):
             to_['orderbook'][sai_symbol][Consts.BIDS],
         )
 
+        # coin_amount that calculate trading and transaction fees.
+        sell_coin_amount = from_['exchange'].base_to_coin(
+            coin_amount,
+            from_['information']['trading_fee'][market],
+            to_['information']['transaction_fee'][coin]
+        )
+
         btc_profit = (tradable_btc * real_difference) - \
                      (from_['information']['transaction_fee'][coin] * from_['orderbook'][sai_symbol][Consts.ASKS]) - \
                       to_['information']['transaction_fee'][market]
 
-        return tradable_btc, coin_amount, btc_profit, real_difference
+        return tradable_btc, coin_amount, sell_coin_amount, btc_profit, real_difference
 
     def _get_real_difference(self, from_information, to_information, expected_profit_percent, market):
         # transaction fee에 대한 검증은 get_expectation 에서 진행
