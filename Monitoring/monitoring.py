@@ -213,12 +213,12 @@ class Monitoring(Process):
                 else:
                     expectation_data = {
                         'from': {
-                            'exchange': self._secondary,
+                            'exchange': secondary,
                             'information': secondary_information,
                             'orderbook': total_orderbooks['secondary']
                         },
                         'to': {
-                            'exchange': self._primary,
+                            'exchange': primary,
                             'information': primary_information,
                             'orderbook': total_orderbooks['primary']
                         }
