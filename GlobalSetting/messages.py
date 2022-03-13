@@ -24,7 +24,7 @@ class MonitoringMessage(object):
     GET_ERROR_MESSAGE_IN_COMPARE = 'get error message in _compare_orderbook. error_message={}'
     BALANCE_NOT_FOUND = '{}, has not {} in currency balance.'
     EXPECTED_PROFIT = "expected profit is not enough to reach setting's profit. coin:{}, {} < {}"
-    TRADABLE_INFO = "tradable={}, coin_amount={}, btc_profit={}, real_difference={}"
+    TRADABLE_INFO = "tradable={}, coin_amount={}, sell_coin_amonut={}, btc_profit={}, real_difference={}"
 
     FAIL_TO_GET_ORDERBOOK = 'fail to get orderbook data from _compare_orderbook.'
     FAIL_TO_GET_SUITABLE_PROFIT = 'fail to get suitable profit in _max_profit'
