@@ -1,6 +1,6 @@
 import time
 import json
-from Exchanges.settings import BaseTradeType, SaiOrderStatus
+from Exchanges.settings import BaseTradeType, SaiOrderStatus, Consts
 from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis, DecimalDecoder
 from DiffTrader.GlobalSetting.settings import *
 from DiffTrader.GlobalSetting.test_settings import *
@@ -23,6 +23,7 @@ class Trading(Process):
     def run(self) -> None:
         debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
         thread_executor = ThreadPoolExecutor(max_workers=2)
+        exchange_dict = get_exchanges()
         while True:
             if not DEBUG:
                 profit_information = get_redis(RedisKey.ProfitInformation, use_decimal=True)
@@ -34,31 +35,45 @@ class Trading(Process):
 
             primary_str, secondary_str = (profit_information['additional_information']['primary'],
                                           profit_information['additional_information']['secondary'])
-            exchange_dict = get_exchanges()
 
             if profit_information['exchange_running_type'] == PRIMARY_TO_SECONDARY:
                 buy_args = [exchange_dict[primary_str],
                             exchange_dict[primary_str].buy,
                             BaseTradeType.BUY_MARKET,
-                            profit_information]
+                            profit_information,
+                            profit_information['additional_information']['sai_symbol'],
+                            profit_information['additional_information']['coin_amount'],
+                            profit_information['additional_information']['total_orderbooks'][primary_str][Consts.ASKS]]
 
                 sell_args = [exchange_dict[secondary_str],
                              exchange_dict[secondary_str].sell,
                              BaseTradeType.SELL_MARKET,
-                             profit_information]
+                             profit_information,
+                             profit_information['additional_information']['sai_symbol'],
+                             profit_information['additional_information']['sell_coin_amount'],
+                             profit_information['additional_information']['total_orderbooks'][secondary_str][Consts.BIDS]]
             else:
                 buy_args = [exchange_dict[secondary_str],
                             exchange_dict[secondary_str].buy,
                             BaseTradeType.BUY_MARKET,
-                            profit_information]
+                            profit_information,
+                            profit_information['additional_information']['sai_symbol'],
+                            profit_information['additional_information']['coin_amount'],
+                            profit_information['additional_information']['total_orderbooks'][secondary_str][Consts.ASKS]]
 
                 sell_args = [exchange_dict[primary_str],
                              exchange_dict[primary_str].sell,
                              BaseTradeType.SELL_MARKET,
-                             profit_information]
+                             profit_information,
+                             profit_information['additional_information']['sai_symbol'],
+                             profit_information['additional_information']['sell_coin_amount'],
+                             profit_information['additional_information']['total_orderbooks'][primary_str][Consts.BIDS]]
 
-            from_exchange_coin_price, from_exchange_coin_amount = thread_executor.submit(self._trade, *buy_args)
-            to_exchange_coin_price, to_exchange_coin_amount = thread_executor.submit(self._trade, *sell_args)
+            buy_executor = thread_executor.submit(self._trade, *buy_args)
+            sell_executor = thread_executor.submit(self._trade, *sell_args)
+
+            from_exchange_coin_price, from_exchange_coin_amount = buy_executor.result()
+            to_exchange_coin_price, to_exchange_coin_amount = sell_executor.result()
 
             trading_information = dict(
                 from_exchange=dict(
@@ -96,7 +111,7 @@ class Trading(Process):
             time.sleep(1)
         return result
 
-    def _trade(self, exchange, trade_func, trade_type, profit_information):
+    def _trade(self, exchange, trade_func, trade_type, sai_symbol, coin_amount, price):
         """
             from_exchange: Exchange that will be buying the ALT coin
             to_exchange: Exchange that will be selling the ALT coin
@@ -104,9 +119,10 @@ class Trading(Process):
         debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
         with FunctionExecutor(trade_func) as executor:
             result = executor.loop_executor(
-                profit_information['sai_symbol'],
+                sai_symbol,
                 trade_type,
-                profit_information['base_to_alt_amount'],
+                coin_amount,
+                price
             )
             if not result.success:
                 debugger.debug(TradingMessage.Debug.FAIL_TO_TRADING.format())
@@ -116,7 +132,7 @@ class Trading(Process):
         order_result = self.checking_order(
             exchange,
             result.data['sai_order_id'],
-            symbol=profit_information['sai_symbol']
+            symbol=sai_symbol
         )
 
         if not order_result:
