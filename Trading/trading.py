@@ -96,7 +96,7 @@ class Trading(Process):
                 set_redis(RedisKey.TradingInformation, trading_information, use_decimal=True)
 
             send_information = {**trading_information, **dict(full_url_path=SaiUrls.BASE + SaiUrls.TRADING)}
-            set_redis(RedisKey.SendInformation, send_information)
+            set_redis(RedisKey.SendInformation, send_information, use_decimal=True)
 
             time.sleep(0.1)
 
