@@ -28,6 +28,7 @@ CONFIG = configparser.ConfigParser()
 CONFIG.read(os.path.join(os.path.dirname(__file__), 'config.cfg'))
 
 REDIS_SERVER = redis.StrictRedis(host='localhost', port=6379, db=0)
+AGREE_WORDS = ['Y', 'YES', 'TRUE', 'T']
 
 
 class SaiUrls(object):

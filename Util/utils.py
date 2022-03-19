@@ -1,7 +1,7 @@
 from Exchanges.upbit.upbit import BaseUpbit
 from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
-from DiffTrader.GlobalSetting.settings import REDIS_SERVER, CONFIG
+from DiffTrader.GlobalSetting.settings import REDIS_SERVER, CONFIG, AGREE_WORDS
 
 from Util.pyinstaller_patch import debugger
 
@@ -175,18 +175,18 @@ def set_redis(key, value, use_decimal=False):
 
 def get_exchanges():
     obj = dict()
-    if CONFIG['Upbit']['Run'] == 'True':
+    if CONFIG['Upbit']['Run'].upper() in AGREE_WORDS:
         obj['Upbit'] = BaseUpbit(CONFIG['Upbit']['Key'], CONFIG['Upbit']['Secret'])
-    if CONFIG['Binance']['Run'] == 'True':
+    if CONFIG['Binance']['Run'].upper() in AGREE_WORDS:
         obj['Binance'] = Binance(CONFIG['Binance']['Key'], CONFIG['Binance']['Secret'])
-    if CONFIG['Bithumb']['Run'] == 'True':
+    if CONFIG['Bithumb']['Run'].upper() in AGREE_WORDS:
         obj['Bithumb'] = BaseBithumb(CONFIG['Bithumb']['Key'], CONFIG['Bithumb']['Secret'])
 
     return obj
 
 
 def get_auto_withdrawal():
-    return True if CONFIG['general']['auto withdrawal'].upper() == 'Y' else False
+    return True if CONFIG['General']['Auto Withdrawal'].upper() in AGREE_WORDS else False
 
 
 def get_min_profit():
