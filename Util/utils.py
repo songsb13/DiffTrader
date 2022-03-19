@@ -38,7 +38,7 @@ class FunctionExecutor(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        debugger.debug('Exit FunctionExecutor, trace: [{}]'.format(' -> '.format(self._trace)))
+        debugger.debug('Exit FunctionExecutor, trace: [{}]'.format(' -> '.join(self._trace)))
         return None
 
 
