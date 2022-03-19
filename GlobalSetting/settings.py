@@ -5,6 +5,7 @@ import sys
 
 
 DEBUG = True if 'pydevd' in sys.modules else False
+DEBUG_ORDER_ID = 'DEBUG-TEST-ID'
 
 TAG_COINS = ['XRP', 'XMR']
 ABLE_MARKETS = ['BTC']
