@@ -7,7 +7,7 @@ from DiffTrader.GlobalSetting.test_settings import *
 from DiffTrader.GlobalSetting.messages import *
 from Util.pyinstaller_patch import debugger
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from multiprocessing import Process
 
 
@@ -66,22 +66,24 @@ class Trading(Process):
                              profit_information['sell_coin_amount'],
                              profit_information['additional_information']['total_orderbooks']['primary'][sai_symbol][Consts.BIDS]]
 
-            buy_executor = thread_executor.submit(self._trade, *buy_args)
-            sell_executor = thread_executor.submit(self._trade, *sell_args)
+            tasks = []
+            for args in [buy_args, sell_args]:
+                task = thread_executor.submit(self._trade, *args)
+                tasks.append(task)
 
-            from_exchange_coin_price, from_exchange_coin_amount = buy_executor.result()
-            to_exchange_coin_price, to_exchange_coin_amount = sell_executor.result()
+            from_price, from_amount = tasks[0].result()
+            to_price, to_amount = tasks[1].result()
 
             trading_information = dict(
                 from_exchange=dict(
                     name=primary_str,
-                    price=from_exchange_coin_price,
-                    amount=from_exchange_coin_amount
+                    price=from_price,
+                    amount=from_amount
                 ),
                 to_exchange=dict(
                     name=secondary_str,
-                    price=to_exchange_coin_price,
-                    amount=to_exchange_coin_amount
+                    price=to_price,
+                    amount=to_amount
                 )
             )
 
@@ -115,6 +117,9 @@ class Trading(Process):
                 debugger.debug(TradingMessage.Debug.FAIL_TO_TRADING.format())
                 return None, None
             debugger.debug(TradingMessage.Debug.TRADING_RESULT.format(result.data))
+
+        if result.data['sai_order_id'] in "DEBUG-TEST-ID":
+            return result.data['sai_average_price'], result.data['sai_amount']
 
         order_result = self.checking_order(
             exchange,
