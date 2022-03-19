@@ -36,38 +36,35 @@ class Trading(Process):
             primary_str, secondary_str = (profit_information['additional_information']['primary'],
                                           profit_information['additional_information']['secondary'])
 
+            sai_symbol = profit_information['sai_symbol']
             if profit_information['exchange_running_type'] == PRIMARY_TO_SECONDARY:
                 buy_args = [exchange_dict[primary_str],
                             exchange_dict[primary_str].buy,
                             BaseTradeType.BUY_MARKET,
-                            profit_information,
-                            profit_information['additional_information']['sai_symbol'],
-                            profit_information['additional_information']['coin_amount'],
-                            profit_information['additional_information']['total_orderbooks'][primary_str][Consts.ASKS]]
+                            sai_symbol,
+                            profit_information['coin_amount'],
+                            profit_information['additional_information']['total_orderbooks']['primary'][sai_symbol][Consts.ASKS]]
 
                 sell_args = [exchange_dict[secondary_str],
                              exchange_dict[secondary_str].sell,
                              BaseTradeType.SELL_MARKET,
-                             profit_information,
-                             profit_information['additional_information']['sai_symbol'],
-                             profit_information['additional_information']['sell_coin_amount'],
-                             profit_information['additional_information']['total_orderbooks'][secondary_str][Consts.BIDS]]
+                             sai_symbol,
+                             profit_information['sell_coin_amount'],
+                             profit_information['additional_information']['total_orderbooks']['secondary'][sai_symbol][Consts.BIDS]]
             else:
                 buy_args = [exchange_dict[secondary_str],
                             exchange_dict[secondary_str].buy,
                             BaseTradeType.BUY_MARKET,
-                            profit_information,
-                            profit_information['additional_information']['sai_symbol'],
-                            profit_information['additional_information']['coin_amount'],
-                            profit_information['additional_information']['total_orderbooks'][secondary_str][Consts.ASKS]]
+                            sai_symbol,
+                            profit_information['coin_amount'],
+                            profit_information['additional_information']['total_orderbooks']['secondary'][sai_symbol][Consts.ASKS]]
 
                 sell_args = [exchange_dict[primary_str],
                              exchange_dict[primary_str].sell,
                              BaseTradeType.SELL_MARKET,
-                             profit_information,
-                             profit_information['additional_information']['sai_symbol'],
-                             profit_information['additional_information']['sell_coin_amount'],
-                             profit_information['additional_information']['total_orderbooks'][primary_str][Consts.BIDS]]
+                             sai_symbol,
+                             profit_information['sell_coin_amount'],
+                             profit_information['additional_information']['total_orderbooks']['primary'][sai_symbol][Consts.BIDS]]
 
             buy_executor = thread_executor.submit(self._trade, *buy_args)
             sell_executor = thread_executor.submit(self._trade, *sell_args)
@@ -101,16 +98,6 @@ class Trading(Process):
 
             time.sleep(0.1)
 
-    def checking_order(self, exchange, order_id, **additional):
-        debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
-        for _ in range(60):
-            result = exchange.get_order_history(order_id, additional)
-
-            if result.success and result.data['sai_status'] == SaiOrderStatus.CLOSED:
-                return result
-            time.sleep(1)
-        return result
-
     def _trade(self, exchange, trade_func, trade_type, sai_symbol, coin_amount, price):
         """
             from_exchange: Exchange that will be buying the ALT coin
@@ -143,6 +130,16 @@ class Trading(Process):
         exchange_coin_amount = order_result['sai_amount']
 
         return exchange_coin_price, exchange_coin_amount
+
+    def checking_order(self, exchange, order_id, **additional):
+        debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
+        for _ in range(60):
+            result = exchange.get_order_history(order_id, additional)
+
+            if result.success and result.data['sai_status'] == SaiOrderStatus.CLOSED:
+                return result
+            time.sleep(1)
+        return result
 
 
 if __name__ == '__main__':

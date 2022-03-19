@@ -245,13 +245,13 @@ class Monitoring(Process):
                         'coin_amount': coin_amount,
                         'sell_coin_amount': sell_coin_amount,
                         'exchange_running_type': exchange_running_type,
+                        'sai_symbol': sai_symbol,
                         'additional_information': {
                             'user': self._user,
                             'real_difference': real_difference,
                             'created_time': datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
                             'primary': self._primary_str,
                             'secondary': self._secondary_str,
-                            'sai_symbol': sai_symbol,
                             'total_orderbooks': total_orderbooks
                         }
                     }
