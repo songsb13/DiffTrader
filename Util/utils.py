@@ -189,6 +189,14 @@ def get_auto_withdrawal():
     return True if CONFIG['General']['Auto Withdrawal'].upper() in AGREE_WORDS else False
 
 
+def get_withdrawal_info():
+    withdrawal_info = {
+        'withdrawal_minimum_amount': CONFIG['General']['Minimum Amount'],
+        'balance_withdrawal_percent': CONFIG['General']['Balance Withdrawal Percent']
+    }
+    return withdrawal_info
+
+
 def get_min_profit():
     return Decimal(CONFIG['Profit']['Withdrawal Percent']).quantize(Decimal(10) ** -6)
 

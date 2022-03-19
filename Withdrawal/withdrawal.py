@@ -1,6 +1,6 @@
 import time
 
-from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis
+from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis, get_withdrawal_info
 from DiffTrader.GlobalSetting.settings import DEFAULT_REFRESH_TIME, RedisKey, SaiUrls
 from Util.pyinstaller_patch import debugger
 
@@ -33,8 +33,16 @@ class Withdrawal(object):
             time.sleep(60)
 
     def withdrawal(self):
+        """
+            primary_to_secondary로 거래가 된다고 했을 때, primary에서 coin을 매수, secondary에서 coin을 매도함.
+            primary 거래소에서는 coin이 추가되고, secondary거래소에서는 btc가 추가된 상황
+            코인 및 BTC가 n%이상 되고, 총 이익발생이 m이상 되는경우 출금
+            n, m = 유저 설정 값
+        """
         refresh_time = 0
         thread_executor = ThreadPoolExecutor(max_workers=2)
+        exchange_dict = get_exchanges()
+        withdrawal_info = get_withdrawal_info()
         while True:
             trading_information = get_redis(RedisKey.TradingInformation)
 
