@@ -47,7 +47,6 @@ class Withdrawal(object):
             primary_str, secondary_str = trading_information['from_exchange']['name'], \
                                          trading_information['to_exchange']['name']
 
-            exchange_dict = get_exchanges()
             primary_exchange, secondary_exchange = exchange_dict[primary_str], exchange_dict[secondary_str]
 
             from_exchange_args = [
@@ -68,3 +67,16 @@ class Withdrawal(object):
                 )
             )
             set_redis(RedisKey.SendInformation, total)
+
+    def _get_exchanges_balance(self, primary_exchange, secondary_exchange):
+        # balance
+        results = []
+        for exchange in [primary_exchange, secondary_exchange]:
+            balance_result = exchange.get_balance()
+
+            if not balance_result.success:
+                debugger.debug(balance_result.message)
+                return dict()
+
+            results.append(balance_result.data)
+        return results
