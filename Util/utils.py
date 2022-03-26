@@ -191,7 +191,7 @@ def get_auto_withdrawal():
 
 def get_withdrawal_info():
     withdrawal_info = {
-        'withdrawal_minimum_amount': CONFIG['General']['Minimum Amount'],
+        'minimum_profit_amount': CONFIG['General']['Minimum Profit Amount'],
         'balance_withdrawal_percent': CONFIG['General']['Balance Withdrawal Percent']
     }
     return withdrawal_info
