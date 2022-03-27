@@ -1,16 +1,23 @@
 import time
 
 from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis, get_withdrawal_info, get_auto_withdrawal
-from DiffTrader.GlobalSetting.settings import DEFAULT_REFRESH_TIME, RedisKey, SaiUrls
+from DiffTrader.GlobalSetting.settings import TraderConsts, RedisKey, SaiUrls
 from Util.pyinstaller_patch import debugger
 
 from concurrent.futures import ThreadPoolExecutor
+from decimal import getcontext, Decimal
+
+
+getcontext().prec = 8
 
 
 class WithdrawalInfo(object):
     def __init__(self):
-       self. current_profit = {}
+        self.total_minimum_profit_amount = {TraderConsts.PRIMARY_TO_SECONDARY: Decimal(0),
+                                            TraderConsts.SECONDARY_TO_PRIMARY: Decimal(0)}
 
+    def __call__(self, *args, **kwargs):
+        pass
 
 
 class Withdrawal(object):
@@ -24,10 +31,10 @@ class Withdrawal(object):
             to_exchange = coin을 매도하는 거래소 -> coin 수량 체크 필요
         """
         refresh_time = 0
-        thread_executor = ThreadPoolExecutor(max_workers=2)
+        thread_executor = ThreadPoolExecutor(max_workers=6)
         exchange_dict = get_exchanges()
-        withdrawal_info = get_withdrawal_info()
-        current_profits = {}
+        user_withdrawal_info = get_withdrawal_info()
+        latest_info = WithdrawalInfo()
         while True:
             trading_information = get_redis(RedisKey.TradingInformation)
             if not get_auto_withdrawal():
@@ -35,20 +42,40 @@ class Withdrawal(object):
                 continue
 
             if not refresh_time or refresh_time <= time.time():
-                refresh_time = time.time() + DEFAULT_REFRESH_TIME
+                refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
 
             if not trading_information:
                 continue
 
-            from_exchange_str, to_exchange_str = (trading_information['from_exchange']['name'],
-                                                  trading_information['to_exchange']['name'])
-            from_exchange, to_exchange = exchange_dict[from_exchange_str], exchange_dict[to_exchange_str]
+            from_str, to_str = (trading_information['from_exchange']['name'],
+                                trading_information['to_exchange']['name'])
 
-            if not self.check_able_withdrawal(from_exchange,
-                                              to_exchange,
-                                              withdrawal_info,
-                                              trading_information):
+            from_exchange, to_exchange = (exchange_dict[from_str],
+                                          exchange_dict[to_str])
+
+            from_balance, to_balance = (from_exchange.get_balance(cached=True),
+                                        to_exchange.get_balance(cached=True))
+
+            coins = self._get_need_withdrawal_coins(from_balance, to_balance)
+
+            if coins:
+                from_exchange_args = [
+                    from_exchange
+                ]
+                to_exchange_args = [
+                    to_exchange
+                ]
+
+                from_exchange_withdrawal_result = thread_executor.submit(self.start_withdrawal, *from_exchange_args)
+                to_exchange_withdrawal_result = thread_executor.submit(self.start_withdrawal, *to_exchange_args)
+
+            total_minimum_profit_amount = latest_info.total_minimum_profit_amount[trading_information['exchange_running_type']]
+            total_minimum_profit_amount += trading_information['btc_profit']
+
+            if total_minimum_profit_amount < user_withdrawal_info['minimum_profit_amount']:
                 continue
+
+            market, coin = trading_information['sai_symbol'].split('_')
 
             # exchange, coin, send_amount, to_address
             from_exchange_args = [
@@ -64,11 +91,30 @@ class Withdrawal(object):
             total = dict(
                 full_url_path=SaiUrls.BASE + SaiUrls.WITHDRAW,
                 data=dict(
-                    from_exchange_information=dict(exchange=from_exchange_str, data=from_exchange_withdrawal_result),
-                    to_exchange_information=dict(exchange=to_exchange_str, data=to_exchange_withdrawal_result)
+                    from_exchange_information=dict(exchange=from_str, data=from_exchange_withdrawal_result),
+                    to_exchange_information=dict(exchange=to_str, data=to_exchange_withdrawal_result)
                 )
             )
             set_redis(RedisKey.SendInformation, total)
+
+    def _get_need_withdrawal_coins(self, from_balance, to_balance, withdrawal_info):
+        intersection = set(from_balance.keys()).intersection(list(to_balance.keys()))
+        inter_balance = dict()
+        for coin in intersection:
+            from_amount, to_amount = from_balance[coin], to_balance[coin]
+            difference_amount = from_amount - to_amount
+
+            to_withdrawal = 'to' if difference_amount > 0 else 'from'
+
+            difference_percent = (abs(from_amount - to_amount) / ((from_amount + to_amount) / 2)) * 100
+
+            if difference_percent >= withdrawal_info['balance_withdrawal_percent']:
+                inter_balance.update({coin: {
+                    'difference_percent': difference_percent,
+                    'to_withdrawal': to_withdrawal
+                }})
+
+        return inter_balance
 
     def check_able_withdrawal(self, from_exchange, to_exchange, withdrawal_info, trading_information):
         market, coin = trading_information['sai_symbol'].split('_')
