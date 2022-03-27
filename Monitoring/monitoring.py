@@ -1,5 +1,5 @@
 from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder, task_wrapper
-from DiffTrader.GlobalSetting.settings import PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY, RedisKey, DEBUG, TEST_USER, ABLE_MARKETS
+from DiffTrader.GlobalSetting.settings import TraderConsts, RedisKey, DEBUG, TEST_USER
 from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
 from DiffTrader.GlobalSetting.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
 from Exchanges.settings import Consts
@@ -99,7 +99,7 @@ class Monitoring(Process):
         deposit_intersection = set(primary_deposit_symbols).intersection(secondary_deposit_symbols)
 
         # set market
-        able_markets = set(ABLE_MARKETS).intersection(deposit_intersection)
+        able_markets = set(Consts.ABLE_MARKETS).intersection(deposit_intersection)
         able_sai_symbols = list()
         for market in able_markets:
             for coin in deposit_intersection:
@@ -160,8 +160,8 @@ class Monitoring(Process):
                 'secondary': secondary_result.data,
                 'intersection': list(intersection),
                 'expected_profit_dict': {
-                    Consts.PRIMARY_TO_SECONDARY: primary_to_secondary,
-                    Consts.SECONDARY_TO_PRIMARY: secondary_to_primary
+                    TraderConsts.PRIMARY_TO_SECONDARY: primary_to_secondary,
+                    TraderConsts.SECONDARY_TO_PRIMARY: secondary_to_primary
                 }
             }
 
@@ -176,7 +176,7 @@ class Monitoring(Process):
 
     def _get_max_profit(self, primary, secondary, primary_information, secondary_information, total_orderbooks):
         profit_dict = dict()
-        for exchange_running_type in [PRIMARY_TO_SECONDARY, SECONDARY_TO_PRIMARY]:
+        for exchange_running_type in [TraderConsts.PRIMARY_TO_SECONDARY, TraderConsts.SECONDARY_TO_PRIMARY]:
             for sai_symbol in total_orderbooks['intersection']:
                 market, coin = sai_symbol.split('_')
 
@@ -197,7 +197,7 @@ class Monitoring(Process):
                         debugger.debug(Msg.EXPECTED_PROFIT.format(sai_symbol, expect_profit_percent, self._min_profit))
                         continue
 
-                if exchange_running_type == PRIMARY_TO_SECONDARY:
+                if exchange_running_type == TraderConsts.PRIMARY_TO_SECONDARY:
                     expectation_data = {
                         'from': {
                             'exchange': primary,

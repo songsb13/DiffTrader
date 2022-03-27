@@ -1,3 +1,5 @@
+
+
 import configparser
 import redis
 import os
@@ -7,21 +9,6 @@ import sys
 DEBUG = True if 'pydevd' in sys.modules else False
 DEBUG_ORDER_ID = 'DEBUG-TEST-ID'
 
-TAG_COINS = ['XRP', 'XMR']
-ABLE_MARKETS = ['BTC']
-
-# Selling the BTC from primary, Selling the ALT from secondary
-PRIMARY_TO_SECONDARY = 'primary_to_secondary'
-
-# Selling the ALT from primary, Selling the BTc from secondary
-SECONDARY_TO_PRIMARY = 'secondary_to_primary'
-
-# Exchange list of available trading in SAI programs.
-AVAILABLE_EXCHANGES = ['Binance', 'Bithumb', 'Upbit']
-
-# set default refresh time
-DEFAULT_REFRESH_TIME = 3600
-
 TEST_USER = 'gimo@naver.com'
 
 CONFIG = configparser.ConfigParser()
@@ -29,6 +16,23 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), 'config.cfg'))
 
 REDIS_SERVER = redis.StrictRedis(host='localhost', port=6379, db=0)
 AGREE_WORDS = ['Y', 'YES', 'TRUE', 'T']
+
+
+class TraderConsts(object):
+    # Selling the BTC from primary, Selling the ALT from secondary
+    PRIMARY_TO_SECONDARY = 'primary_to_secondary'
+
+    # Selling the ALT from primary, Selling the BTc from secondary
+    SECONDARY_TO_PRIMARY = 'secondary_to_primary'
+
+    TAG_COINS = ['XRP', 'XMR']
+    ABLE_MARKETS = ['BTC']
+
+    # set default refresh time
+    DEFAULT_REFRESH_TIME = 3600
+
+    # Exchange list of available trading in SAI programs.
+    AVAILABLE_EXCHANGES = ['Binance', 'Bithumb', 'Upbit']
 
 
 class SaiUrls(object):

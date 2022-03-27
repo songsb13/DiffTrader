@@ -2,7 +2,7 @@ import time
 import json
 from Exchanges.settings import BaseTradeType, SaiOrderStatus, Consts
 from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis, DecimalDecoder
-from DiffTrader.GlobalSetting.settings import *
+from DiffTrader.GlobalSetting.settings import RedisKey, SaiUrls, DEBUG, TraderConsts
 from DiffTrader.GlobalSetting.test_settings import *
 from DiffTrader.GlobalSetting.messages import *
 from Util.pyinstaller_patch import debugger
@@ -37,7 +37,7 @@ class Trading(Process):
                                           profit_information['additional_information']['secondary'])
 
             sai_symbol = profit_information['sai_symbol']
-            if profit_information['exchange_running_type'] == PRIMARY_TO_SECONDARY:
+            if profit_information['exchange_running_type'] == TraderConsts.PRIMARY_TO_SECONDARY:
                 buy_args = [exchange_dict[primary_str],
                             exchange_dict[primary_str].buy,
                             BaseTradeType.BUY_MARKET,
