@@ -99,7 +99,7 @@ class Monitoring(Process):
         deposit_intersection = set(primary_deposit_symbols).intersection(secondary_deposit_symbols)
 
         # set market
-        able_markets = set(Consts.ABLE_MARKETS).intersection(deposit_intersection)
+        able_markets = set(TraderConsts.ABLE_MARKETS).intersection(deposit_intersection)
         able_sai_symbols = list()
         for market in able_markets:
             for coin in deposit_intersection:
