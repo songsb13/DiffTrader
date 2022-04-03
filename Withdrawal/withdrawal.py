@@ -75,10 +75,14 @@ class Withdrawal(object):
         from_balance = from_exchange.get_balance(cached=True)
         to_balance = to_exchange.get_balance(cached=True)
 
+        from_transaction_fee = from_exchange.get_cached_data(Consts.TRANSACTION_FEE)
+        to_transaction_fee = to_exchange.get_cached_data(Consts.TRANSACTION_FEE)
+
         intersection = set(from_balance.keys()).intersection(list(to_balance.keys()))
         inter_balance = dict()
         for coin in intersection:
-            from_amount, to_amount = from_balance[coin], to_balance[coin]
+            from_amount, to_amount = ((from_balance[coin] - from_transaction_fee[coin]),
+                                      (to_balance[coin] - to_transaction_fee[coin]))
             difference_amount = from_amount - to_amount
 
             send_exchange, min_amount = (from_exchange, from_amount) if difference_amount > 0 \
@@ -128,7 +132,11 @@ class Withdrawal(object):
             check_result = info['exchange'].is_withdrawal_completed(info['coin'], result.data['sai_id'])
 
             if check_result.success:
-                set_redis(RedisKey.SendInformation, check_result.data)
+                send_information = {
+                    'full_url_path': SaiUrls.BASE + SaiUrls.WITHDRAWAL,
+                    **check_result.data
+                }
+                set_redis(RedisKey.SendInformation, send_information)
                 return
             debugger.debug(info['exchange'].name)
             time.sleep(60)
