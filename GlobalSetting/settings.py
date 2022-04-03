@@ -39,7 +39,7 @@ class SaiUrls(object):
     BASE = 'https://www.saiblockchain.com'
 
     TRADING = '/api/v1/information/trading'
-    WITHDRAW = '/api/v1/information/withdraw'
+    WITHDRAWAL = '/api/v1/information/withdrawal'
 
     EXPECTED_PROFIT = '/api/v1/information/expected-profit'
     REAL_PROFIT = '/api/v1/information/real-profit'
