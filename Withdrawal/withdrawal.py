@@ -14,18 +14,13 @@ getcontext().prec = 8
 
 class WithdrawalInfo(object):
     def __init__(self):
-        self._total_minimum_profit_amount = Decimal(0)
+        self.total_minimum_profit_amount = Decimal(0)
+
+    def add_total_minimum_profit_amount(self, value):
+        sum(self.total_minimum_profit_amount, value)
 
     def reset_total_minimum_profit_amount(self):
-        self._total_minimum_profit_amount = Decimal(0)
-
-    @property
-    def total_minimum_profit_amount(self):
-        return self._total_minimum_profit_amount
-
-    @total_minimum_profit_amount.setter
-    def total_minimum_profit_amount(self, value):
-        self._total_minimum_profit_amount += value
+        self.total_minimum_profit_amount = Decimal(0)
 
 
 class Withdrawal(object):
@@ -54,7 +49,7 @@ class Withdrawal(object):
 
             if not trading_information:
                 continue
-            latest_info.total_minimum_profit_amount(trading_information['btc_profit'])
+            latest_info.add_total_minimum_profit_amount(trading_information['btc_profit'])
             if latest_info.total_minimum_profit_amount < user_withdrawal_info['minimum_profit_amount']:
                 continue
 
@@ -72,13 +67,9 @@ class Withdrawal(object):
                     executor_args_list.append(self.set_thread_executor(coin, info))
 
             latest_info.reset_total_minimum_profit_amount()
-            tasks = []
-            for args in executor_args_list:
-                task = thread_executor.submit(self.start_withdrawal, *args)
-                tasks.append(task)
+            results = thread_executor.map(self.start_withdrawal, executor_args_list)
 
-            total = {}
-            set_redis(RedisKey.SendInformation, total)
+            return list(results)
 
     def _get_need_withdrawal_coins(self, from_exchange, to_exchange, withdrawal_info):
         from_balance = from_exchange.get_balance(cached=True)
@@ -107,36 +98,37 @@ class Withdrawal(object):
         address_info = withdrawal_info['send_exchange'].get_cached_data(Consts.DEPOSIT_ADDRESS)
         coin_address = address_info.get(coin)
         coin_tag = address_info.get(coin + 'TAG', None)
-        exchange_args = [
-            withdrawal_info['send_exchange'],
-            coin,
-            withdrawal_info['send_amount'],
-            coin_address,
-            coin_tag
-        ]
+        exchange_args = {
+            "coin": coin,
+            "coin_address": coin_address,
+            "coin_tag": coin_tag,
+            **withdrawal_info,
+        }
 
         return exchange_args
 
-    def start_withdrawal(self, exchange, coin, send_amount, to_address, tag=None):
+    def start_withdrawal(self, info):
         """
             exchange: Exchange object
             coin: coin name, BTC, ETH, XRP and etc..
         """
-        with FunctionExecutor(exchange.withdraw) as executor:
+        # exchange, coin, send_amount, to_address, tag=None
+        with FunctionExecutor(info['exchange'].withdraw) as executor:
             result = executor.loop_executor(
-                coin,
-                send_amount,
-                to_address,
-                tag
+                info['coin'],
+                info['send_amount'],
+                info['to_address'],
+                info['tag']
             )
 
-            if not result:
+            if not result.success:
                 return None
 
         while True:
-            check_result = exchange.is_withdrawal_completed(coin, result['sai_id'])
+            check_result = info['exchange'].is_withdrawal_completed(info['coin'], result.data['sai_id'])
 
             if check_result.success:
-                return check_result
-            debugger.debug(exchange.name)
+                set_redis(RedisKey.SendInformation, check_result.data)
+                return
+            debugger.debug(info['exchange'].name)
             time.sleep(60)
