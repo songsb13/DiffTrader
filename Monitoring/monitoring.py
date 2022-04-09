@@ -262,30 +262,29 @@ class Monitoring(Process):
         market, coin = sai_symbol.split('_')
         from_, to_ = expectation_data['from'], expectation_data['to']
 
+        to_exchange_coin_amount = to_['information']['balance'][coin]
         real_difference = self._get_real_difference(
             from_['information'],
             to_['information'],
             expected_profit_percent,
             market
         )
-        tradable_btc, coin_amount = self._find_min_balance(
+        tradable_btc = self._find_min_balance(
             from_['information']['balance'][market],
-            to_['information']['balance'][coin],
+            to_exchange_coin_amount,
             to_['orderbook'][sai_symbol][Consts.BIDS],
         )
 
         # coin_amount that calculate trading and transaction fees.
-        sell_coin_amount = from_['exchange'].base_to_coin(
-            coin_amount,
+        # sell coin amount that to_exchange.
+        sell_coin_amount = to_['exchange'].base_to_coin(
+            tradable_btc,
             from_['information']['trading_fee'][market],
-            to_['information']['transaction_fee'][coin]
         )
 
-        btc_profit = (tradable_btc * real_difference) - \
-                     (from_['information']['transaction_fee'][coin] * from_['orderbook'][sai_symbol][Consts.ASKS]) - \
-                      to_['information']['transaction_fee'][market]
+        btc_profit = tradable_btc * real_difference
 
-        return tradable_btc, coin_amount, sell_coin_amount, btc_profit, real_difference
+        return tradable_btc, to_exchange_coin_amount, sell_coin_amount, btc_profit, real_difference
 
     def _get_real_difference(self, from_information, to_information, expected_profit_percent, market):
         # transaction fee에 대한 검증은 get_expectation 에서 진행
@@ -298,12 +297,9 @@ class Monitoring(Process):
 
     def _find_min_balance(self, btc_amount, coin_amount, to_exchange_coin_bid):
         coin_to_btc_price = coin_amount * to_exchange_coin_bid
+        tradable_btc = btc_amount if btc_amount < coin_to_btc_price else coin_to_btc_price
 
-        if btc_amount < coin_to_btc_price:
-            result = btc_amount / coin_to_btc_price
-            return btc_amount, result
-        else:
-            return coin_to_btc_price, coin_amount
+        return tradable_btc
 
 
 if __name__ == '__main__':
