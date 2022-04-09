@@ -1,7 +1,8 @@
 import time
+import pickle
 
-from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis, get_withdrawal_info, get_auto_withdrawal
-from DiffTrader.GlobalSetting.settings import TraderConsts, RedisKey, SaiUrls
+from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis, get_withdrawal_info, get_auto_withdrawal, CustomPickle
+from DiffTrader.GlobalSetting.settings import TraderConsts, RedisKey, SaiUrls, PicklePath
 from Exchanges.settings import Consts
 from Util.pyinstaller_patch import debugger
 
@@ -37,7 +38,8 @@ class Withdrawal(object):
         thread_executor = ThreadPoolExecutor(max_workers=6)
         exchange_dict = get_exchanges()
         user_withdrawal_info = get_withdrawal_info()
-        latest_info = WithdrawalInfo()
+        custom_pickle = CustomPickle(WithdrawalInfo(), PicklePath.WITHDRAWAL)
+        latest_info = custom_pickle.obj
         while True:
             trading_information = get_redis(RedisKey.TradingInformation)
             if not get_auto_withdrawal():
@@ -140,3 +142,13 @@ class Withdrawal(object):
                 return
             debugger.debug(info['exchange'].name)
             time.sleep(60)
+
+
+if __name__ == '__main__':
+    custom_pickle = CustomPickle(WithdrawalInfo(), PicklePath.WITHDRAWAL)
+
+    obj = custom_pickle.obj
+    custom_pickle.save()
+    print(obj)
+    custom_pickle.load()
+    print(obj)

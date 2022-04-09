@@ -9,7 +9,7 @@ from decimal import Decimal, getcontext, InvalidOperation
 import asyncio
 import json
 import time
-
+import pickle
 
 getcontext().prec = 8
 
@@ -199,6 +199,23 @@ def get_withdrawal_info():
 
 def get_min_profit():
     return Decimal(CONFIG['Profit']['Withdrawal Percent']).quantize(Decimal(10) ** -6)
+
+
+class CustomPickle(object):
+    def __init__(self, obj, path):
+        try:
+            self.load()
+        except:
+            self.obj = obj
+        self.path = path
+
+    def save(self):
+        with open(self.path, 'wb') as f:
+            return pickle.dump(self.obj, f)
+
+    def load(self):
+        with open(self.path, 'rb') as f:
+            self.obj = pickle.load(f)
 
 
 if __name__ == '__main__':
