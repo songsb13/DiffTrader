@@ -16,7 +16,7 @@ import asyncio
 
 
 class Monitoring(Process):
-    def __init__(self, user, primary_str, secondary_str):
+    def __init__(self, user, primary_str, secondary_str, api_queue):
         debugger.debug(Msg.START.format(primary_str, secondary_str, user))
 
         super(Monitoring, self).__init__()
@@ -26,6 +26,7 @@ class Monitoring(Process):
         self._secondary_str = secondary_str
 
         self._min_profit = get_min_profit()
+        self._api_queue = api_queue
 
         self._exchanges = None
         self._primary = None

@@ -10,7 +10,7 @@ import asyncio
 
 
 class Setter(Process):
-    def __init__(self, user, exchange_str):
+    def __init__(self, user, exchange_str, api_queue):
         debugger.debug(Msg.START.format(user, exchange_str))
         super(Setter, self).__init__()
 
@@ -18,6 +18,7 @@ class Setter(Process):
         self._exchange_str = exchange_str
 
         self._exchange = None
+        self._api_queue = api_queue
 
     def run(self) -> None:
         exchanges = get_exchanges()

@@ -1,5 +1,5 @@
 import time
-import pickle
+from multiprocessing import Process
 
 from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis, get_withdrawal_info, get_auto_withdrawal, CustomPickle
 from DiffTrader.GlobalSetting.settings import TraderConsts, RedisKey, SaiUrls, PicklePath
@@ -24,7 +24,11 @@ class WithdrawalInfo(object):
         self.total_minimum_profit_amount = Decimal(0)
 
 
-class Withdrawal(object):
+class Withdrawal(Process):
+    def __init__(self, api_queue):
+        super(Withdrawal, self).__init__()
+        self._api_queue = api_queue
+
     def withdrawal(self):
         """
             primary_to_secondary로 거래가 된다고 했을 때, primary에서 coin을 매수, secondary에서 coin을 매도함.
@@ -146,8 +150,9 @@ class Withdrawal(object):
 
 if __name__ == '__main__':
     custom_pickle = CustomPickle(WithdrawalInfo(), PicklePath.WITHDRAWAL)
-
+    pk = WithdrawalInfo()
     obj = custom_pickle.obj
+    custom_pickle.obj = pk
     custom_pickle.save()
     print(obj)
     custom_pickle.load()
