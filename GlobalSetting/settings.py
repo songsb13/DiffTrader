@@ -64,12 +64,9 @@ class RedisKey(object):
     TradingInformation = 'trading_information'
     ProfitInformation = 'profit_information'
     SendInformation = 'send_information'
+    APIInformation = 'api_information'
 
 
-class QueuePriority(object):
-    LOCKALBE = {
-        'Setter': 3,
-        'Monitoring': 4,
-        'Trading': 1,
-        'Withdrawal': 2
-    }
+class APIPriority(object):
+    EXECUTE = 1
+    SEARCH = 2

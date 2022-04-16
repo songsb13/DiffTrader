@@ -4,26 +4,14 @@ from DiffTrader.Trading.trading import Trading
 from DiffTrader.Withdrawal.withdrawal import Withdrawal
 
 from DiffTrader.Util.utils import get_exchanges
-from DiffTrader.Util.api_process import APIProcess
+from DiffTrader.Util.api_process import BaseAPIProcess
 from DiffTrader.GlobalSetting.settings import TEST_USER
 
-from queue import PriorityQueue
-from multiprocessing import Pipe, Lock
-from multiprocessing.managers import SyncManager
 
-
-def get_priority_queue():
-    sync_m = SyncManager()
-    sync_m.register("PriorityQueue", PriorityQueue)
-    sync_m.start()
-    queue_ = sync_m.PriorityQueue()
-
-    return queue_
-
-
-def run_api_process():
-    api_process = APIProcess(api_queue, exchanges.keys())
-    api_process.run()
+def run_api_processes():
+    for exchange_str in exchanges.keys():
+        api_process = BaseAPIProcess(exchange_str)
+        api_process.start()
 
 
 def run_setter():
@@ -51,7 +39,7 @@ def run_withdrawal():
 
 
 def run():
-    run_api_process()
+    run_api_processes()
     run_setter()
     run_monitoring()
     run_trading()
@@ -60,7 +48,4 @@ def run():
 
 if __name__ == '__main__':
     exchanges = get_exchanges()
-    api_queue = get_priority_queue()
     run()
-
-    # time.sleep(6000)
