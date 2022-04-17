@@ -17,9 +17,8 @@ class Trading(Process):
         High Priority
     """
 
-    def __init__(self, api_queue):
+    def __init__(self):
         super(Trading, self).__init__()
-        self._api_queue = api_queue
 
     def run(self) -> None:
         debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
