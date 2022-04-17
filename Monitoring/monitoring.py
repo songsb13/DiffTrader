@@ -16,7 +16,7 @@ import asyncio
 
 
 class Monitoring(Process):
-    def __init__(self, user, primary_str, secondary_str, api_queue):
+    def __init__(self, user, primary_str, secondary_str):
         debugger.debug(Msg.START.format(primary_str, secondary_str, user))
 
         super(Monitoring, self).__init__()
@@ -26,7 +26,6 @@ class Monitoring(Process):
         self._secondary_str = secondary_str
 
         self._min_profit = get_min_profit()
-        self._api_queue = api_queue
 
         self._exchanges = None
         self._primary = None
@@ -54,7 +53,7 @@ class Monitoring(Process):
                 if primary_contents and secondary_contents:
                     primary_information = primary_contents.get('data', 1)
                     secondary_information = secondary_contents.get('data', 1)
-                    if primary_information == 1 or secondary_information == 1:
+                    if isinstance(primary_information, int) or isinstance(secondary_information, int):
                         time.sleep(1)
                         continue
                     latest_primary_information = json.loads(primary_information, cls=DecimalDecoder)
