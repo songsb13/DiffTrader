@@ -128,6 +128,17 @@ def publish_redis(key, value, use_decimal=False):
     REDIS_SERVER.publish(key, dict_to_json_value)
 
 
+def publish_redis_for_api(key, value, use_decimal=False):
+    # tuple로 넣어서 args, kwrags가 중복되는지 확인하기 위함.
+    for k, v in value.items():
+        if isinstance(v, (dict, list)):
+            if use_decimal:
+                value[k] = json.dumps(v, cls=DecimalEncoder)
+            else:
+                value[k] = json.dumps(v)
+    return publish_redis(key, value, use_decimal)
+
+
 def subscribe_redis(key):
     """
         (n-1)+(n-2) ... +1
