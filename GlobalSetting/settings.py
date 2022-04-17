@@ -64,9 +64,15 @@ class RedisKey(object):
     TradingInformation = 'trading_information'
     ProfitInformation = 'profit_information'
     SendInformation = 'send_information'
-    APIInformation = 'api_information'
+
+    UpbitAPIPubRedisKey = 'upbit-pub'
+    UpbitAPISubRedisKey = 'upbit-sub'
+
+    BinanceAPIPubRedisKey = 'binance-pub'
+    BinanceAPISubRedisKey = 'binance-sub'
 
 
 class APIPriority(object):
-    EXECUTE = 1
-    SEARCH = 2
+    EXECUTE = 0
+    SEARCH = 1
+    LENGTH = len([EXECUTE, SEARCH])

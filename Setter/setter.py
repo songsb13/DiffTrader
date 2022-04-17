@@ -1,16 +1,23 @@
-from DiffTrader.Util.utils import get_exchanges, publish_redis, task_wrapper
+from DiffTrader.Util.utils import (
+    DecimalDecoder,
+    publish_redis,
+    task_wrapper,
+    subscribe_redis
+)
 from DiffTrader.GlobalSetting.messages import SetterMessage as Msg
-from DiffTrader.GlobalSetting.settings import TraderConsts, TEST_USER
+from DiffTrader.GlobalSetting.settings import TraderConsts, TEST_USER, RedisKey, APIPriority
 from Util.pyinstaller_patch import debugger
-
 from multiprocessing import Process
 
 import time
 import asyncio
+import json
 
 
 class Setter(Process):
-    def __init__(self, user, exchange_str, api_queue):
+    publish_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
+
+    def __init__(self, user, exchange_str):
         debugger.debug(Msg.START.format(user, exchange_str))
         super(Setter, self).__init__()
 
@@ -18,20 +25,41 @@ class Setter(Process):
         self._exchange_str = exchange_str
 
         self._exchange = None
-        self._api_queue = api_queue
 
     def run(self) -> None:
         exchanges = get_exchanges()
+        set_quick, set_lazy = False, False
         self._exchange = exchanges[self._exchange_str]
         now_time = time.time()
-        lazy_data = dict()
+        lazy_data, quick_data = dict(), dict()
+        api_subscriber = subscribe_redis(RedisKey.UpbitAPISubRedisKey)
 
         one_time_data = self._get_one_time_fresh_data()
         while True:
-            if not lazy_data or (now_time + TraderConsts.DEFAULT_REFRESH_TIME) <= time.time():
-                lazy_data = self._get_lazy_refresh_data()
+            if (not lazy_data or (now_time + TraderConsts.DEFAULT_REFRESH_TIME) <= time.time()) and \
+                    not set_lazy:
+                self._pub('get_deposit_addrs')
+                self._pub('get_transaction_fee')
+                set_lazy = True
 
-            quick_data = self._get_quick_refresh_data()
+            if not set_quick:
+                self._pub('get_balance')
+                set_quick = True
+
+            api_contents = api_subscriber.get_message()
+
+            if api_contents:
+                api_data = api_contents.get('data', 1)
+                if isinstance(api_data, int):
+                    time.sleep(1)
+                    continue
+                api_data = json.loads(api_data, cls=DecimalDecoder)
+                if not api_data:
+                    time.sleep(1)
+                    continue
+                elif api_data not in self.publish_functions:
+                    time.sleep(1)
+                    continue
 
             total_data = {
                 **quick_data,
@@ -40,44 +68,16 @@ class Setter(Process):
             }
 
             publish_redis(self._exchange_str, total_data, use_decimal=True)
+            set_quick, set_lazy = False
             time.sleep(10)
 
-    def _get_quick_refresh_data(self):
-        # balance
-        balance_result = self._exchange.get_balance()
-
-        if not balance_result.success:
-            debugger.debug(balance_result.message)
-            return dict()
-
-        dic = {
-            'balance': balance_result.data,
-        }
-
-        return dic
-
-    def _get_lazy_refresh_data(self):
-        task_list = [
-            {'fn': self._exchange.get_deposit_addrs},
-            {'fn': self._exchange.get_transaction_fee}
-        ]
-
-        # deposits, transaction_fees
-        deposit_result, transaction_result = asyncio.run(task_wrapper(task_list))
-        if not deposit_result.success:
-            debugger.debug(deposit_result.message)
-            return dict()
-
-        if not transaction_result.success:
-            debugger.debug(transaction_result.message)
-            return dict()
-
-        dic = {
-            'deposit': deposit_result.data,
-            'transaction_fee': transaction_result.data
-        }
-
-        return dic
+    def _pub(self, name):
+        publish_redis(RedisKey.UpbitAPIPubRedisKey, {
+            'name': name,
+            'args': [],
+            'kwargs': {},
+            'priority': APIPriority.SEARCH,
+        })
 
     def _get_one_time_fresh_data(self):
         # trading_fee, fee_count
