@@ -1,21 +1,21 @@
 from DiffTrader.Util.utils import (
-    DecimalDecoder,
     publish_redis,
-    task_wrapper,
     subscribe_redis
 )
 from DiffTrader.GlobalSetting.messages import SetterMessage as Msg
-from DiffTrader.GlobalSetting.settings import TraderConsts, TEST_USER, RedisKey, APIPriority
+from DiffTrader.GlobalSetting.settings import TraderConsts, TEST_USER
+from DiffTrader.GlobalSetting.objects import BaseProcess
+from DiffTrader.GlobalSetting.settings import RedisKey
 from Util.pyinstaller_patch import debugger
-from multiprocessing import Process
 
 import time
-import asyncio
-import json
 
 
-class Setter(Process):
-    publish_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
+class Setter(BaseProcess):
+    receive_type = 'common'
+    require_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
+    pub_api_redis_key = RedisKey.UpbitAPIPubRedisKey
+    sub_api_redis_key = RedisKey.UpbitAPISubRedisKey
 
     def __init__(self, user, exchange_str):
         debugger.debug(Msg.START.format(user, exchange_str))
@@ -31,53 +31,42 @@ class Setter(Process):
         set_quick, set_lazy = False, False
         self._exchange = exchanges[self._exchange_str]
         now_time = time.time()
-        lazy_data, quick_data = dict(), dict()
         api_subscriber = subscribe_redis(RedisKey.UpbitAPISubRedisKey)
 
-        one_time_data = self._get_one_time_fresh_data()
+        total_data = {**self._get_one_time_fresh_data()}
+        init_update = set()
         while True:
-            if (not lazy_data or (now_time + TraderConsts.DEFAULT_REFRESH_TIME) <= time.time()) and \
+            if (not total_data or (now_time + TraderConsts.DEFAULT_REFRESH_TIME) <= time.time()) and \
                     not set_lazy:
-                self._pub('get_deposit_addrs')
-                self._pub('get_transaction_fee')
+                self.pub_api_fn('get_deposit_addrs', is_async=True, is_lazy=True)
+                self.pub_api_fn('get_transaction_fee', is_async=True, is_lazy=True)
                 set_lazy = True
 
             if not set_quick:
-                self._pub('get_balance')
+                self.pub_api_fn('get_balance')
                 set_quick = True
 
             api_contents = api_subscriber.get_message()
+            result = self.unpacking_message(api_contents)
 
-            if api_contents:
-                api_data = api_contents.get('data', 1)
-                if isinstance(api_data, int):
-                    time.sleep(1)
-                    continue
-                api_data = json.loads(api_data, cls=DecimalDecoder)
-                if not api_data:
-                    time.sleep(1)
-                    continue
-                elif api_data not in self.publish_functions:
-                    time.sleep(1)
-                    continue
+            if result is None:
+                continue
 
-            total_data = {
-                **quick_data,
-                **lazy_data,
-                **one_time_data
-            }
+            total_message = []
+            for key in result.keys():
+                if result[key]['success']:
+                    total_data.update(result[key]['data'])
+                    init_update.add(key)
+                else:
+                    total_message.append(result[key]['message'])
+
+            if not init_update == self.require_functions:
+                time.sleep(1)
+                continue
 
             publish_redis(self._exchange_str, total_data, use_decimal=True)
-            set_quick, set_lazy = False
+            set_quick, set_lazy = False, False
             time.sleep(10)
-
-    def _pub(self, name):
-        publish_redis(RedisKey.UpbitAPIPubRedisKey, {
-            'name': name,
-            'args': [],
-            'kwargs': {},
-            'priority': APIPriority.SEARCH,
-        })
 
     def _get_one_time_fresh_data(self):
         # trading_fee, fee_count

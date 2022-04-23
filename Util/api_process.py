@@ -3,14 +3,16 @@ from DiffTrader.GlobalSetting.settings import RedisKey
 
 
 class UpbitAPIProcess(BaseAPIProcess):
-    api_redis_key = RedisKey.UpbitAPISubRedisKey
+    pub_api_redis_key = RedisKey.UpbitAPIPubRedisKey
+    sub_api_redis_key = RedisKey.UpbitAPISubRedisKey
 
     def __init__(self, exchange_str):
         super(UpbitAPIProcess, self).__init__(exchange_str)
 
 
 class BinanceAPIProcess(BaseAPIProcess):
-    api_redis_key = RedisKey.BinanceAPISubRedisKey
+    pub_api_redis_key = RedisKey.BinanceAPIPubRedisKey
+    sub_api_redis_key = RedisKey.BinanceAPISubRedisKey
 
     def __init__(self,  exchange_str):
         super(BinanceAPIProcess, self).__init__(exchange_str)
