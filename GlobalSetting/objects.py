@@ -3,7 +3,8 @@ import json
 
 from multiprocessing import Process
 from DiffTrader.GlobalSetting.settings import (
-    APIPriority
+    APIPriority,
+    TraderConsts
 )
 from DiffTrader.Util.utils import (
     get_exchanges,
@@ -31,6 +32,7 @@ class BaseAPIProcess(Process):
         exchange = exchanges[self._exchange_str]
 
         after_time = time.time() + self._wait_time
+        refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
         lazy_cache = {}
         while True:
             """
@@ -47,8 +49,8 @@ class BaseAPIProcess(Process):
             info = get_redis(self.pub_api_redis_key)
             if not info:
                 continue
-            if info['is_lazy'] and info['fn_name'] in lazy_cache:
-                set_redis(self.sub_api_redis_key, lazy_cache[info['fn_name']])
+            if not (time.time() <= refresh_time) and info['is_lazy'] and info['fn_name'] in lazy_cache:
+                set_redis(self.sub_api_redis_key, lazy_cache[info['receive_type']][info['fn_name']])
 
             function_ = getattr(exchange, info['fn_name'])
 
@@ -69,6 +71,7 @@ class BaseAPIProcess(Process):
                             }
                         }
                     }
+                    lazy_cache.update(data)
                     set_redis(self.sub_api_redis_key, data)
 
 

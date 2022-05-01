@@ -30,14 +30,12 @@ class Setter(BaseProcess):
         exchanges = get_exchanges()
         set_quick, set_lazy = False, False
         self._exchange = exchanges[self._exchange_str]
-        now_time = time.time()
         api_subscriber = subscribe_redis(RedisKey.UpbitAPISubRedisKey)
 
         total_data = {**self._get_one_time_fresh_data()}
         init_update = set()
         while True:
-            if (not total_data or (now_time + TraderConsts.DEFAULT_REFRESH_TIME) <= time.time()) and \
-                    not set_lazy:
+            if not set_lazy:
                 self.pub_api_fn('get_deposit_addrs', is_async=True, is_lazy=True)
                 self.pub_api_fn('get_transaction_fee', is_async=True, is_lazy=True)
                 set_lazy = True
