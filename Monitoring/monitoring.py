@@ -250,8 +250,15 @@ class Monitoring(Process):
                             'user': self._user,
                             'real_difference': real_difference,
                             'created_time': datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
-                            'primary': self._primary_str,
-                            'secondary': self._secondary_str,
+
+                            'from_exchange_str': expectation_data['from']['exchange'].name,
+                            'from_pub_apikey': expectation_data['from']['pub-apikey'],
+                            'from_sub_apikey': expectation_data['from']['sub-apikey'],
+
+                            'to_exchange_str': expectation_data['to']['exchange'].name,
+                            'to_pub_apikey': expectation_data['to']['information']['pub-apikey'],
+                            'to_sub_apikey': expectation_data['to']['information']['sub-apikey'],
+
                             'total_orderbooks': total_orderbooks
                         }
                     }

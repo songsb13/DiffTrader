@@ -33,34 +33,34 @@ class Trading(Process):
             else:
                 profit_information = json.loads(TRADING_TEST_INFORMATION, cls=DecimalDecoder)
 
-            primary_str, secondary_str = (profit_information['additional_information']['primary'],
-                                          profit_information['additional_information']['secondary'])
+            from_exchange_str, to_exchange_str = (profit_information['additional_information']['from_exchange'],
+                                                  profit_information['additional_information']['to_exchange'])
 
             sai_symbol = profit_information['sai_symbol']
             if profit_information['exchange_running_type'] == TraderConsts.PRIMARY_TO_SECONDARY:
-                buy_args = [exchange_dict[primary_str],
-                            exchange_dict[primary_str].buy,
+                buy_args = [exchange_dict[from_exchange_str],
+                            exchange_dict[from_exchange_str].buy,
                             BaseTradeType.BUY_MARKET,
                             sai_symbol,
                             profit_information['coin_amount'],
                             profit_information['additional_information']['total_orderbooks']['primary'][sai_symbol][Consts.ASKS]]
 
-                sell_args = [exchange_dict[secondary_str],
-                             exchange_dict[secondary_str].sell,
+                sell_args = [exchange_dict[to_exchange_str],
+                             exchange_dict[to_exchange_str].sell,
                              BaseTradeType.SELL_MARKET,
                              sai_symbol,
                              profit_information['sell_coin_amount'],
                              profit_information['additional_information']['total_orderbooks']['secondary'][sai_symbol][Consts.BIDS]]
             else:
-                buy_args = [exchange_dict[secondary_str],
-                            exchange_dict[secondary_str].buy,
+                buy_args = [exchange_dict[to_exchange_str],
+                            exchange_dict[to_exchange_str].buy,
                             BaseTradeType.BUY_MARKET,
                             sai_symbol,
                             profit_information['coin_amount'],
                             profit_information['additional_information']['total_orderbooks']['secondary'][sai_symbol][Consts.ASKS]]
 
-                sell_args = [exchange_dict[primary_str],
-                             exchange_dict[primary_str].sell,
+                sell_args = [exchange_dict[from_exchange_str],
+                             exchange_dict[from_exchange_str].sell,
                              BaseTradeType.SELL_MARKET,
                              sai_symbol,
                              profit_information['sell_coin_amount'],
@@ -76,12 +76,12 @@ class Trading(Process):
 
             trading_information = dict(
                 from_exchange=dict(
-                    name=primary_str,
+                    name=from_exchange_str,
                     price=from_price,
                     amount=from_amount
                 ),
                 to_exchange=dict(
-                    name=secondary_str,
+                    name=to_exchange_str,
                     price=to_price,
                     amount=to_amount
                 )
