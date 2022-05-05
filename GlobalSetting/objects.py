@@ -77,8 +77,6 @@ class BaseAPIProcess(Process):
 
 class BaseProcess(object):
     # base process for setter, monitoring and etc..
-    pub_api_redis_key = ''
-    sub_api_redis_key = ''
     receive_type = ''
     require_functions = []
 
@@ -104,13 +102,19 @@ class BaseProcess(object):
             else:
                 return result
 
-    def pub_api_fn(self, fn_name, is_async=False, is_lazy=False, api_priority=APIPriority.SEARCH):
-        publish_redis(self.pub_api_redis_key, {
+    def publish_redis_to_api_process(self, fn_name, publish_key, is_async=False, is_lazy=False, args=None, kwargs=None, api_priority=APIPriority.SEARCH):
+        if args is None:
+            args = []
+
+        if kwargs is None:
+            kwargs = {}
+
+        publish_redis(publish_key, {
             'is_async': is_async,
             'is_lazy': is_lazy,
             'receive_type': self.receive_type,
             'fn_name': fn_name,
-            'args': [],
-            'kwargs': {},
+            'args': args,
+            'kwargs': kwargs,
             'priority': api_priority,
         })
