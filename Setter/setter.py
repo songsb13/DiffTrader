@@ -17,7 +17,8 @@ class Setter(BaseProcess):
 
     def __init__(self, user, exchange_str):
         debugger.debug(Msg.START.format(user, exchange_str))
-        super(Setter, self).__init__()
+        self._pub_api_redis_key = RedisKey.ApiKey[exchange_str]['publish']
+        self._sub_api_redis_key = RedisKey.ApiKey[exchange_str]['subscribe']
 
         self._user = user
         self._exchange_str = exchange_str

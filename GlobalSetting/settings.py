@@ -65,11 +65,16 @@ class RedisKey(object):
     ProfitInformation = 'profit_information'
     SendInformation = 'send_information'
 
-    UpbitAPIPubRedisKey = 'upbit-pub'
-    UpbitAPISubRedisKey = 'upbit-sub'
-
-    BinanceAPIPubRedisKey = 'binance-pub'
-    BinanceAPISubRedisKey = 'binance-sub'
+    ApiKey = {
+        'upbit': {
+            'publish': 'upbit-publish-apikey',
+            'subscribe': 'upbit-subscribe-apikey',
+        },
+        'binance': {
+            'publish': 'binance-publish-apikey',
+            'subscribe': 'binance-subscribe-apikey'
+        }
+    }
 
 
 class APIPriority(object):
