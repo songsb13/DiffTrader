@@ -14,8 +14,6 @@ import time
 class Setter(BaseProcess):
     receive_type = 'common'
     require_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
-    pub_api_redis_key = RedisKey.UpbitAPIPubRedisKey
-    sub_api_redis_key = RedisKey.UpbitAPISubRedisKey
 
     def __init__(self, user, exchange_str):
         debugger.debug(Msg.START.format(user, exchange_str))
@@ -30,18 +28,18 @@ class Setter(BaseProcess):
         exchanges = get_exchanges()
         set_quick, set_lazy = False, False
         self._exchange = exchanges[self._exchange_str]
-        api_subscriber = subscribe_redis(RedisKey.UpbitAPISubRedisKey)
+        api_subscriber = subscribe_redis(self._sub_api_redis_key)
 
         total_data = {**self._get_one_time_fresh_data()}
         init_update = set()
         while True:
             if not set_lazy:
-                self.pub_api_fn('get_deposit_addrs', is_async=True, is_lazy=True)
-                self.pub_api_fn('get_transaction_fee', is_async=True, is_lazy=True)
+                self.publish_redis_to_api_process('get_deposit_addrs', self._pub_api_redis_key, is_async=True, is_lazy=True)
+                self.publish_redis_to_api_process('get_transaction_fee', self._pub_api_redis_key, is_async=True, is_lazy=True)
                 set_lazy = True
 
             if not set_quick:
-                self.pub_api_fn('get_balance')
+                self.publish_redis_to_api_process('get_balance', self._pub_api_redis_key)
                 set_quick = True
 
             api_contents = api_subscriber.get_message()
