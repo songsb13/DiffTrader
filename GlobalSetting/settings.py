@@ -36,9 +36,6 @@ class TraderConsts(object):
     # set default refresh time
     DEFAULT_REFRESH_TIME = 3600
 
-    # Exchange list of available trading in SAI programs.
-    AVAILABLE_EXCHANGES = ['Binance', 'Bithumb', 'Upbit']
-
 
 class SaiUrls(object):
     BASE = 'https://www.saiblockchain.com'
@@ -66,11 +63,11 @@ class RedisKey(object):
     SendInformation = 'send_information'
 
     ApiKey = {
-        'upbit': {
+        'Upbit': {
             'publish': 'upbit-publish-apikey',
             'subscribe': 'upbit-subscribe-apikey',
         },
-        'binance': {
+        'Binance': {
             'publish': 'binance-publish-apikey',
             'subscribe': 'binance-subscribe-apikey'
         }
