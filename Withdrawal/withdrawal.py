@@ -1,3 +1,4 @@
+import threading
 import time
 
 from DiffTrader.Util.utils import (
@@ -43,8 +44,43 @@ class Withdrawal(BaseProcess):
     receive_type = 'withdrawal'
     require_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
 
-    def __init__(self):
+    def __init__(self, user, primary_str, secondary_str):
         super(Withdrawal, self).__init__()
+
+        self._user = user
+
+        self._primary_str = primary_str
+        self._secondary_str = secondary_str
+
+    def run(self):
+        """
+
+        """
+        _primary_subscriber = subscribe_redis(self._primary_str)
+        _secondary_subscriber = subscribe_redis(self._secondary_str)
+
+        self._exchange = get_exchanges()
+
+        primary = self._exchange[self._primary_str]
+        secondary = self._exchange[self._secondary_str]
+        refresh_time = 0
+
+        while True:
+            trading_information = get_redis(RedisKey.TradingInformation)
+            if not get_auto_withdrawal():
+                debugger.debug()
+                continue
+
+            if not refresh_time or refresh_time <= time.time():
+                refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
+
+            if not trading_information:
+                continue
+
+            from_str, to_str = (trading_information['from_exchange']['name'],
+                                trading_information['to_exchange']['name'])
+
+
 
     def withdrawal(self):
         """
@@ -61,8 +97,6 @@ class Withdrawal(BaseProcess):
         user_withdrawal_info = get_withdrawal_info()
         custom_pickle = CustomPickle(WithdrawalInfo(), PicklePath.WITHDRAWAL)
         latest_info = custom_pickle.obj
-        _primary_subscriber = None
-        _secondary_subscriber = None
         while True:
             trading_information = get_redis(RedisKey.TradingInformation)
             if not get_auto_withdrawal():
@@ -81,9 +115,9 @@ class Withdrawal(BaseProcess):
             from_str, to_str = (trading_information['from_exchange']['name'],
                                 trading_information['to_exchange']['name'])
 
-            if _primary_subscriber is None:
-                _primary_subscriber = subscribe_redis(RedisKey.ApiKey[from_str]['pub-apikey'])
-                _secondary_subscriber = subscribe_redis(RedisKey.ApiKey[to_str]['sub-apikey'])
+            if self._primary_subscriber is None and self._secondary_subscriber is None:
+                self._primary_subscriber = subscribe_redis(RedisKey.ApiKey[from_str]['sub-apikey'])
+                self._secondary_subscriber = subscribe_redis(RedisKey.ApiKey[to_str]['sub-apikey'])
 
             from_exchange, to_exchange = (exchange_dict[from_str],
                                           exchange_dict[to_str])
@@ -106,7 +140,7 @@ class Withdrawal(BaseProcess):
         result = self.unpacking_message(api_contents)
 
         from_balance = result['get_balance']
-        to_balance = ''
+        to_balance = result['get_balance']
         from_balance = from_exchange.get_balance(cached=True)
         to_balance = to_exchange.get_balance(cached=True)
 
