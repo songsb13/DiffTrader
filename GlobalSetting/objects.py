@@ -13,8 +13,10 @@ from DiffTrader.Util.utils import (
     DecimalDecoder
 )
 
+from multiprocessing import Process
 
-class BaseProcess(object):
+
+class BaseProcess(Process):
     # base process for setter, monitoring and etc..
     receive_type = ''
     require_functions = []
