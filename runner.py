@@ -6,6 +6,7 @@ from DiffTrader.Withdrawal.withdrawal import Withdrawal
 from DiffTrader.Util.utils import get_exchanges
 from DiffTrader.Util.api_process import BaseAPIProcess
 from DiffTrader.GlobalSetting.settings import TEST_USER
+from DiffTrader.GlobalSetting.settings import RedisKey
 
 
 def run_api_processes():
@@ -15,9 +16,14 @@ def run_api_processes():
 
 
 def run_setter():
+    api_key_dict = {
+        "Upbit": [RedisKey.UpbitAPIPubRedisKey, RedisKey.UpbitAPISubRedisKey],
+        "Binance": [RedisKey.BinanceAPIPubRedisKey, RedisKey.BinanceAPISubRedisKey]
+    }
     for exchange_str in exchanges.keys():
-        setter = Setter(TEST_USER, exchange_str, api_queue)
-        setter.start()
+        pub_key, sub_key = api_key_dict.get(exchange_str, [None, None])
+        setter = Setter(TEST_USER, exchange_str, pub_key, sub_key)
+        setter.run()
 
 
 def run_monitoring():
@@ -29,12 +35,12 @@ def run_monitoring():
 
 
 def run_trading():
-    trader = Trading(api_queue)
+    trader = Trading()
     trader.start()
 
 
 def run_withdrawal():
-    withdrawal = Withdrawal(api_queue)
+    withdrawal = Withdrawal()
     withdrawal.start()
 
 

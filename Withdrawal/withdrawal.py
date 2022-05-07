@@ -1,8 +1,23 @@
 import time
-from multiprocessing import Process
 
-from DiffTrader.Util.utils import get_exchanges, FunctionExecutor, set_redis, get_redis, get_withdrawal_info, get_auto_withdrawal, CustomPickle
-from DiffTrader.GlobalSetting.settings import TraderConsts, RedisKey, SaiUrls, PicklePath
+from DiffTrader.Util.utils import (
+    get_exchanges,
+    FunctionExecutor,
+    set_redis,
+    get_redis,
+    get_withdrawal_info,
+    get_auto_withdrawal,
+    CustomPickle,
+    subscribe_redis
+
+)
+from DiffTrader.GlobalSetting.settings import (
+    TraderConsts,
+    RedisKey,
+    SaiUrls,
+    PicklePath
+)
+from DiffTrader.GlobalSetting.objects import BaseProcess
 from Exchanges.settings import Consts
 from Util.pyinstaller_patch import debugger
 
@@ -24,10 +39,12 @@ class WithdrawalInfo(object):
         self.total_minimum_profit_amount = Decimal(0)
 
 
-class Withdrawal(Process):
-    def __init__(self, api_queue):
+class Withdrawal(BaseProcess):
+    receive_type = 'withdrawal'
+    require_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
+
+    def __init__(self):
         super(Withdrawal, self).__init__()
-        self._api_queue = api_queue
 
     def withdrawal(self):
         """
@@ -44,6 +61,8 @@ class Withdrawal(Process):
         user_withdrawal_info = get_withdrawal_info()
         custom_pickle = CustomPickle(WithdrawalInfo(), PicklePath.WITHDRAWAL)
         latest_info = custom_pickle.obj
+        _primary_subscriber = None
+        _secondary_subscriber = None
         while True:
             trading_information = get_redis(RedisKey.TradingInformation)
             if not get_auto_withdrawal():
@@ -62,6 +81,10 @@ class Withdrawal(Process):
             from_str, to_str = (trading_information['from_exchange']['name'],
                                 trading_information['to_exchange']['name'])
 
+            if _primary_subscriber is None:
+                _primary_subscriber = subscribe_redis(RedisKey.ApiKey[from_str]['pub-apikey'])
+                _secondary_subscriber = subscribe_redis(RedisKey.ApiKey[to_str]['sub-apikey'])
+
             from_exchange, to_exchange = (exchange_dict[from_str],
                                           exchange_dict[to_str])
 
@@ -78,6 +101,12 @@ class Withdrawal(Process):
             return list(results)
 
     def _get_need_withdrawal_coins(self, from_exchange, to_exchange, withdrawal_info):
+        self.pub_api_fn('get_balance', is_lazy=True)
+        api_contents = self.api_subscriber.get_message()
+        result = self.unpacking_message(api_contents)
+
+        from_balance = result['get_balance']
+        to_balance = ''
         from_balance = from_exchange.get_balance(cached=True)
         to_balance = to_exchange.get_balance(cached=True)
 
