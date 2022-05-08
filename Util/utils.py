@@ -213,11 +213,8 @@ def get_min_profit():
 
 
 class CustomPickle(object):
-    def __init__(self, obj, path):
-        try:
-            self.load()
-        except:
-            self.obj = obj
+    def __init__(self, path, obj=None):
+        self.obj = obj
         self.path = path
 
     def save(self):
@@ -225,8 +222,11 @@ class CustomPickle(object):
             return pickle.dump(self.obj, f)
 
     def load(self):
-        with open(self.path, 'rb') as f:
-            self.obj = pickle.load(f)
+        try:
+            with open(self.path, 'rb') as f:
+                self.obj = pickle.load(f)
+        except:
+            debugger.debug('no pickle')
 
 
 if __name__ == '__main__':

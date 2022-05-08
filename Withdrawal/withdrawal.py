@@ -59,7 +59,14 @@ class Withdrawal(BaseProcess):
         self._primary_sub_key = RedisKey.ApiKey[self._primary_str]['subscribe']
         self._secondary_sub_key = RedisKey.ApiKey[self._secondary_str]['subscribe']
 
-        self._withdrew_dict = dict()
+        self._pickle = CustomPickle(PicklePath.WITHDRAWAL)
+        self._pickle.load()
+
+        self._withdrew_dict = dict() if self._pickle.obj is None else self._pickle.obj
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._pickle.obj = self._withdrew_dict
+        self._pickle.save()
 
     def run(self):
         """
@@ -127,8 +134,8 @@ class Withdrawal(BaseProcess):
             from_exchange = exchange_dict[from_str]
             to_exchange = exchange_dict[to_str]
 
-            from_subscriber = exchange_dict[from_str]
-            to_subscriber = exchange_dict[to_str]
+            from_subscriber = subscriber_dict[from_str]
+            to_subscriber = subscriber_dict[to_str]
 
             subscribe_info = {
                 'from': {
