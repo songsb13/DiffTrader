@@ -44,8 +44,7 @@ class Setter(BaseProcess):
                 self.publish_redis_to_api_process('get_balance', self._pub_api_redis_key)
                 set_quick = True
 
-            api_contents = api_subscriber.get_message()
-            result = self.unpacking_message(api_contents)
+            result = self.get_subscriber_api_contents(api_subscriber)
 
             if result is None:
                 continue

@@ -4,6 +4,7 @@
 """
 
 import json
+import time
 
 from DiffTrader.GlobalSetting.settings import (
     APIPriority,
@@ -21,7 +22,18 @@ class BaseProcess(Process):
     receive_type = ''
     require_functions = []
 
-    def unpacking_message(self, api_contents):
+    def get_subscribe_result(self, subscriber):
+        for _ in range(3):
+            api_contents = subscriber.get_message()
+            result = self._unpacking_message(api_contents)
+            if result:
+                return result
+
+            time.sleep(0.5)
+        else:
+            return dict()
+
+    def _unpacking_message(self, api_contents):
         if api_contents:
             raw_data = api_contents.get('data', 1)
             if isinstance(raw_data, int):
