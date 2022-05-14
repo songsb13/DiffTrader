@@ -1,5 +1,4 @@
 import copy
-import threading
 import time
 
 from DiffTrader.Util.utils import (
@@ -14,31 +13,17 @@ from DiffTrader.Util.utils import (
 
 )
 from DiffTrader.GlobalSetting.settings import (
-    TraderConsts,
     RedisKey,
     SaiUrls,
     PicklePath
 )
 from DiffTrader.GlobalSetting.objects import BaseProcess
-from Exchanges.settings import Consts
 from Util.pyinstaller_patch import debugger
 
-from concurrent.futures import ThreadPoolExecutor
-from decimal import getcontext, Decimal
+from decimal import getcontext
 
 
 getcontext().prec = 8
-
-
-class WithdrawalInfo(object):
-    def __init__(self):
-        self.total_minimum_profit_amount = Decimal(0)
-
-    def add_total_minimum_profit_amount(self, value):
-        sum(self.total_minimum_profit_amount, value)
-
-    def reset_total_minimum_profit_amount(self):
-        self.total_minimum_profit_amount = Decimal(0)
 
 
 class Withdrawal(BaseProcess):
@@ -266,11 +251,4 @@ class Withdrawal(BaseProcess):
 
 
 if __name__ == '__main__':
-    custom_pickle = CustomPickle(WithdrawalInfo(), PicklePath.WITHDRAWAL)
-    pk = WithdrawalInfo()
-    obj = custom_pickle.obj
-    custom_pickle.obj = pk
-    custom_pickle.save()
-    print(obj)
-    custom_pickle.load()
-    print(obj)
+    pass
