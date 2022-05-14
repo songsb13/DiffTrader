@@ -65,6 +65,9 @@ class Withdrawal(BaseProcess):
         self._withdrew_dict = dict() if self._pickle.obj is None else self._pickle.obj
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.save_pickle_withdrew_dict()
+
+    def save_pickle_withdrew_dict(self):
         self._pickle.obj = self._withdrew_dict
         self._pickle.save()
 
@@ -96,11 +99,7 @@ class Withdrawal(BaseProcess):
             self._primary_str: subscribe_redis(self._primary_sub_key),
             self._secondary_str: subscribe_redis(self._secondary_sub_key)
         }
-
-        refresh_time = 0
         user_withdrawal_info = get_withdrawal_info()
-        custom_pickle = CustomPickle(WithdrawalInfo(), PicklePath.WITHDRAWAL)
-        latest_info = custom_pickle.obj
 
         self.publish_redis_to_api_process('get_balance', self._primary_pub_key, is_lazy=True)
         self.publish_redis_to_api_process('get_transaction_fee', self._primary_pub_key, is_lazy=True)
@@ -114,13 +113,9 @@ class Withdrawal(BaseProcess):
                 debugger.debug()
                 continue
 
-            if not refresh_time or refresh_time <= time.time():
-                refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
-
             if self._withdrew_dict:
                 # check and execute sending to sender its withdrew.
                 self.check_withdrawal_is_completed()
-                continue
 
             if not trading_information:
                 continue
@@ -137,19 +132,31 @@ class Withdrawal(BaseProcess):
             from_subscriber = subscriber_dict[from_str]
             to_subscriber = subscriber_dict[to_str]
 
+            from_contents = self.get_subscriber_api_contents(from_subscriber)
+            to_contents = self.get_subscriber_api_contents(to_subscriber)
+
+            if not from_contents or not to_contents:
+                debugger.debug('fail-to-get-contents')
+                time.sleep(5)
+                continue
+
             subscribe_info = {
                 'from': {
                     'exchange': from_exchange,
-                    **self.get_subscriber_api_contents(from_subscriber)
+                    **from_contents
                 },
                 'to': {
                     'exchange': to_exchange,
-                    **self.get_subscriber_api_contents(to_subscriber)
+                    **to_contents
                 }
             }
             need_to_withdrawal_dict = self.check_coins_need_to_withdrawal(subscribe_info, user_withdrawal_info)
             if need_to_withdrawal_dict:
                 for coin, info in need_to_withdrawal_dict.items():
+                    if coin in self._withdrew_dict.keys():
+                        # 중복 방지, 이미 출금한 코인을 여러번 출금 못하게 하기.
+                        debugger.debug('already-in-withdrawal.')
+                        continue
                     with FunctionExecutor(info['exchange'].withdraw) as executor:
                         result = executor.loop_executor(
                             info['coin'],
@@ -159,21 +166,21 @@ class Withdrawal(BaseProcess):
                         )
 
                         if not result.success:
-                            debugger.debug()
+                            debugger.debug('fail-to-withdrawal.')
+                            continue
                         else:
-                        # 코인 여러번 출금되는거 막기
+                            debugger.debug('success withdrawal')
                             self._withdrew_dict[coin] = {
                                 'execute_info': info,
                                 'result_data': result.data
                             }
-
-            latest_info.reset_total_minimum_profit_amount()
+                            self.save_pickle_withdrew_dict()
 
     def _is_profit_subscribe_data(self, string_set):
         return {self._primary_str, self._secondary_str} == string_set
 
     def get_subscriber_api_contents(self, subscriber):
-        result = self.get_subscriber_api_contents(subscriber)
+        result = self.get_subscribe_result(subscriber)
 
         balance = result.get('get_balance')
         transaction_fee = result.get('transaction_fee')
@@ -219,7 +226,11 @@ class Withdrawal(BaseProcess):
                 }
                 set_redis(RedisKey.SendInformation, send_information)
                 debugger.debug()
+
+                # remove coin-key to avoid checking withdraw
                 self._withdrew_dict.pop(coin)
+
+                self.save_pickle_withdrew_dict()
 
         return self._withdrew_dict
 
