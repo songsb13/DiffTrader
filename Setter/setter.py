@@ -2,6 +2,7 @@ from DiffTrader.Util.utils import (
     publish_redis,
     subscribe_redis
 )
+from DiffTrader.Util.logger import SetLogger
 from DiffTrader.GlobalSetting.messages import SetterMessage as Msg
 from DiffTrader.GlobalSetting.settings import TraderConsts, TEST_USER
 from DiffTrader.GlobalSetting.objects import BaseProcess
@@ -9,6 +10,17 @@ from DiffTrader.GlobalSetting.settings import RedisKey
 from Util.pyinstaller_patch import debugger
 
 import time
+import logging.config
+
+setter_logger = SetLogger('setter', logging)
+setter_logger = setter_logger.get_logger()
+setter_logger.getLogger('setter')
+
+
+class LogTest(object):
+    def logt(self):
+        setter_logger.debug('s-test1')
+        setter_logger.info('s-test-2')
 
 
 class Setter(BaseProcess):

@@ -28,65 +28,69 @@
             - 외부 요인이 아닌 Memory leak, 코드에서 발생하는 에러 수준일 때 기록한다.
 """
 import datetime
-import logging
-import logging.config
-import os.path
+import os
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-class LoggingFileHandler(logging.FileHandler):
-    def __init__(self, process_name, filename, mode):
-        super(LoggingFileHandler, self).__init__(filename, mode)
-        self._filename = filename
-
-    def filter(self, record) -> bool:
-        if self._filename is None:
-            pass
-
-
-
-LOGGING_CONFIG = {
-    "version": 1,
-    "formatters": {
-        "simple": {
-            "format": "[%(name)s][%(message)s]"
+class SetLogger(object):
+    LOGGING_CONFIG = {
+        "version": 1,
+        "formatters": {
+            "simple": {
+                "format": "[%(name)s][%(message)s]"
+            },
+            "complex": {
+                "format": "[%(asctime)s][%(levelname)s][%(filename)s][%(funcName)s][%(message)s]"
+            },
         },
-        "complex": {
-            "format": "[%(asctime)s][%(levelname)s][%(filename)s][%(funcName)s][%(message)s]"
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "simple",
+                "level": "INFO",
+            },
         },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "simple",
-            "level": "INFO",
+        "root": {
+            "handlers": ["console"],
+            "level": "INFO"
         },
-        "file": {
-            "class": "LoggingFileHandler",
-            "process_name": '',
-            "filename": "{}.log",
-            "formatter": "complex",
-            "level": "DEBUG"
-        },
-    },
-    "root": {
-        "handlers": ["console", "file"],
-        "level": "DEBUG"
-    },
-    "loggers": {
-        "parent": {"level": "INFO"},
-        "parent.child": {"level": "DEBUG"}
+        "loggers": {
+            "parent": {"level": "INFO"},
+            "parent.child": {"level": "DEBUG"}
+        }
     }
-}
 
-logging.config.dictConfig(config=LOGGING_CONFIG)
+    def __init__(self, process_name, logging):
+        self._process_name = process_name
+        self._logging = logging
+        try:
+            now = datetime.datetime.now()
+            now_date, now_hour = str(now.date()), now.strftime('%Hh%Mm%Ss')
 
-try:
-    now = datetime.datetime.now()
-    now_date = str(now.date())
-    if not os.path.isdir('./logs'):
-        os.mkdir('./logs')
-    if not os.path.isdir(f'./logs/{now_date}'):
-        os.mkdir(f'./logs/{now_date}')
-    LOG_CONFIG['handlers']['fileHandler']['filename'] = logfullpath
-except:
-    pass
+            log_path = os.path.join(ROOT_DIR, 'Logs')
+            self.create_dir(log_path)
+
+            log_process_path = os.path.join(log_path, process_name)
+            self.create_dir(log_process_path)
+
+            log_date_path = os.path.join(log_process_path, now_date)
+            self.create_dir(log_date_path)
+
+            self.LOGGING_CONFIG['handlers'][process_name] = {
+                "class": "logging.FileHandler",
+                "filename": os.path.join(log_date_path, f'{now_hour}.log'),
+                "formatter": "complex",
+                "level": "DEBUG"
+            }
+            logging.config.dictConfig(self.LOGGING_CONFIG)
+        except Exception as ex:
+            print(ex)
+
+    def create_dir(self, path):
+        if not os.path.isdir(path):
+            os.mkdir(path)
+
+    def get_logger(self):
+        return self._logging
+

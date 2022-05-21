@@ -1,4 +1,5 @@
 from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder, task_wrapper
+from DiffTrader.Util.logger import SetLogger
 from DiffTrader.GlobalSetting.settings import TraderConsts, RedisKey, DEBUG, TEST_USER
 from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
 from DiffTrader.GlobalSetting.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
@@ -13,6 +14,19 @@ import time
 import json
 import datetime
 import asyncio
+import logging.config
+
+
+monitoring_logger = SetLogger('monitoring', logging)
+monitoring_logger = monitoring_logger.get_logger()
+monitoring_logger.getLogger('monitoring')
+
+
+class LogTest(object):
+
+    def logt(self):
+        monitoring_logger.debug('m-test1')
+        monitoring_logger.info('m-test-2')
 
 
 class Monitoring(Process):
@@ -310,5 +324,6 @@ class Monitoring(Process):
 
 
 if __name__ == '__main__':
-    st = Monitoring(TEST_USER, 'Upbit', 'Binance')
-    st.run()
+    Test()
+    # st = Monitoring(TEST_USER, 'Upbit', 'Binance')
+    # st.run()
