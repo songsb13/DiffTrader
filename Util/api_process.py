@@ -80,8 +80,8 @@ class BaseAPIProcess(Process):
 
 
 class UpbitAPIProcess(BaseAPIProcess):
-    pub_api_redis_key = RedisKey.ApiKey['upbit']['publish']
-    sub_api_redis_key = RedisKey.ApiKey['upbit']['subscribe']
+    pub_api_redis_key = RedisKey.ApiKey['Upbit']['publish']
+    sub_api_redis_key = RedisKey.ApiKey['Upbit']['subscribe']
 
     def __init__(self, exchange_str):
         super(UpbitAPIProcess, self).__init__(exchange_str)
