@@ -29,68 +29,72 @@
 """
 import datetime
 import os
+import copy
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-class SetLogger(object):
-    LOGGING_CONFIG = {
-        "version": 1,
-        "formatters": {
-            "simple": {
-                "format": "[%(name)s][%(message)s]"
-            },
-            "complex": {
-                "format": "[%(asctime)s][%(levelname)s][%(filename)s][%(funcName)s][%(message)s]"
-            },
+BASE_LOGGING_CONFIG = {
+    "version": 1,
+    "formatters": {
+        "simple": {
+            "format": "[%(name)s][%(message)s]"
         },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "formatter": "simple",
-                "level": "INFO",
-            },
+        "complex": {
+            "format": "[%(asctime)s][%(levelname)s][%(filename)s][%(funcName)s][%(message)s]"
         },
-        "root": {
-            "handlers": ["console"],
-            "level": "INFO"
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "level": "INFO",
         },
-        "loggers": {
-            "parent": {"level": "INFO"},
-            "parent.child": {"level": "DEBUG"}
-        }
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO"
+    },
+    "loggers": {
+        "parent": {"level": "INFO"},
+        "parent.child": {"level": "DEBUG"}
     }
+}
 
-    def __init__(self, process_name, logging):
-        self._process_name = process_name
-        self._logging = logging
+
+class SetLogger(object):
+    @staticmethod
+    def get_config_base_process(process_name):
         try:
             now = datetime.datetime.now()
             now_date, now_hour = str(now.date()), now.strftime('%Hh%Mm%Ss')
 
             log_path = os.path.join(ROOT_DIR, 'Logs')
-            self.create_dir(log_path)
+            SetLogger.create_dir(log_path)
 
             log_process_path = os.path.join(log_path, process_name)
-            self.create_dir(log_process_path)
+            SetLogger.create_dir(log_process_path)
 
             log_date_path = os.path.join(log_process_path, now_date)
-            self.create_dir(log_date_path)
+            SetLogger.create_dir(log_date_path)
 
-            self.LOGGING_CONFIG['handlers'][process_name] = {
+            copied_base_config = copy.deepcopy(BASE_LOGGING_CONFIG)
+
+            copied_base_config['handlers'][process_name] = {
                 "class": "logging.FileHandler",
                 "filename": os.path.join(log_date_path, f'{now_hour}.log'),
                 "formatter": "complex",
                 "level": "DEBUG"
             }
-            logging.config.dictConfig(self.LOGGING_CONFIG)
+            copied_base_config['root']['handlers'].append(process_name)
+
+            return copied_base_config
+
         except Exception as ex:
             print(ex)
 
-    def create_dir(self, path):
+    @staticmethod
+    def create_dir(path):
         if not os.path.isdir(path):
             os.mkdir(path)
-
-    def get_logger(self):
-        return self._logging
 
