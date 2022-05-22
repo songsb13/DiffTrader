@@ -5,7 +5,6 @@ from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionEx
 from DiffTrader.GlobalSetting.settings import RedisKey, SaiUrls, DEBUG, TraderConsts
 from DiffTrader.GlobalSetting.test_settings import *
 from DiffTrader.GlobalSetting.messages import *
-from Util.pyinstaller_patch import debugger
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from multiprocessing import Process

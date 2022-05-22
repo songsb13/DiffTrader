@@ -3,8 +3,6 @@ from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
 from DiffTrader.GlobalSetting.settings import REDIS_SERVER, CONFIG, AGREE_WORDS
 
-from Util.pyinstaller_patch import debugger
-
 from decimal import Decimal, getcontext, InvalidOperation
 import asyncio
 import json
@@ -23,9 +21,8 @@ class FunctionExecutor(object):
 
     def loop_executor(self, *args, **kwargs):
         self._trace.append('loop_executor')
-        debugger.debug(
-            'loop_executor, parameter={}, {}'.format(args, kwargs)
-        )
+        message = 'loop_executor, parameter={}, {}'.format(args, kwargs)
+
         for _ in range(3):
             result = self._func(*args, **kwargs)
 
@@ -38,7 +35,7 @@ class FunctionExecutor(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        debugger.debug('Exit FunctionExecutor, trace: [{}]'.format(' -> '.join(self._trace)))
+        # debugger.debug('Exit FunctionExecutor, trace: [{}]'.format(' -> '.join(self._trace)))
         return None
 
 
@@ -226,7 +223,7 @@ class CustomPickle(object):
             with open(self.path, 'rb') as f:
                 self.obj = pickle.load(f)
         except:
-            debugger.debug('no pickle')
+            pass
 
 
 if __name__ == '__main__':

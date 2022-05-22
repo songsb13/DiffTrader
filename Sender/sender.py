@@ -5,7 +5,6 @@ import time
 from DiffTrader.Util.utils import set_redis, get_redis, FunctionExecutor
 from DiffTrader.GlobalSetting.settings import RedisKey, SaiUrls
 
-from Util.pyinstaller_patch import debugger
 
 
 class Sender(object):
