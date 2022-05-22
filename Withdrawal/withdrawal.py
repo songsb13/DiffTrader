@@ -18,7 +18,6 @@ from DiffTrader.GlobalSetting.settings import (
     PicklePath
 )
 from DiffTrader.GlobalSetting.objects import BaseProcess
-from Util.pyinstaller_patch import debugger
 
 from decimal import getcontext
 
