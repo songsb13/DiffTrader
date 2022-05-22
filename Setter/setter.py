@@ -4,31 +4,28 @@ from DiffTrader.Util.utils import (
 )
 from DiffTrader.Util.logger import SetLogger
 from DiffTrader.GlobalSetting.messages import SetterMessage as Msg
-from DiffTrader.GlobalSetting.settings import TraderConsts, TEST_USER
-from DiffTrader.GlobalSetting.objects import BaseProcess
+from DiffTrader.GlobalSetting.settings import TEST_USER
+from DiffTrader.GlobalSetting.objects import MessageControlMixin
 from DiffTrader.GlobalSetting.settings import RedisKey
-from Util.pyinstaller_patch import debugger
+
 
 import time
 import logging.config
 
-setter_logger = SetLogger('setter', logging)
-setter_logger = setter_logger.get_logger()
-setter_logger.getLogger('setter')
+
+__file__ = 'setter'
 
 
-class LogTest(object):
-    def logt(self):
-        setter_logger.debug('s-test1')
-        setter_logger.info('s-test-2')
+logging_config = SetLogger.get_config_base_process(__file__)
+logging.config.dictConfig(logging_config)
 
 
-class Setter(BaseProcess):
+class Setter(MessageControlMixin):
     receive_type = 'common'
     require_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
 
     def __init__(self, user, exchange_str):
-        debugger.debug(Msg.START.format(user, exchange_str))
+        logging.debug(Msg.START.format(user, exchange_str))
         super(Setter, self).__init__()
         self._pub_api_redis_key = RedisKey.ApiKey[exchange_str]['publish']
         self._sub_api_redis_key = RedisKey.ApiKey[exchange_str]['subscribe']
@@ -82,7 +79,7 @@ class Setter(BaseProcess):
         trading_result = self._exchange.get_trading_fee()
         trading_fee_count = self._exchange.fee_count()
         if not trading_result.success:
-            debugger.debug(trading_result.message)
+            logging.debug(trading_result.message)
 
         dic = {
             'trading_fee': trading_result.data,
