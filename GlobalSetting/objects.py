@@ -14,10 +14,8 @@ from DiffTrader.Util.utils import (
     DecimalDecoder
 )
 
-from multiprocessing import Process
 
-
-class BaseProcess(Process):
+class MessageControlMixin(object):
     # base process for setter, monitoring and etc..
     receive_type = ''
     require_functions = []
