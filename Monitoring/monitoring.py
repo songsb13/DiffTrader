@@ -5,8 +5,6 @@ from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
 from DiffTrader.GlobalSetting.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
 from Exchanges.settings import Consts
 
-from multiprocessing import Process
-
 from decimal import Decimal
 
 import time
@@ -23,7 +21,7 @@ logging_config = SetLogger.get_config_base_process(__file__)
 logging.config.dictConfig(logging_config)
 
 
-class Monitoring(Process):
+class Monitoring(object):
     def __init__(self, user, primary_str, secondary_str):
         logging.debug(Msg.START.format(primary_str, secondary_str, user))
 
