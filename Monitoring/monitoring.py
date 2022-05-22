@@ -4,7 +4,6 @@ from DiffTrader.GlobalSetting.settings import TraderConsts, RedisKey, DEBUG, TES
 from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
 from DiffTrader.GlobalSetting.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
 from Exchanges.settings import Consts
-from Util.pyinstaller_patch import debugger
 
 from multiprocessing import Process
 
@@ -17,21 +16,16 @@ import asyncio
 import logging.config
 
 
-monitoring_logger = SetLogger('monitoring', logging)
-monitoring_logger = monitoring_logger.get_logger()
-monitoring_logger.getLogger('monitoring')
+__file__ = 'monitoring'
 
 
-class LogTest(object):
-
-    def logt(self):
-        monitoring_logger.debug('m-test1')
-        monitoring_logger.info('m-test-2')
+logging_config = SetLogger.get_config_base_process(__file__)
+logging.config.dictConfig(logging_config)
 
 
 class Monitoring(Process):
     def __init__(self, user, primary_str, secondary_str):
-        debugger.debug(Msg.START.format(primary_str, secondary_str, user))
+        logging.debug(Msg.START.format(primary_str, secondary_str, user))
 
         super(Monitoring, self).__init__()
         self._user = user
@@ -49,7 +43,7 @@ class Monitoring(Process):
         self._set_candle_subscribe_flag = False
 
     def run(self) -> None:
-        debugger.debug(Msg.RUNNING.format(self._primary_str, self._secondary_str, self._user))
+        logging.debug(Msg.RUNNING.format(self._primary_str, self._secondary_str, self._user))
         _primary_subscriber = subscribe_redis(self._primary_str)
         _secondary_subscriber = subscribe_redis(self._secondary_str)
 
@@ -89,7 +83,7 @@ class Monitoring(Process):
             orderbook_success, total_orderbooks = self._compare_orderbook(primary, secondary, sai_symbol_intersection)
 
             if not orderbook_success:
-                debugger.debug(Msg.FAIL_TO_GET_ORDERBOOK)
+                logging.debug(Msg.FAIL_TO_GET_ORDERBOOK)
                 continue
 
             profit_dict = self._get_max_profit(primary,
@@ -98,13 +92,13 @@ class Monitoring(Process):
                                                latest_secondary_information,
                                                total_orderbooks)
             if not profit_dict:
-                debugger.debug(Msg.FAIL_TO_GET_SUITABLE_PROFIT)
+                logging.debug(Msg.FAIL_TO_GET_SUITABLE_PROFIT)
                 time.sleep(5)
                 continue
 
             if not DEBUG:
                 if profit_dict['btc_profit'] >= self._min_profit:
-                    debugger.debug(Msg.SET_PROFIT_DICT(self._min_profit, profit_dict))
+                    logging.debug(Msg.SET_PROFIT_DICT(self._min_profit, profit_dict))
             set_redis(RedisKey.ProfitInformation, profit_dict, use_decimal=True)
 
     def _get_available_symbols(self, primary_information, secondary_information):
@@ -185,7 +179,7 @@ class Monitoring(Process):
             wait_time = max(primary_result.wait_time, secondary_result.wait_time)
             time.sleep(wait_time)
             error_message = '\n'.join([primary_result.message, secondary_result.message])
-            debugger.debug(Msg.GET_ERROR_MESSAGE_IN_COMPARE.format(error_message))
+            logging.debug(Msg.GET_ERROR_MESSAGE_IN_COMPARE.format(error_message))
             return False, error_message
 
     def _get_max_profit(self, primary, secondary, primary_information, secondary_information, total_orderbooks):
@@ -195,12 +189,12 @@ class Monitoring(Process):
                 market, coin = sai_symbol.split('_')
 
                 if not primary_information['balance'].get(coin):
-                    debugger.debug(Msg.BALANCE_NOT_FOUND.format(self._primary_str, sai_symbol))
+                    logging.debug(Msg.BALANCE_NOT_FOUND.format(self._primary_str, sai_symbol))
                     time.sleep(10)
                     continue
 
                 elif not secondary_information['balance'].get(coin):
-                    debugger.debug(Msg.BALANCE_NOT_FOUND.format(self._secondary_str, sai_symbol))
+                    logging.debug(Msg.BALANCE_NOT_FOUND.format(self._secondary_str, sai_symbol))
                     time.sleep(10)
                     continue
 
@@ -208,7 +202,7 @@ class Monitoring(Process):
 
                 if not DEBUG:
                     if expect_profit_percent < self._min_profit:
-                        debugger.debug(Msg.EXPECTED_PROFIT.format(sai_symbol, expect_profit_percent, self._min_profit))
+                        logging.debug(Msg.EXPECTED_PROFIT.format(sai_symbol, expect_profit_percent, self._min_profit))
                         continue
 
                 if exchange_running_type == TraderConsts.PRIMARY_TO_SECONDARY:
@@ -243,7 +237,7 @@ class Monitoring(Process):
                     sai_symbol,
                 )
 
-                debugger.debug(Msg.TRADABLE_INFO.format(tradable_btc, coin_amount, sell_coin_amount, btc_profit, real_difference))
+                logging.debug(Msg.TRADABLE_INFO.format(tradable_btc, coin_amount, sell_coin_amount, btc_profit, real_difference))
 
                 if not profit_dict and (tradable_btc, coin_amount):
                     refresh_profit_dict = True
@@ -324,6 +318,5 @@ class Monitoring(Process):
 
 
 if __name__ == '__main__':
-    Test()
-    # st = Monitoring(TEST_USER, 'Upbit', 'Binance')
-    # st.run()
+    st = Monitoring(TEST_USER, 'Upbit', 'Binance')
+    st.run()
