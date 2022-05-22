@@ -8,10 +8,26 @@ Logging Messages
     대신 info들 노출시켜 주는 것에 중점을 둬야함.
 """
 
+import inspect
 
-class GlobalMessage(object):
-    ENTRANCE = 'parameters={data}'
-    FATAL = 'FATAL'
+
+class CommonMessage(object):
+    """
+        Info message, 모든 프로세스에서 사용함.
+    """
+
+    START = '프로그램을 시작합니다.'
+    FATAL = '프로그램 에러가 발생했습니다.'
+
+    # for check entering & Exit function
+    ENTRANCE = 'Function Entrance'
+    EXIT = 'Function Exit.'
+
+    @staticmethod
+    def entrance_with_parameter(fn, value):
+        sig = inspect.signature(fn)
+        param_dict = dict(sig.bind(*value).arguments)
+        return f'Function Entrance, {param_dict}'
 
 
 class SetterMessage(object):
@@ -19,7 +35,7 @@ class SetterMessage(object):
 
 
 class MonitoringMessage(object):
-    START = 'start monitoring process, primary={}, secondary={}, user={}'
+    SET_MONITORING = 'Start monitoring process, Primary={}, Secondary={}, User={}'
     RUNNING = 'running monitoring process, primary={}, secondary={}, user={}'
     GET_ERROR_MESSAGE_IN_COMPARE = 'get error message in _compare_orderbook. error_message={}'
     BALANCE_NOT_FOUND = '{}, has not {} in currency balance.'
