@@ -2,6 +2,7 @@ from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit
 from DiffTrader.Util.logger import SetLogger
 from DiffTrader.GlobalSetting.settings import TraderConsts, RedisKey, DEBUG, TEST_USER
 from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
+from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
 from DiffTrader.GlobalSetting.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
 from Exchanges.settings import Consts
 
@@ -14,7 +15,7 @@ import asyncio
 import logging.config
 
 
-__file__ = 'monitoring'
+__file__ = 'monitoring.py'
 
 
 logging_config = SetLogger.get_config_base_process(__file__)
@@ -22,9 +23,11 @@ logging.config.dictConfig(logging_config)
 
 
 class Monitoring(object):
-    def __init__(self, user, primary_str, secondary_str):
-        logging.debug(Msg.START.format(primary_str, secondary_str, user))
+    name, name_kor = 'Monitoring', '모니터링'
 
+    def __init__(self, user, primary_str, secondary_str):
+        logging.info(CMsg.START)
+        logging.debug(Msg.SET_MONITORING.format(primary_str, secondary_str, user))
         super(Monitoring, self).__init__()
         self._user = user
 
@@ -41,7 +44,7 @@ class Monitoring(object):
         self._set_candle_subscribe_flag = False
 
     def run(self) -> None:
-        logging.debug(Msg.RUNNING.format(self._primary_str, self._secondary_str, self._user))
+        logging.debug(CMsg.ENTRANCE)
         _primary_subscriber = subscribe_redis(self._primary_str)
         _secondary_subscriber = subscribe_redis(self._secondary_str)
 
@@ -100,6 +103,10 @@ class Monitoring(object):
             set_redis(RedisKey.ProfitInformation, profit_dict, use_decimal=True)
 
     def _get_available_symbols(self, primary_information, secondary_information):
+        logging.debug(CMsg.entrance_with_parameter(
+            self._get_available_symbols,
+            (primary_information, secondary_information)
+        ))
         primary_deposit_symbols = primary_information['deposit'].keys()
         secondary_deposit_symbols = secondary_information['deposit'].keys()
         deposit_intersection = set(primary_deposit_symbols).intersection(secondary_deposit_symbols)
@@ -115,6 +122,10 @@ class Monitoring(object):
         return able_sai_symbols
 
     def _set_orderbook_subscribe(self, primary, secondary, symbol_list):
+        logging.debug(CMsg.entrance_with_parameter(
+            self._set_orderbook_subscribe,
+            (primary, secondary, symbol_list)
+        ))
         primary.set_subscriber()
         secondary.set_subscriber()
 
@@ -124,6 +135,7 @@ class Monitoring(object):
         return
 
     def _compare_orderbook(self, primary, secondary, sai_symbol_intersection, default_btc=1):
+        logging.debug(CMsg.ENTRANCE)
         def __bid_ask_calculator(bids, asks):
             if not bids or not asks:
                 return 0
@@ -181,6 +193,7 @@ class Monitoring(object):
             return False, error_message
 
     def _get_max_profit(self, primary, secondary, primary_information, secondary_information, total_orderbooks):
+        logging.debug(CMsg.ENTRANCE)
         profit_dict = dict()
         for exchange_running_type in [TraderConsts.PRIMARY_TO_SECONDARY, TraderConsts.SECONDARY_TO_PRIMARY]:
             for sai_symbol in total_orderbooks['intersection']:
@@ -272,6 +285,7 @@ class Monitoring(object):
         return profit_dict
 
     def _get_expectation(self, expectation_data, expected_profit_percent, sai_symbol):
+        logging.debug(CMsg.ENTRANCE)
         market, coin = sai_symbol.split('_')
         from_, to_ = expectation_data['from'], expectation_data['to']
 
