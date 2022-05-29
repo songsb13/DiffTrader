@@ -30,11 +30,12 @@ class CommonMessage(object):
         return f'Function Entrance, {param_dict}'
 
 
-class SetterMessage(object):
-    START = 'start setter process, user={}, exchange_str={}'
-
-
 class MonitoringMessage(object):
+    class Info:
+        ALL_COINS_NOT_REACHED_EXPECTED_PROFIT = '거래 가능한 코인 중 모든 코인이 최소 수익 값에 도달하지 못했습니다.'
+        COIN_NOT_REACHED_EXPECTED_PROFIT = '해당 코인의 예상 차익이 최소 입력 차익보다 낮습니다. 코인: {}, 예상 차익: {}, 입력 수익: {}'
+
+    GET_INFORMATION = 'get primary&secondary information, Primary={}, Secondary={}'
     SET_MONITORING = 'Start monitoring process, Primary={}, Secondary={}, User={}'
     RUNNING = 'running monitoring process, primary={}, secondary={}, user={}'
     GET_ERROR_MESSAGE_IN_COMPARE = 'get error message in _compare_orderbook. error_message={}'
@@ -73,3 +74,9 @@ class TradingMessage(object):
 class WithdrawalMessage(object):
     pass
 
+
+class UtilMessage(object):
+    class Warning(object):
+        INCORRECT_RAW_DATA = 'API Raw data is not correct'
+        RAW_DATA_IS_NULL = 'API Result data is null'
+        RECEIVE_TYPE_DATA_IS_NULL = 'Not found data containing input return type.'
