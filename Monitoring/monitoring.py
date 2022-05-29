@@ -44,9 +44,8 @@ class Monitoring(object):
         self._set_candle_subscribe_flag = False
 
     def run(self) -> None:
-        logging.debug(CMsg.ENTRANCE)
-        _primary_subscriber = subscribe_redis(self._primary_str)
-        _secondary_subscriber = subscribe_redis(self._secondary_str)
+        _primary_subscriber = subscribe_redis(self._primary_str, logging=logging)
+        _secondary_subscriber = subscribe_redis(self._secondary_str, logging=logging)
 
         self._exchanges = get_exchanges()
 
@@ -67,6 +66,8 @@ class Monitoring(object):
                         continue
                     latest_primary_information = json.loads(primary_information, cls=DecimalDecoder)
                     latest_secondary_information = json.loads(secondary_information, cls=DecimalDecoder)
+
+                    logging.debug(Msg.GET_INFORMATION.format(latest_primary_information, latest_secondary_information))
 
                 elif not latest_primary_information and not latest_secondary_information:
                     time.sleep(1)
@@ -93,14 +94,11 @@ class Monitoring(object):
                                                latest_secondary_information,
                                                total_orderbooks)
             if not profit_dict:
-                logging.debug(Msg.FAIL_TO_GET_SUITABLE_PROFIT)
+                logging.info(Msg.Info.ALL_COINS_NOT_REACHED_EXPECTED_PROFIT)
                 time.sleep(5)
                 continue
 
-            if not DEBUG:
-                if profit_dict['btc_profit'] >= self._min_profit:
-                    logging.debug(Msg.SET_PROFIT_DICT(self._min_profit, profit_dict))
-            set_redis(RedisKey.ProfitInformation, profit_dict, use_decimal=True)
+            set_redis(RedisKey.ProfitInformation, profit_dict, use_decimal=True, logging=logging)
 
     def _get_available_symbols(self, primary_information, secondary_information):
         logging.debug(CMsg.entrance_with_parameter(
@@ -135,7 +133,10 @@ class Monitoring(object):
         return
 
     def _compare_orderbook(self, primary, secondary, sai_symbol_intersection, default_btc=1):
-        logging.debug(CMsg.ENTRANCE)
+        logging.debug(CMsg.entrance_with_parameter(
+            self._compare_orderbook,
+            (primary, secondary, sai_symbol_intersection, default_btc)
+        ))
         def __bid_ask_calculator(bids, asks):
             if not bids or not asks:
                 return 0
@@ -193,19 +194,22 @@ class Monitoring(object):
             return False, error_message
 
     def _get_max_profit(self, primary, secondary, primary_information, secondary_information, total_orderbooks):
-        logging.debug(CMsg.ENTRANCE)
+        logging.debug(CMsg.entrance_with_parameter(
+            self._get_max_profit,
+            (primary, secondary, primary_information, secondary_information,total_orderbooks)
+        ))
         profit_dict = dict()
         for exchange_running_type in [TraderConsts.PRIMARY_TO_SECONDARY, TraderConsts.SECONDARY_TO_PRIMARY]:
             for sai_symbol in total_orderbooks['intersection']:
                 market, coin = sai_symbol.split('_')
 
                 if not primary_information['balance'].get(coin):
-                    logging.debug(Msg.BALANCE_NOT_FOUND.format(self._primary_str, sai_symbol))
+                    logging.warning(Msg.BALANCE_NOT_FOUND.format(self._primary_str, sai_symbol))
                     time.sleep(10)
                     continue
 
                 elif not secondary_information['balance'].get(coin):
-                    logging.debug(Msg.BALANCE_NOT_FOUND.format(self._secondary_str, sai_symbol))
+                    logging.warning(Msg.BALANCE_NOT_FOUND.format(self._secondary_str, sai_symbol))
                     time.sleep(10)
                     continue
 
@@ -213,7 +217,7 @@ class Monitoring(object):
 
                 if not DEBUG:
                     if expect_profit_percent < self._min_profit:
-                        logging.debug(Msg.EXPECTED_PROFIT.format(sai_symbol, expect_profit_percent, self._min_profit))
+                        logging.info(Msg.Info.COIN_NOT_REACHED_EXPECTED_PROFIT.format(coin, expect_profit_percent, self._min_profit))
                         continue
 
                 if exchange_running_type == TraderConsts.PRIMARY_TO_SECONDARY:
@@ -248,7 +252,8 @@ class Monitoring(object):
                     sai_symbol,
                 )
 
-                logging.debug(Msg.TRADABLE_INFO.format(tradable_btc, coin_amount, sell_coin_amount, btc_profit, real_difference))
+                logging.debug(Msg.TRADABLE_INFO.format(tradable_btc, coin_amount, sell_coin_amount,
+                                                       btc_profit, real_difference))
 
                 if not profit_dict and (tradable_btc, coin_amount):
                     refresh_profit_dict = True
@@ -285,7 +290,10 @@ class Monitoring(object):
         return profit_dict
 
     def _get_expectation(self, expectation_data, expected_profit_percent, sai_symbol):
-        logging.debug(CMsg.ENTRANCE)
+        logging.debug(CMsg.entrance_with_parameter(
+            self._get_expectation,
+            (expectation_data, expected_profit_percent, sai_symbol)
+        ))
         market, coin = sai_symbol.split('_')
         from_, to_ = expectation_data['from'], expectation_data['to']
 
