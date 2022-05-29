@@ -2,6 +2,7 @@ from Exchanges.upbit.upbit import BaseUpbit
 from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
 from DiffTrader.GlobalSetting.settings import REDIS_SERVER, CONFIG, AGREE_WORDS
+from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
 
 from decimal import Decimal, getcontext, InvalidOperation
 import asyncio
@@ -112,11 +113,17 @@ async def task_wrapper(fn_data):
     return result
 
 
-def publish_redis(key, value, use_decimal=False):
+def publish_redis(key, value, use_decimal=False, logging=None):
     """
         key: str
         value: dict
     """
+    if logging:
+        logging.debug(CMsg.entrance_with_parameter(
+            publish_redis,
+            (key, value, use_decimal)
+        ))
+
     if use_decimal:
         dict_to_json_value = json.dumps(value, cls=DecimalEncoder)
     else:
@@ -136,20 +143,33 @@ def publish_redis_for_api(key, value, use_decimal=False):
     return publish_redis(key, value, use_decimal)
 
 
-def subscribe_redis(key):
+def subscribe_redis(key, logging=None):
     """
         (n-1)+(n-2) ... +1
     """
+
+    if logging:
+        CMsg.entrance_with_parameter(
+            subscribe_redis,
+            (key, )
+        )
+
     ps = REDIS_SERVER.pubsub()
 
     ps.subscribe(key)
     return ps
 
 
-def get_redis(key, use_decimal=False):
+def get_redis(key, use_decimal=False, logging=None):
     """
         key: str
     """
+    if logging:
+        logging.debug(CMsg.entrance_with_parameter(
+            set_redis,
+            (key, use_decimal)
+        ))
+
     try:
         value = REDIS_SERVER.get(key)
 
@@ -166,7 +186,7 @@ def get_redis(key, use_decimal=False):
         return None
 
 
-def set_redis(key, value, use_decimal=False):
+def set_redis(key, value, use_decimal=False, logging=None):
     """
         key: str
         value: dict
@@ -175,6 +195,12 @@ def set_redis(key, value, use_decimal=False):
         dict_to_json_value = json.dumps(value, cls=DecimalEncoder)
     else:
         dict_to_json_value = json.dumps(value)
+
+    if logging:
+        logging.debug(CMsg.entrance_with_parameter(
+            set_redis,
+            (key, value, use_decimal)
+        ))
 
     REDIS_SERVER.set(key, dict_to_json_value)
 
