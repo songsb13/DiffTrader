@@ -1,13 +1,23 @@
 import time
 import json
+import logging.config
+
 from Exchanges.settings import BaseTradeType, SaiOrderStatus, Consts
 from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis, DecimalDecoder
 from DiffTrader.GlobalSetting.settings import RedisKey, SaiUrls, DEBUG, TraderConsts
 from DiffTrader.GlobalSetting.test_settings import *
-from DiffTrader.GlobalSetting.messages import *
+from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
+from DiffTrader.GlobalSetting.messages import TradingMessage as TMsg
+from DiffTrader.Util.logger import SetLogger
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Process
+
+__file__ = 'trading.py'
+
+
+logging_config = SetLogger.get_config_base_process(__file__)
+logging.config.dictConfig(logging_config)
 
 
 class Trading(Process):
@@ -20,14 +30,15 @@ class Trading(Process):
         super(Trading, self).__init__()
 
     def run(self) -> None:
-        debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
+        logging.info(CMsg.START)
         thread_executor = ThreadPoolExecutor(max_workers=2)
         exchange_dict = get_exchanges()
         while True:
             if not DEBUG:
                 profit_information = get_redis(RedisKey.ProfitInformation, use_decimal=True)
-
                 if not profit_information:
+                    logging.debug(TMsg.Debug.WAIT_INFORMATION)
+                    time.sleep(0.5)
                     continue
             else:
                 profit_information = json.loads(TRADING_TEST_INFORMATION, cls=DecimalDecoder)
@@ -73,22 +84,21 @@ class Trading(Process):
             from_price, from_amount = tasks[0].result()
             to_price, to_amount = tasks[1].result()
 
-            trading_information = dict(
-                from_exchange=dict(
-                    name=from_exchange_str,
-                    price=from_price,
-                    amount=from_amount
-                ),
-                to_exchange=dict(
-                    name=to_exchange_str,
-                    price=to_price,
-                    amount=to_amount
-                )
-            )
-
-            debugger.debug(TradingMessage.Debug.TRADING_INFORMATION)
+            trading_information = {
+                'from_exchange': {
+                    'name': from_exchange_str,
+                    'price': from_price,
+                    'amount': from_amount
+                },
+                'to_exchange': {
+                    'name': to_exchange_str,
+                    'price': to_price,
+                    'amount': to_amount
+                }
+            }
+            logging.debug(TMsg.Debug.TRADING_INFORMATION.format(trading_information))
             if trading_information is None:
-                debugger.debug(TradingMessage.Debug.INFORMATION_NOT_FOUND)
+                logging.debug(TMsg.Debug.INFORMATION_NOT_FOUND)
                 raise
 
             if get_auto_withdrawal():
@@ -104,7 +114,10 @@ class Trading(Process):
             from_exchange: Exchange that will be buying the ALT coin
             to_exchange: Exchange that will be selling the ALT coin
         """
-        debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
+        logging.debug(CMsg.entrance_with_parameter(
+            self._trade,
+            (exchange, trade_func, trade_type, sai_symbol, coin_amount, price)
+        ))
         with FunctionExecutor(trade_func) as executor:
             result = executor.loop_executor(
                 sai_symbol,
@@ -113,9 +126,9 @@ class Trading(Process):
                 price
             )
             if not result.success:
-                debugger.debug(TradingMessage.Debug.FAIL_TO_TRADING.format())
+                logging.debug(TMsg.Debug.FAIL_TO_TRADING.format(result.message))
                 return None, None
-            debugger.debug(TradingMessage.Debug.TRADING_RESULT.format(result.data))
+            logging.debug(TMsg.Debug.TRADING_RESULT.format(result.data))
 
         if result.data['sai_order_id'] in "DEBUG-TEST-ID":
             return result.data['sai_average_price'], result.data['sai_amount']
