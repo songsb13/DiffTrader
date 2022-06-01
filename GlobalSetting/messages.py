@@ -65,13 +65,11 @@ class TradingMessage(object):
         pass
 
     class Debug(object):
+        WAIT_INFORMATION = 'Wait to get information send by Monitoring'
         TRADING_RESULT = 'trading_result=[{}]'
         FAIL_TO_TRADING = 'Fail trading, trading_result=[{}]'
         TRADING_INFORMATION = 'trading_information=[{}]'
         INFORMATION_NOT_FOUND = 'information not found'
-
-    def debugger(self):
-        pass
 
 
 class WithdrawalMessage(object):
