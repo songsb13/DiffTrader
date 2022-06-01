@@ -76,23 +76,23 @@ class Monitoring(object):
                 # test code
                 latest_primary_information = json.loads(UPBIT_TEST_INFORMATION, cls=DecimalDecoder)
                 latest_secondary_information = json.loads(BINANCE_TEST_INFORMATION, cls=DecimalDecoder)
-            sai_symbol_intersection = self._get_available_symbols(latest_primary_information,
-                                                                  latest_secondary_information)
+            tradable_symbol_list = self._get_tradable_symbols(latest_primary_information,
+                                                               latest_secondary_information)
 
             if not self._set_orderbook_subscribe_flag:
                 self._set_orderbook_subscribe_flag = True
-                self._set_orderbook_subscribe(primary, secondary, sai_symbol_intersection)
-            orderbook_success, total_orderbooks = self._compare_orderbook(primary, secondary, sai_symbol_intersection)
+                self._set_orderbook_subscribe(primary, secondary, tradable_symbol_list)
+            arbitrage_data = self.get_arbitrage_primary_secondary(primary, secondary, tradable_symbol_list)
 
-            if not orderbook_success:
-                logging.debug(Msg.FAIL_TO_GET_ORDERBOOK)
+            if not arbitrage_data:
+                logging.debug(Msg.Debug.FAIL_TO_GET_ORDERBOOK)
                 continue
 
             profit_dict = self._get_max_profit(primary,
                                                secondary,
                                                latest_primary_information,
                                                latest_secondary_information,
-                                               total_orderbooks)
+                                               arbitrage_data)
             if not profit_dict:
                 logging.info(Msg.Info.ALL_COINS_NOT_REACHED_EXPECTED_PROFIT)
                 time.sleep(5)
@@ -100,16 +100,20 @@ class Monitoring(object):
 
             set_redis(RedisKey.ProfitInformation, profit_dict, use_decimal=True, logging=logging)
 
-    def _get_available_symbols(self, primary_information, secondary_information):
+    def _get_tradable_symbols(self, primary_information, secondary_information):
+        """
+            primary - secondary 간 출금 가능한 코인과
+            프로그램 상 지정된 마켓을 확인하고,
+            거래 가능한 symbols로 리턴
+        """
         logging.debug(CMsg.entrance_with_parameter(
-            self._get_available_symbols,
+            self._get_tradable_symbols,
             (primary_information, secondary_information)
         ))
         primary_deposit_symbols = primary_information['deposit'].keys()
         secondary_deposit_symbols = secondary_information['deposit'].keys()
         deposit_intersection = set(primary_deposit_symbols).intersection(secondary_deposit_symbols)
 
-        # set market
         able_markets = set(TraderConsts.ABLE_MARKETS).intersection(deposit_intersection)
         able_sai_symbols = list()
         for market in able_markets:
@@ -119,24 +123,33 @@ class Monitoring(object):
                 able_sai_symbols.append(f'{market}_{coin}')
         return able_sai_symbols
 
-    def _set_orderbook_subscribe(self, primary, secondary, symbol_list):
+    def _set_orderbook_subscribe(self, primary, secondary, tradable_symbol_list):
+        """
+            subscriber 웹소켓 스레드를 실행하고
+            orderbook을 subscribe하는 함수
+        """
         logging.debug(CMsg.entrance_with_parameter(
             self._set_orderbook_subscribe,
-            (primary, secondary, symbol_list)
+            (primary, secondary, tradable_symbol_list)
         ))
         primary.set_subscriber()
         secondary.set_subscriber()
 
-        primary.set_subscribe_orderbook(symbol_list)
-        secondary.set_subscribe_orderbook(symbol_list)
+        primary.set_subscribe_orderbook(tradable_symbol_list)
+        secondary.set_subscribe_orderbook(tradable_symbol_list)
 
         return
 
-    def _compare_orderbook(self, primary, secondary, sai_symbol_intersection, default_btc=1):
+    def get_arbitrage_primary_secondary(self, primary, secondary, tradable_symbol_list):
+        """
+            tradable_symbol_list에서 평균 ask & bid 값을 async하게 가져오고,
+            거래소 간 차익을 계산하는 함수
+        """
         logging.debug(CMsg.entrance_with_parameter(
-            self._compare_orderbook,
-            (primary, secondary, sai_symbol_intersection, default_btc)
+            self.get_arbitrage_primary_secondary,
+            (primary, secondary, tradable_symbol_list)
         ))
+
         def __bid_ask_calculator(bids, asks):
             if not bids or not asks:
                 return 0
@@ -153,8 +166,8 @@ class Monitoring(object):
         if success:
             primary_to_secondary = dict()
             secondary_to_primary = dict()
-            intersection = set()
-            for sai_symbol in sai_symbol_intersection:
+            calculated_symbol_list = set()
+            for sai_symbol in tradable_symbol_list:
                 if sai_symbol not in primary_result.data or sai_symbol not in secondary_result.data:
                     # orderbook에 아직 충분한 데이터가 쌓이지 않은 상태인 경우 값에 들어가있지 않으므로 키에러가 발생할 수 있음.
                     continue
@@ -173,34 +186,45 @@ class Monitoring(object):
                 if not secondary_to_primary_result:
                     continue
                 secondary_to_primary[sai_symbol] = secondary_to_primary_result
-                intersection.add(sai_symbol)
+                calculated_symbol_list.add(sai_symbol)
             data = {
                 'primary': primary_result.data,
                 'secondary': secondary_result.data,
-                'intersection': list(intersection),
+                'calculated_symbol_list': list(calculated_symbol_list),
                 'expected_profit_dict': {
                     TraderConsts.PRIMARY_TO_SECONDARY: primary_to_secondary,
                     TraderConsts.SECONDARY_TO_PRIMARY: secondary_to_primary
                 }
             }
 
-            return True, data
+            return data
 
         else:
             wait_time = max(primary_result.wait_time, secondary_result.wait_time)
             time.sleep(wait_time)
             error_message = '\n'.join([primary_result.message, secondary_result.message])
-            logging.debug(Msg.GET_ERROR_MESSAGE_IN_COMPARE.format(error_message))
-            return False, error_message
+            logging.debug(Msg.Debug.GET_ERROR_MESSAGE_IN_COMPARE.format(error_message))
+            return dict()
 
-    def _get_max_profit(self, primary, secondary, primary_information, secondary_information, total_orderbooks):
+    def _get_max_profit(self, primary, secondary, primary_information, secondary_information, arbitrage_data):
+        """
+            계산된 arbitrage_data를 바탕으로
+            거래 가능한 코인들 중 가장 높은 이익을 내는 코인을 찾는 함수.
+        """
+        def __expectation_setter(exchange, information, orderbook):
+            return {
+                'exchange': exchange,
+                'information': information,
+                'orderbook': orderbook
+            }
+
         logging.debug(CMsg.entrance_with_parameter(
             self._get_max_profit,
-            (primary, secondary, primary_information, secondary_information,total_orderbooks)
+            (primary, secondary, primary_information, secondary_information, arbitrage_data)
         ))
         profit_dict = dict()
         for exchange_running_type in [TraderConsts.PRIMARY_TO_SECONDARY, TraderConsts.SECONDARY_TO_PRIMARY]:
-            for sai_symbol in total_orderbooks['intersection']:
+            for sai_symbol in arbitrage_data['calculated_symbol_list']:
                 market, coin = sai_symbol.split('_')
 
                 if not primary_information['balance'].get(coin):
@@ -213,38 +237,21 @@ class Monitoring(object):
                     time.sleep(10)
                     continue
 
-                expect_profit_percent = total_orderbooks['expected_profit_dict'][exchange_running_type][sai_symbol]
+                expect_profit_percent = arbitrage_data['expected_profit_dict'][exchange_running_type][sai_symbol]
 
-                if not DEBUG:
-                    if expect_profit_percent < self._min_profit:
-                        logging.info(Msg.Info.COIN_NOT_REACHED_EXPECTED_PROFIT.format(coin, expect_profit_percent, self._min_profit))
-                        continue
+                if not DEBUG and expect_profit_percent < self._min_profit:
+                    logging.info(Msg.Info.COIN_NOT_REACHED_EXPECTED_PROFIT.format(coin, expect_profit_percent, self._min_profit))
+                    continue
 
                 if exchange_running_type == TraderConsts.PRIMARY_TO_SECONDARY:
                     expectation_data = {
-                        'from': {
-                            'exchange': primary,
-                            'information': primary_information,
-                            'orderbook': total_orderbooks['primary']
-                        },
-                        'to': {
-                            'exchange': secondary,
-                            'information': secondary_information,
-                            'orderbook': total_orderbooks['secondary']
-                        }
+                        'from': __expectation_setter(primary, primary_information, arbitrage_data['primary']),
+                        'to': __expectation_setter(secondary, secondary_information, arbitrage_data['secondary'])
                     }
                 else:
                     expectation_data = {
-                        'from': {
-                            'exchange': secondary,
-                            'information': secondary_information,
-                            'orderbook': total_orderbooks['secondary']
-                        },
-                        'to': {
-                            'exchange': primary,
-                            'information': primary_information,
-                            'orderbook': total_orderbooks['primary']
-                        }
+                        'from': __expectation_setter(secondary, secondary_information, arbitrage_data['secondary']),
+                        'to': __expectation_setter(primary, primary_information, arbitrage_data['primary']),
                     }
                 tradable_btc, coin_amount, sell_coin_amount, btc_profit, real_difference = self._get_expectation(
                     expectation_data,
@@ -283,7 +290,7 @@ class Monitoring(object):
                             'to_pub_apikey': expectation_data['to']['information']['pub-apikey'],
                             'to_sub_apikey': expectation_data['to']['information']['sub-apikey'],
 
-                            'total_orderbooks': total_orderbooks
+                            'arbitrage_data': arbitrage_data
                         }
                     }
 
