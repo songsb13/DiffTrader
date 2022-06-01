@@ -297,6 +297,25 @@ class Monitoring(object):
         return profit_dict
 
     def _get_expectation(self, expectation_data, expected_profit_percent, sai_symbol):
+        """
+            예상 차익을 구하고, 팔아야하는 coin amount 수량을 확인하는 함수
+
+        """
+        def __find_min_balance(btc_amount, coin_amount, to_exchange_coin_bid):
+            coin_to_btc_price = coin_amount * to_exchange_coin_bid
+            tradable_btc = btc_amount if btc_amount < coin_to_btc_price else coin_to_btc_price
+
+            return tradable_btc
+
+        def __get_real_difference(from_information, to_information, expected_profit_percent, market):
+            # transaction fee에 대한 검증은 get_expectation 에서 진행
+            from_trading_fee_percent = (1 - from_information['trading_fee'][market]) ** from_information['fee_count']
+            to_trading_fee_percent = (1 - to_information['trading_fee'][market]) ** to_information['fee_count']
+
+            real_diff = ((1 + expected_profit_percent) * from_trading_fee_percent * to_trading_fee_percent) - 1
+
+            return real_diff
+
         logging.debug(CMsg.entrance_with_parameter(
             self._get_expectation,
             (expectation_data, expected_profit_percent, sai_symbol)
@@ -305,13 +324,13 @@ class Monitoring(object):
         from_, to_ = expectation_data['from'], expectation_data['to']
 
         to_exchange_coin_amount = to_['information']['balance'][coin]
-        real_difference = self._get_real_difference(
+        real_difference = __get_real_difference(
             from_['information'],
             to_['information'],
             expected_profit_percent,
             market
         )
-        tradable_btc = self._find_min_balance(
+        tradable_btc = __find_min_balance(
             from_['information']['balance'][market],
             to_exchange_coin_amount,
             to_['orderbook'][sai_symbol][Consts.BIDS],
@@ -327,21 +346,6 @@ class Monitoring(object):
         btc_profit = tradable_btc * real_difference
 
         return tradable_btc, to_exchange_coin_amount, sell_coin_amount, btc_profit, real_difference
-
-    def _get_real_difference(self, from_information, to_information, expected_profit_percent, market):
-        # transaction fee에 대한 검증은 get_expectation 에서 진행
-        from_trading_fee_percent = (1 - from_information['trading_fee'][market]) ** from_information['fee_count']
-        to_trading_fee_percent = (1 - to_information['trading_fee'][market]) ** to_information['fee_count']
-
-        real_diff = ((1 + expected_profit_percent) * from_trading_fee_percent * to_trading_fee_percent) - 1
-
-        return real_diff
-
-    def _find_min_balance(self, btc_amount, coin_amount, to_exchange_coin_bid):
-        coin_to_btc_price = coin_amount * to_exchange_coin_bid
-        tradable_btc = btc_amount if btc_amount < coin_to_btc_price else coin_to_btc_price
-
-        return tradable_btc
 
 
 if __name__ == '__main__':
