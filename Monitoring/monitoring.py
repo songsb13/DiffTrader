@@ -27,7 +27,7 @@ class Monitoring(object):
 
     def __init__(self, user, primary_str, secondary_str):
         logging.info(CMsg.START)
-        logging.debug(Msg.SET_MONITORING.format(primary_str, secondary_str, user))
+        logging.debug(Msg.Debug.SET_MONITORING.format(primary_str, secondary_str, user))
         super(Monitoring, self).__init__()
         self._user = user
 
@@ -67,9 +67,10 @@ class Monitoring(object):
                     latest_primary_information = json.loads(primary_information, cls=DecimalDecoder)
                     latest_secondary_information = json.loads(secondary_information, cls=DecimalDecoder)
 
-                    logging.debug(Msg.GET_INFORMATION.format(latest_primary_information, latest_secondary_information))
+                    logging.debug(Msg.Debug.GET_INFORMATION.format(latest_primary_information, latest_secondary_information))
 
                 elif not latest_primary_information and not latest_secondary_information:
+                    logging.debug(Msg.Debug.WAIT_INFORMATION)
                     time.sleep(1)
                     continue
             else:
@@ -228,12 +229,12 @@ class Monitoring(object):
                 market, coin = sai_symbol.split('_')
 
                 if not primary_information['balance'].get(coin):
-                    logging.warning(Msg.BALANCE_NOT_FOUND.format(self._primary_str, sai_symbol))
+                    logging.warning(Msg.Debug.BALANCE_NOT_FOUND.format(self._primary_str, sai_symbol))
                     time.sleep(10)
                     continue
 
                 elif not secondary_information['balance'].get(coin):
-                    logging.warning(Msg.BALANCE_NOT_FOUND.format(self._secondary_str, sai_symbol))
+                    logging.warning(Msg.Debug.BALANCE_NOT_FOUND.format(self._secondary_str, sai_symbol))
                     time.sleep(10)
                     continue
 
@@ -259,7 +260,7 @@ class Monitoring(object):
                     sai_symbol,
                 )
 
-                logging.debug(Msg.TRADABLE_INFO.format(tradable_btc, coin_amount, sell_coin_amount,
+                logging.debug(Msg.Debug.TRADABLE_INFO.format(tradable_btc, coin_amount, sell_coin_amount,
                                                        btc_profit, real_difference))
 
                 if not profit_dict and (tradable_btc, coin_amount):
@@ -283,8 +284,8 @@ class Monitoring(object):
                             'created_time': datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
 
                             'from_exchange_str': expectation_data['from']['exchange'].name,
-                            'from_pub_apikey': expectation_data['from']['pub-apikey'],
-                            'from_sub_apikey': expectation_data['from']['sub-apikey'],
+                            'from_pub_apikey': expectation_data['from']['information']['pub-apikey'],
+                            'from_sub_apikey': expectation_data['from']['information']['sub-apikey'],
 
                             'to_exchange_str': expectation_data['to']['exchange'].name,
                             'to_pub_apikey': expectation_data['to']['information']['pub-apikey'],
