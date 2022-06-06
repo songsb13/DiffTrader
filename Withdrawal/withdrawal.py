@@ -1,5 +1,12 @@
 import copy
 import time
+import logging.config
+
+
+from DiffTrader.GlobalSetting.messages import (
+    WithdrawalMessage as Msg,
+    CommonMessage as CMsg
+)
 
 from DiffTrader.Util.utils import (
     get_exchanges,
@@ -10,28 +17,36 @@ from DiffTrader.Util.utils import (
     get_auto_withdrawal,
     CustomPickle,
     subscribe_redis
-
 )
+from DiffTrader.Util.logger import SetLogger
+
 from DiffTrader.GlobalSetting.settings import (
     RedisKey,
     SaiUrls,
     PicklePath
 )
-from DiffTrader.GlobalSetting.objects import BaseProcess
+from DiffTrader.GlobalSetting.objects import MessageControlMixin
 
 from decimal import getcontext
+
+__file__ = 'monitoring.py'
+
+
+logging_config = SetLogger.get_config_base_process(__file__)
+logging.config.dictConfig(logging_config)
 
 
 getcontext().prec = 8
 
 
-class Withdrawal(BaseProcess):
+class Withdrawal(MessageControlMixin):
+    name, name_kor = 'Withdrawal', '출금'
     receive_type = 'withdrawal'
     require_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
 
     def __init__(self, user, primary_str, secondary_str):
-        super(Withdrawal, self).__init__()
-
+        logging.info(CMsg.START)
+        logging.debug(Msg.Debug.SET_WITHDRAWAL.format(primary_str, secondary_str, user))
         self._user = user
 
         self._primary_str = primary_str
@@ -93,10 +108,6 @@ class Withdrawal(BaseProcess):
 
         while True:
             trading_information = get_redis(RedisKey.TradingInformation)
-            if not get_auto_withdrawal():
-                debugger.debug()
-                continue
-
             if self._withdrew_dict:
                 # check and execute sending to sender its withdrew.
                 self.check_withdrawal_is_completed()
@@ -120,7 +131,6 @@ class Withdrawal(BaseProcess):
             to_contents = self.get_subscriber_api_contents(to_subscriber)
 
             if not from_contents or not to_contents:
-                debugger.debug('fail-to-get-contents')
                 time.sleep(5)
                 continue
 
@@ -139,8 +149,18 @@ class Withdrawal(BaseProcess):
                 for coin, info in need_to_withdrawal_dict.items():
                     if coin in self._withdrew_dict.keys():
                         # 중복 방지, 이미 출금한 코인을 여러번 출금 못하게 하기.
-                        debugger.debug('already-in-withdrawal.')
                         continue
+                    if not get_auto_withdrawal():
+                        logging.info(Msg.Info.MANUAL_WITHDRAWAL)
+                        logging.info(Msg.Info.MANUAL_INFO.format(
+                            info['exchange'].name,
+                            info['coin'],
+                            info['send_amount'],
+                            info['to_address'],
+                            info['tag']
+                        ))
+                        continue
+
                     with FunctionExecutor(info['exchange'].withdraw) as executor:
                         result = executor.loop_executor(
                             info['coin'],
@@ -209,7 +229,7 @@ class Withdrawal(BaseProcess):
                     **check_result.data
                 }
                 set_redis(RedisKey.SendInformation, send_information)
-                debugger.debug()
+                logging.debug(Msg.Debug.COMPLETED)
 
                 # remove coin-key to avoid checking withdraw
                 self._withdrew_dict.pop(coin)
@@ -245,9 +265,6 @@ class Withdrawal(BaseProcess):
                 }
                 set_redis(RedisKey.SendInformation, send_information)
                 return
-            debugger.debug(info['exchange'].name)
+            logging.debug(Msg.Debug.ON_WITHDRAW.format(info['exchange'].name, info['coin']))
             time.sleep(60)
 
-
-if __name__ == '__main__':
-    pass
