@@ -149,7 +149,10 @@ class Trading(Process):
         return exchange_coin_price, exchange_coin_amount
 
     def checking_order(self, exchange, order_id, **additional):
-        debugger.debug(GlobalMessage.ENTRANCE.format(data=str(locals())))
+        logging.debug(CMsg.entrance_with_parameter(
+            self.checking_order,
+            (exchange, order_id, additional)
+        ))
         for _ in range(60):
             result = exchange.get_order_history(order_id, additional)
 

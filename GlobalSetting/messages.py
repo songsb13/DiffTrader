@@ -73,7 +73,15 @@ class TradingMessage(object):
 
 
 class WithdrawalMessage(object):
-    pass
+    class Info(object):
+        MANUAL_INFO = '입금 거래소({}), ' \
+                      '출금 코인={} 출금 코인의 수량={}, 출금 주소={}, 출금 태그={}'
+        MANUAL_WITHDRAWAL = '자동 출금을 선택하지 않았습니다. 출력 정보를 통해 수동 출금을 진행해 주세요.'
+
+    class Debug(object):
+        SET_WITHDRAWAL = 'Start withdrawal process, Primary={}, Secondary={}, User={}'
+        ON_WITHDRAW = 'on withdraw, exchange={}, coin={}'
+        COMPLETED = 'withdrawal completed. send_information={}'
 
 
 class UtilMessage(object):
