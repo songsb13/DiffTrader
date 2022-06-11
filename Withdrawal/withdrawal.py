@@ -182,8 +182,12 @@ class Withdrawal(MessageControlMixin):
         logging.debug(CMsg.entrance_with_parameter(self.get_subscribe_result, (subscriber,)))
         result = self.get_subscribe_result(subscriber)
 
-        balance = result.get('get_balance')
-        transaction_fee = result.get('transaction_fee')
+        if not result:
+            logging.warning(result.message)
+            return dict()
+
+        balance = result.data.get('get_balance')
+        transaction_fee = result.data.get('transaction_fee')
 
         if balance is None or transaction_fee is None:
             return dict()
@@ -215,7 +219,7 @@ class Withdrawal(MessageControlMixin):
                     'send_exchange': send_exchange,
                     'send_amount': difference_amount / 2
                 }})
-
+        logging.debug(Msg.Debug.NEED_TO_WITHDRAWAL_DICT.format(need_to_withdrawal_dict))
         return need_to_withdrawal_dict
 
     def check_withdrawal_is_completed(self):
