@@ -85,6 +85,7 @@ class WithdrawalMessage(object):
         ON_WITHDRAW = 'on withdraw, exchange={}, coin={}'
         COMPLETED = 'withdrawal completed. send_information={}'
         WITHDREW_DICT = 'withdrew_dict = {}'
+        NEED_TO_WITHDRAWAL_DICT = 'need_to_withdrawal_dict = {}'
 
 
 class UtilMessage(object):

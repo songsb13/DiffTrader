@@ -23,30 +23,35 @@ class MessageControlMixin(object):
     receive_type = ''
     require_functions = []
 
+    class Result:
+        def __init__(self, success=False, data=None, message=''):
+            self.success = success
+            self.data = data
+            self.message = message
+
     def get_subscribe_result(self, subscriber):
         for _ in range(3):
             api_contents = subscriber.get_message()
-            success, result = self._unpacking_message(api_contents)
-            if success:
-                return success, result
-
+            result = self._unpacking_message(api_contents)
+            if result.success:
+                return result
             time.sleep(0.5)
         else:
-            return success, result
+            return result
 
     def _unpacking_message(self, api_contents):
         if api_contents:
             raw_data = api_contents.get('data', 1)
             if isinstance(raw_data, int):
-                return False, UMsg.Warning.INCORRECT_RAW_DATA
+                return self.Result(success=False, message=UMsg.Warning.INCORRECT_RAW_DATA)
 
             to_json = json.loads(raw_data, cls=DecimalDecoder)
             if not to_json:
-                return False, UMsg.Warning.RAW_DATA_IS_NULL
+                return self.Result(success=False, message=UMsg.Warning.RAW_DATA_IS_NULL)
 
             data = to_json.get(self.receive_type, None)
             if data is None:
-                return False, UMsg.Warning.RECEIVE_TYPE_DATA_IS_NULL
+                return self.Result(success=False, message=UMsg.Warning.RECEIVE_TYPE_DATA_IS_NULL)
 
             result = {}
             for key in data.keys():
@@ -54,7 +59,7 @@ class MessageControlMixin(object):
                     continue
                 result[key] = data[key]
             else:
-                return True, result
+                return self.Result(success=True, data=result)
 
     def publish_redis_to_api_process(self, fn_name, publish_key, logging=None, is_async=False, is_lazy=False, args=None, kwargs=None, api_priority=APIPriority.SEARCH):
         if args is None:
