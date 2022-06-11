@@ -29,8 +29,8 @@ class Setter(MessageControlMixin):
     def __init__(self, user, exchange_str):
         logging.info(CMsg.START)
         super(Setter, self).__init__()
-        self._pub_api_redis_key = RedisKey.ApiKey[exchange_str]['publish']
-        self._sub_api_redis_key = RedisKey.ApiKey[exchange_str]['subscribe']
+        self._pub_api_redis_key = RedisKey.ApiKey[exchange_str]['publish']['setter']
+        self._sub_api_redis_key = RedisKey.ApiKey[exchange_str]['subscribe']['setter']
 
         self._user = user
         self._exchange_str = exchange_str
@@ -58,19 +58,19 @@ class Setter(MessageControlMixin):
                 self.publish_redis_to_api_process('get_balance', self._pub_api_redis_key)
                 set_quick = True
 
-            success, result = self.get_subscribe_result(api_subscriber)
+            result = self.get_subscribe_result(api_subscriber)
 
-            if not success:
-                logging.warning(result)
+            if not result.success:
+                logging.warning(result.message)
                 continue
 
             total_message = []
             for key in result.keys():
-                if result[key]['success']:
-                    total_data.update(result[key]['data'])
+                if result.data[key]['success']:
+                    total_data.update(result.data[key]['data'])
                     init_update.add(key)
                 else:
-                    total_message.append(result[key]['message'])
+                    total_message.append(result.data[key]['message'])
 
             if not init_update == self.require_functions:
                 time.sleep(1)
