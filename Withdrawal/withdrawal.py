@@ -1,3 +1,15 @@
+"""
+    목적
+        1. Trading이 완료되어 발생한 결과 데이터를 바탕으로 출금을 실행하고, 출금 결과를 저장한다.
+        2. 저장된 출금 결과를 보고 입금이 최종적으로 끝났는지 확인한다.
+
+    기타
+        1. 발생 가능한 Process의 수는 triangle number 형태이다.
+        2. 프로그램 시작 시 실행 유저, 출금되는 거래소와 입금받는 거래소를 받는다.
+        3. Redis는 Sub-Pub 형태이며 각 Process는 자신이 담당하는 거래소간의 결과 데이터인지 확인한다.
+        4. 프로그램 종료 시 입금이 최종적으로 끝나지 않은 값을 Pickle로 저장한다.
+"""
+
 import copy
 import time
 import logging.config
@@ -72,27 +84,8 @@ class Withdrawal(MessageControlMixin):
 
     def run(self):
         """
-            primary_to_secondary로 거래가 된다고 했을 때, primary에서 coin을 매수, secondary에서 coin을 매도함.
-            primary 거래소에서는 coin이 추가되고, secondary거래소에서는 btc가 추가된 상황
-            코인 및 BTC의 매매수량이 n%이상이고, 총 이익발생이 m이상 되는경우 출금
-            n, m = 유저 설정 값
-            from_exchange = coin을 매수하는 거래소 -> Market(BTC, ETH등) 수량 체크 필요
-            to_exchange = coin을 매도하는 거래소 -> coin 수량 체크 필요
-
-            흐름
-            trading에서 정보 받는다 -> from, to exchange, order_id
-            정보를 stack에 넣는다
-            해당 스택은 송금이 완료되었다는 시그널을 받기 전까지 계속 진행된다.
-            송금이 완료되었으면 해당 스택은 제거된다.
-            밸런스는
-
-            while True:
-                api contents가 들어왔는지 확인한다.
-                withdrawed
-                need_withdrawal_dict가 있는지 확인한다.
-
+            1.
         """
-
         exchange_dict = get_exchanges()
         subscriber_dict = {
             self._primary_str: subscribe_redis(self._primary_sub_key),
@@ -186,10 +179,14 @@ class Withdrawal(MessageControlMixin):
         return {self._primary_str, self._secondary_str} == string_set
 
     def get_subscriber_api_contents(self, subscriber):
+        logging.debug(CMsg.entrance_with_parameter(self.get_subscribe_result, (subscriber,)))
         result = self.get_subscribe_result(subscriber)
 
         balance = result.get('get_balance')
         transaction_fee = result.get('transaction_fee')
+
+        if balance is None or transaction_fee is None:
+            return dict()
 
         return {'balance': balance, 'transaction_fee': transaction_fee}
 
