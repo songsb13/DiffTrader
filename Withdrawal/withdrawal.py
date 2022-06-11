@@ -64,11 +64,11 @@ class Withdrawal(MessageControlMixin):
         self._primary_str = primary_str
         self._secondary_str = secondary_str
 
-        self._primary_pub_key = RedisKey.ApiKey[self._primary_str]['publish']
-        self._secondary_pub_key = RedisKey.ApiKey[self._secondary_str]['publish']
+        self._primary_pub_key = RedisKey.ApiKey[self._primary_str]['publish']['withdrawal']
+        self._secondary_pub_key = RedisKey.ApiKey[self._secondary_str]['publish']['withdrawal']
 
-        self._primary_sub_key = RedisKey.ApiKey[self._primary_str]['subscribe']
-        self._secondary_sub_key = RedisKey.ApiKey[self._secondary_str]['subscribe']
+        self._primary_sub_key = RedisKey.ApiKey[self._primary_str]['subscribe']['withdrawal']
+        self._secondary_sub_key = RedisKey.ApiKey[self._secondary_str]['subscribe']['withdrawal']
 
         self._pickle = CustomPickle(PicklePath.WITHDRAWAL)
         self._pickle.load()
@@ -84,7 +84,7 @@ class Withdrawal(MessageControlMixin):
 
     def run(self):
         """
-            1.
+            1. 정
         """
         exchange_dict = get_exchanges()
         subscriber_dict = {

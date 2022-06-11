@@ -62,15 +62,12 @@ class RedisKey(object):
     ProfitInformation = 'profit_information'
     SendInformation = 'send_information'
 
+    PUBSUB = {'publish': {each: each for each in FUNCTIONS},
+              'subscribe': {each: each for each in FUNCTIONS}}
+
     ApiKey = {
-        'Upbit': {
-            'publish': 'upbit-publish-apikey',
-            'subscribe': 'upbit-subscribe-apikey',
-        },
-        'Binance': {
-            'publish': 'binance-publish-apikey',
-            'subscribe': 'binance-subscribe-apikey'
-        }
+        'Upbit': PUBSUB,
+        'Binance': PUBSUB
     }
 
 
