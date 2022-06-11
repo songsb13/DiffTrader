@@ -110,6 +110,7 @@ class Withdrawal(MessageControlMixin):
             trading_information = get_redis(RedisKey.TradingInformation)
             if self._withdrew_dict:
                 # check and execute sending to sender its withdrew.
+                logging.debug(Msg.Debug.WITHDREW_DICT)
                 self.check_withdrawal_is_completed()
 
             if not trading_information:
@@ -119,6 +120,7 @@ class Withdrawal(MessageControlMixin):
                                 trading_information['to_exchange']['name'])
 
             if not self._is_profit_subscribe_data({from_str, to_str}):
+                time.sleep(5)
                 continue
 
             from_exchange = exchange_dict[from_str]
@@ -170,10 +172,10 @@ class Withdrawal(MessageControlMixin):
                         )
 
                         if not result.success:
-                            debugger.debug('fail-to-withdrawal.')
+                            logging.info(Msg.Info.REQUEST_FAIL.format(result.msg))
                             continue
                         else:
-                            debugger.debug('success withdrawal')
+                            logging.info(Msg.Info.REQUEST_SUCCESS)
                             self._withdrew_dict[coin] = {
                                 'execute_info': info,
                                 'result_data': result.data
@@ -192,6 +194,10 @@ class Withdrawal(MessageControlMixin):
         return {'balance': balance, 'transaction_fee': transaction_fee}
 
     def check_coins_need_to_withdrawal(self, subscribe_info, withdrawal_info):
+        logging.debug(CMsg.entrance_with_parameter(
+            self.check_coins_need_to_withdrawal,
+            (subscribe_info, withdrawal_info)
+        ))
         from_info = subscribe_info['from']
         to_info = subscribe_info['to']
 
@@ -216,7 +222,6 @@ class Withdrawal(MessageControlMixin):
         return need_to_withdrawal_dict
 
     def check_withdrawal_is_completed(self):
-        # check & execute
         copied_withdrew_dict = copy.deepcopy(self._withdrew_dict)
         for coin, info in copied_withdrew_dict:
             check_result = info['execute_info']['exchange'].is_withdrawal_completed(
