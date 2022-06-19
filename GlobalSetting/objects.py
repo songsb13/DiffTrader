@@ -19,7 +19,11 @@ from DiffTrader.GlobalSetting.messages import UtilMessage as UMsg
 
 
 class MessageControlMixin(object):
-    # base process for setter, monitoring and etc..
+    """
+        api_process와 통신하기 위한 domain process 들의 공통 함수 mixin
+        api_process로 특정 함수 실행 및 결과를 요청하는 publish_redis_to_api_process
+        특정 함수 결과 값을 검증하는 get_subscribe_result가 있음.
+    """
     receive_type = ''
     require_functions = []
 

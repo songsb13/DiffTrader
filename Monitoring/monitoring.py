@@ -1,6 +1,17 @@
+"""
+    목적
+        1. Setter process로부터 받은 거래소 데이터와 websocket을 통해 가져오는 orderbook으로 최고 수익을 내는 코인을 파악한다.
+        2. 최고 수익을 내는 코인과 관련 결과 값을 Trading process로 보낸다.
+
+    기타
+        1. 발생 가능한 Proces의 수는 triangle number 형태이다.
+        2. 해당 프로세스는 각 거래소의 websocket을 연결하고, orderbook을 가져온다.
+        3. 유저가 입력한 최소 BTC profit을 넘는 경우 trading process로 거래 관련 데이터를 set한다.
+"""
+
 from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder, task_wrapper
 from DiffTrader.Util.logger import SetLogger
-from DiffTrader.GlobalSetting.settings import TraderConsts, RedisKey, DEBUG, TEST_USER
+from DiffTrader.GlobalSetting.settings import (TraderConsts, RedisKey, DEBUG, TEST_USER, Domains)
 from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
 from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
 from DiffTrader.GlobalSetting.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
@@ -23,7 +34,7 @@ logging.config.dictConfig(logging_config)
 
 
 class Monitoring(object):
-    name, name_kor = 'Monitoring', '모니터링'
+    name, name_kor = Domains.MONITORING, '모니터링'
 
     def __init__(self, user, primary_str, secondary_str):
         logging.info(CMsg.START)

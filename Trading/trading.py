@@ -1,3 +1,14 @@
+"""
+    목적
+        1. Monitoring Process로부터 받은 profit data를 바탕으로 거래를 진행한다.
+        2. 매매 완료가 되었는지 파악하고, 결과 값을 withdrawal process로 보낸다.
+
+    기타
+        1. 발생하는 Process의 수는 하나이다.
+        2. 해당 process는 2개의 thread를 가지고, 각 거래소1의 매수거래, 거래소2의 매도거래를 진행한다.
+        3. 해당 프로세스의 완료 시점은 매매가 완료되어 withdrawal domain으로 결과 값이 보내지는 시점이다.
+        4. 해당 process는 가장 높은 우선순위를 가지고 있으므로, api_process를 통해 명령을 보내지 않고 직접 실행한다.
+"""
 import time
 import json
 import logging.config
@@ -21,10 +32,6 @@ logging.config.dictConfig(logging_config)
 
 
 class Trading(Process):
-    """
-        monitoring process에서 넘어온 각종 이벤트 값들에 대한 트레이딩 시도
-        High Priority
-    """
 
     def __init__(self):
         super(Trading, self).__init__()

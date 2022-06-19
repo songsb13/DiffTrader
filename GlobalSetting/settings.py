@@ -18,7 +18,7 @@ REDIS_SERVER = redis.StrictRedis(host='localhost', port=6379, db=0)
 AGREE_WORDS = ['Y', 'YES', 'TRUE', 'T']
 
 
-class Functions(object):
+class Domains(object):
     SETTER = 'Setter'
     SENDER = 'Sender'
     MONITORING = 'Monitoring'

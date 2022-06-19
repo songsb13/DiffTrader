@@ -42,18 +42,8 @@ class BaseAPIProcess(Process):
         lazy_cache = {}
         while True:
             """
-            결과 값을 전체 도메인에 broadcast하고, 결과 값 receive_type을 통해 각 도메인에서 데이터 판단을 진행한다.
-            priority = api priority
-
-            name: api function name
-            args: api args
-            kwargs: api kwargs
-            get data from pub_api_redis_key and send to sub_api_redis_key
-            2개의 함수 그룹
-            async로 돌아가야할 그룹, sync한 그룹
-            deposit_addrs랑 get_transaction_fee
-            현재 사용 도메인: setter, withdrawal
-            
+                결과 값을 전체 도메인에 broadcast하고, 결과 값 receive_type을 통해 각 도메인에서 데이터 판단을 진행한다.
+                현재 사용 도메인: setter, withdrawal
             """
             info = self._api_subscriber.get_message().get('data', 1)
             if not info or isinstance(info, int):

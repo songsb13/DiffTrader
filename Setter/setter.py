@@ -1,3 +1,13 @@
+"""
+    목적
+        1. 각 거래소의 balance, transaction fee, deposit address 등 거래에 필요한 정보를 가져온다.
+
+    기타
+        1. 발생하는 Process의 수는 거래소의 수이다.
+        2. 각 Process들은 각 api_process와 통신하며, 거래에 필요한 데이터들을 요청한다.
+        3. 결과 값은 monitoring process로 publish된다.
+"""
+
 from DiffTrader.Util.utils import (
     publish_redis,
     subscribe_redis
@@ -6,7 +16,7 @@ from DiffTrader.Util.logger import SetLogger
 from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
 from DiffTrader.GlobalSetting.settings import TEST_USER
 from DiffTrader.GlobalSetting.objects import MessageControlMixin
-from DiffTrader.GlobalSetting.settings import (RedisKey, Functions)
+from DiffTrader.GlobalSetting.settings import (RedisKey, Domains)
 
 
 import time
@@ -24,7 +34,7 @@ class Setter(MessageControlMixin):
     receive_type = 'common'
     require_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
 
-    name, name_kor = Functions.SETTER, '데이터 세터'
+    name, name_kor = Domains.SETTER, '데이터 세터'
 
     def __init__(self, user, exchange_str):
         logging.info(CMsg.START)
