@@ -6,7 +6,7 @@ from DiffTrader.Util.logger import SetLogger
 from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
 from DiffTrader.GlobalSetting.settings import TEST_USER
 from DiffTrader.GlobalSetting.objects import MessageControlMixin
-from DiffTrader.GlobalSetting.settings import RedisKey
+from DiffTrader.GlobalSetting.settings import (RedisKey, Functions)
 
 
 import time
@@ -24,13 +24,13 @@ class Setter(MessageControlMixin):
     receive_type = 'common'
     require_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
 
-    name, name_kor = 'Setter', '데이터 세터'
+    name, name_kor = Functions.SETTER, '데이터 세터'
 
     def __init__(self, user, exchange_str):
         logging.info(CMsg.START)
         super(Setter, self).__init__()
-        self._pub_api_redis_key = RedisKey.ApiKey[exchange_str]['publish']['setter']
-        self._sub_api_redis_key = RedisKey.ApiKey[exchange_str]['subscribe']['setter']
+        self._pub_api_redis_key = RedisKey.ApiKey[exchange_str]['publish']
+        self._sub_api_redis_key = RedisKey.ApiKey[exchange_str]['subscribe']
 
         self._user = user
         self._exchange_str = exchange_str
@@ -48,14 +48,14 @@ class Setter(MessageControlMixin):
         init_update = set()
         while True:
             if not set_lazy:
-                self.publish_redis_to_api_process('get_deposit_addrs', self._pub_api_redis_key, logging=logging,
+                self.publish_redis_to_api_process(self.name, 'get_deposit_addrs', self._pub_api_redis_key, logging=logging,
                                                   is_async=True, is_lazy=True)
-                self.publish_redis_to_api_process('get_transaction_fee', self._pub_api_redis_key, logging=logging,
+                self.publish_redis_to_api_process(self.name, 'get_transaction_fee', self._pub_api_redis_key, logging=logging,
                                                   is_async=True, is_lazy=True)
                 set_lazy = True
 
             if not set_quick:
-                self.publish_redis_to_api_process('get_balance', self._pub_api_redis_key)
+                self.publish_redis_to_api_process(self.name, 'get_balance', self._pub_api_redis_key)
                 set_quick = True
 
             result = self.get_subscribe_result(api_subscriber)

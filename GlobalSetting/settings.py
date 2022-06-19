@@ -16,7 +16,18 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), 'config.cfg'))
 
 REDIS_SERVER = redis.StrictRedis(host='localhost', port=6379, db=0)
 AGREE_WORDS = ['Y', 'YES', 'TRUE', 'T']
-FUNCTIONS = ['Setter', 'Sender', 'Monitoring', 'Trading', 'Withdrawal']
+
+
+class Functions(object):
+    SETTER = 'Setter'
+    SENDER = 'Sender'
+    MONITORING = 'Monitoring'
+    TRADING = 'Trading'
+    WITHDRAWAL = 'Withdrawal'
+
+    LIST = [
+        SETTER, SENDER, MONITORING, TRADING, WITHDRAWAL
+    ]
 
 
 class PicklePath(object):
@@ -62,8 +73,8 @@ class RedisKey(object):
     ProfitInformation = 'profit_information'
     SendInformation = 'send_information'
 
-    PUBSUB = {'publish': {each: each for each in FUNCTIONS},
-              'subscribe': {each: each for each in FUNCTIONS}}
+    PUBSUB = {'publish': {each: each for each in Functions.LIST},
+              'subscribe': {each: each for each in Functions.LIST}}
 
     ApiKey = {
         'Upbit': PUBSUB,

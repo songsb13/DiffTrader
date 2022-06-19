@@ -53,10 +53,15 @@ class MessageControlMixin(object):
             if data is None:
                 return self.Result(success=False, message=UMsg.Warning.RECEIVE_TYPE_DATA_IS_NULL)
 
+            detail = data.get(self.receive_type, None)
+            if not detail:
+                return self.Result(success=False, message='')
+
             result = {}
-            for key in data.keys():
+            for key in detail.keys():
                 if key not in self.require_functions:
                     continue
+
                 result[key] = data[key]
             else:
                 return self.Result(success=True, data=result)
