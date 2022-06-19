@@ -14,8 +14,9 @@ from DiffTrader.GlobalSetting.settings import (
 )
 from DiffTrader.Util.utils import (
     get_exchanges,
-    set_redis,
+    subscribe_redis,
     get_redis,
+    publish_redis
 )
 
 from Util.pyinstaller_patch import debugger
@@ -30,6 +31,7 @@ class BaseAPIProcess(Process):
         self._exchange_str = exchange_str
         self._wait_time = 3
         self._api_container = [set() for _ in range(APIPriority.LENGTH)]
+        self._api_subscriber = subscribe_redis(self.pub_api_redis_key)
 
     def run(self) -> None:
         exchanges = get_exchanges()
@@ -40,6 +42,7 @@ class BaseAPIProcess(Process):
         lazy_cache = {}
         while True:
             """
+            결과 값을 전체 도메인에 broadcast하고, 결과 값 receive_type을 통해 각 도메인에서 데이터 판단을 진행한다.
             priority = api priority
 
             name: api function name
@@ -49,12 +52,14 @@ class BaseAPIProcess(Process):
             2개의 함수 그룹
             async로 돌아가야할 그룹, sync한 그룹
             deposit_addrs랑 get_transaction_fee
+            현재 사용 도메인: setter, withdrawal
+            
             """
-            info = get_redis(self.pub_api_redis_key)
-            if not info:
+            info = self._api_subscriber.get_message().get('data', 1)
+            if not info or isinstance(info, int):
                 continue
             if not (time.time() <= refresh_time) and info['is_lazy'] and info['fn_name'] in lazy_cache:
-                set_redis(self.sub_api_redis_key, lazy_cache[info['receive_type']][info['fn_name']])
+                publish_redis(self.sub_api_redis_key, lazy_cache[info['receive_type']][info['fn_name']])
 
             function_ = getattr(exchange, info['fn_name'])
 
@@ -76,7 +81,7 @@ class BaseAPIProcess(Process):
                         }
                     }
                     lazy_cache.update(data)
-                    set_redis(self.sub_api_redis_key, data)
+                    publish_redis(self.sub_api_redis_key, data)
 
 
 class UpbitAPIProcess(BaseAPIProcess):
