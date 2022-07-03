@@ -73,8 +73,8 @@ class RedisKey(object):
     ProfitInformation = 'profit_information'
     SendInformation = 'send_information'
 
-    PUBSUB = {'publish': {each: each for each in Functions.LIST},
-              'subscribe': {each: each for each in Functions.LIST}}
+    PUBSUB = {'publish': {each: each for each in Domains.LIST},
+              'subscribe': {each: each for each in Domains.LIST}}
 
     ApiKey = {
         'Upbit': PUBSUB,
