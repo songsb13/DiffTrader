@@ -58,9 +58,9 @@ class Setter(MessageControlMixin):
         init_update = set()
         while True:
             if not set_lazy:
-                self.publish_redis_to_api_process(self.name, 'get_deposit_addrs', self._pub_api_redis_key, logging=logging,
+                self.publish_redis_to_api_process('get_deposit_addrs', self._pub_api_redis_key, logging=logging,
                                                   is_async=True, is_lazy=True)
-                self.publish_redis_to_api_process(self.name, 'get_transaction_fee', self._pub_api_redis_key, logging=logging,
+                self.publish_redis_to_api_process('get_transaction_fee', self._pub_api_redis_key, logging=logging,
                                                   is_async=True, is_lazy=True)
                 set_lazy = True
 

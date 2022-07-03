@@ -24,9 +24,10 @@ class Domains(object):
     MONITORING = 'Monitoring'
     TRADING = 'Trading'
     WITHDRAWAL = 'Withdrawal'
+    COMMON = 'common'
 
     LIST = [
-        SETTER, SENDER, MONITORING, TRADING, WITHDRAWAL
+        SETTER, SENDER, MONITORING, TRADING, WITHDRAWAL, COMMON
     ]
 
 
@@ -73,8 +74,7 @@ class RedisKey(object):
     ProfitInformation = 'profit_information'
     SendInformation = 'send_information'
 
-    PUBSUB = {'publish': {each: each for each in Domains.LIST},
-              'subscribe': {each: each for each in Domains.LIST}}
+    PUBSUB = {'publish': 'publish', 'subscribe': 'subscribe'}
 
     ApiKey = {
         'Upbit': PUBSUB,
