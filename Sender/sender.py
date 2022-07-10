@@ -6,7 +6,6 @@ from DiffTrader.Util.utils import set_redis, get_redis, FunctionExecutor
 from DiffTrader.GlobalSetting.settings import RedisKey, SaiUrls
 
 
-
 class Sender(object):
     def sender(self):
         while True:
@@ -21,8 +20,6 @@ class Sender(object):
                     full_url_path=send_information['full_url_path'],
                     extra=send_information['extra']
                 )
-
-                debugger.debug(result)
 
     def _base_request(self, full_url_path, extra=None, header=None) -> dict:
         if header is None:

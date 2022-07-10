@@ -89,7 +89,7 @@ class Monitoring(object):
                 latest_primary_information = json.loads(UPBIT_TEST_INFORMATION, cls=DecimalDecoder)
                 latest_secondary_information = json.loads(BINANCE_TEST_INFORMATION, cls=DecimalDecoder)
             tradable_symbol_list = self._get_tradable_symbols(latest_primary_information,
-                                                               latest_secondary_information)
+                                                              latest_secondary_information)
 
             if not self._set_orderbook_subscribe_flag:
                 self._set_orderbook_subscribe_flag = True
@@ -272,7 +272,7 @@ class Monitoring(object):
                 )
 
                 logging.debug(Msg.Debug.TRADABLE_INFO.format(tradable_btc, coin_amount, sell_coin_amount,
-                                                       btc_profit, real_difference))
+                                                             btc_profit, real_difference))
 
                 if not profit_dict and (tradable_btc, coin_amount):
                     refresh_profit_dict = True

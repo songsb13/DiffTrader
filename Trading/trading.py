@@ -12,6 +12,7 @@
 import time
 import json
 import logging.config
+import threading
 
 from Exchanges.settings import BaseTradeType, SaiOrderStatus, Consts
 from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis, DecimalDecoder
@@ -32,13 +33,11 @@ logging.config.dictConfig(logging_config)
 
 
 class Trading(Process):
-
     def __init__(self):
         super(Trading, self).__init__()
 
     def run(self) -> None:
         logging.info(CMsg.START)
-        thread_executor = ThreadPoolExecutor(max_workers=2)
         exchange_dict = get_exchanges()
         while True:
             if not DEBUG:
@@ -47,74 +46,89 @@ class Trading(Process):
                     logging.debug(TMsg.Debug.WAIT_INFORMATION)
                     time.sleep(0.5)
                     continue
-            else:
-                profit_information = json.loads(TRADING_TEST_INFORMATION, cls=DecimalDecoder)
 
-            from_exchange_str, to_exchange_str = (profit_information['additional_information']['from_exchange'],
-                                                  profit_information['additional_information']['to_exchange'])
+            profit_information = json.loads(TRADING_TEST_INFORMATION, cls=DecimalDecoder)
+            trading_thread = TradingThread(exchange_dict, profit_information)
+            trading_thread.run()
 
-            sai_symbol = profit_information['sai_symbol']
-            if profit_information['exchange_running_type'] == TraderConsts.PRIMARY_TO_SECONDARY:
-                buy_args = [exchange_dict[from_exchange_str],
-                            exchange_dict[from_exchange_str].buy,
-                            BaseTradeType.BUY_MARKET,
-                            sai_symbol,
-                            profit_information['coin_amount'],
-                            profit_information['additional_information']['total_orderbooks']['primary'][sai_symbol][Consts.ASKS]]
 
-                sell_args = [exchange_dict[to_exchange_str],
-                             exchange_dict[to_exchange_str].sell,
-                             BaseTradeType.SELL_MARKET,
-                             sai_symbol,
-                             profit_information['sell_coin_amount'],
-                             profit_information['additional_information']['total_orderbooks']['secondary'][sai_symbol][Consts.BIDS]]
-            else:
-                buy_args = [exchange_dict[to_exchange_str],
-                            exchange_dict[to_exchange_str].buy,
-                            BaseTradeType.BUY_MARKET,
-                            sai_symbol,
-                            profit_information['coin_amount'],
-                            profit_information['additional_information']['total_orderbooks']['secondary'][sai_symbol][Consts.ASKS]]
+class TradingThread(threading.Thread):
+    def __init__(self, exchange_dict, profit_information):
+        super(TradingThread, self).__init__()
+        self._profit_information = profit_information
+        self._exchange_dict = exchange_dict
+        self._thread_executor = ThreadPoolExecutor(max_workers=2)
 
-                sell_args = [exchange_dict[from_exchange_str],
-                             exchange_dict[from_exchange_str].sell,
-                             BaseTradeType.SELL_MARKET,
-                             sai_symbol,
-                             profit_information['sell_coin_amount'],
-                             profit_information['additional_information']['total_orderbooks']['primary'][sai_symbol][Consts.BIDS]]
+    def run(self) -> None:
+        from_exchange_str, to_exchange_str = (self._profit_information['additional_information']['from_exchange'],
+                                              self._profit_information['additional_information']['to_exchange'])
 
-            tasks = []
-            for args in [buy_args, sell_args]:
-                task = thread_executor.submit(self._trade, *args)
-                tasks.append(task)
+        sai_symbol = self._profit_information['sai_symbol']
+        if self._profit_information['exchange_running_type'] == TraderConsts.PRIMARY_TO_SECONDARY:
+            buy_args = [self._exchange_dict[from_exchange_str],
+                        self._exchange_dict[from_exchange_str].buy,
+                        BaseTradeType.BUY_MARKET,
+                        sai_symbol,
+                        self._profit_information['coin_amount'],
+                        self._profit_information['additional_information']['total_orderbooks']['primary'][sai_symbol][
+                            Consts.ASKS]]
 
-            from_price, from_amount = tasks[0].result()
-            to_price, to_amount = tasks[1].result()
+            sell_args = [self._exchange_dict[to_exchange_str],
+                         self._exchange_dict[to_exchange_str].sell,
+                         BaseTradeType.SELL_MARKET,
+                         sai_symbol,
+                         self._profit_information['sell_coin_amount'],
+                         self._profit_information['additional_information']['total_orderbooks']['secondary'][sai_symbol][
+                             Consts.BIDS]]
+        else:
+            buy_args = [self._exchange_dict[to_exchange_str],
+                        self._exchange_dict[to_exchange_str].buy,
+                        BaseTradeType.BUY_MARKET,
+                        sai_symbol,
+                        self._profit_information['coin_amount'],
+                        self._profit_information['additional_information']['total_orderbooks']['secondary'][sai_symbol][
+                            Consts.ASKS]]
 
-            trading_information = {
-                'from_exchange': {
-                    'name': from_exchange_str,
-                    'price': from_price,
-                    'amount': from_amount
-                },
-                'to_exchange': {
-                    'name': to_exchange_str,
-                    'price': to_price,
-                    'amount': to_amount
-                }
+            sell_args = [self._exchange_dict[from_exchange_str],
+                         self._exchange_dict[from_exchange_str].sell,
+                         BaseTradeType.SELL_MARKET,
+                         sai_symbol,
+                         self._profit_information['sell_coin_amount'],
+                         self._profit_information['additional_information']['total_orderbooks']['primary'][sai_symbol][
+                             Consts.BIDS]]
+
+        tasks = []
+        for args in [buy_args, sell_args]:
+            task = self._thread_executor.submit(self._trade, *args)
+            tasks.append(task)
+
+        from_price, from_amount = tasks[0].result()
+        to_price, to_amount = tasks[1].result()
+
+        trading_information = {
+            'from_exchange': {
+                'name': from_exchange_str,
+                'price': from_price,
+                'amount': from_amount
+            },
+            'to_exchange': {
+                'name': to_exchange_str,
+                'price': to_price,
+                'amount': to_amount
             }
-            logging.debug(TMsg.Debug.TRADING_INFORMATION.format(trading_information))
-            if trading_information is None:
-                logging.debug(TMsg.Debug.INFORMATION_NOT_FOUND)
-                raise
+        }
+        logging.debug(TMsg.Debug.TRADING_INFORMATION.format(trading_information))
+        if trading_information is None:
+            logging.debug(TMsg.Debug.INFORMATION_NOT_FOUND)
+            raise
 
-            if get_auto_withdrawal():
-                set_redis(RedisKey.TradingInformation, trading_information, use_decimal=True)
+        if get_auto_withdrawal():
+            set_redis(RedisKey.TradingInformation, trading_information, use_decimal=True)
 
-            send_information = {**trading_information, **dict(full_url_path=SaiUrls.BASE + SaiUrls.TRADING)}
-            set_redis(RedisKey.SendInformation, send_information, use_decimal=True)
+        send_information = {**trading_information, **dict(full_url_path=SaiUrls.BASE + SaiUrls.TRADING)}
+        set_redis(RedisKey.SendInformation, send_information, use_decimal=True)
 
-            time.sleep(0.1)
+        time.sleep(0.1)
 
     def _trade(self, exchange, trade_func, trade_type, sai_symbol, coin_amount, price):
         """
