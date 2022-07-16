@@ -44,31 +44,29 @@ class MessageControlMixin(object):
             return result
 
     def _unpacking_message(self, api_contents):
-        if api_contents:
-            raw_data = api_contents.get('data', 1)
-            if isinstance(raw_data, int):
-                return self.Result(success=False, message=UMsg.Warning.INCORRECT_RAW_DATA)
+        if not api_contents:
+            return self.Result(success=False, message='')
 
-            to_json = json.loads(raw_data, cls=DecimalDecoder)
-            if not to_json:
-                return self.Result(success=False, message=UMsg.Warning.RAW_DATA_IS_NULL)
+        raw_data = api_contents.get('data', 1)
+        if isinstance(raw_data, int):
+            return self.Result(success=False, message=UMsg.Warning.INCORRECT_RAW_DATA)
 
-            data = to_json.get(self.receive_type, None)
-            if data is None:
-                return self.Result(success=False, message=UMsg.Warning.RECEIVE_TYPE_DATA_IS_NULL)
+        to_json = json.loads(raw_data, cls=DecimalDecoder)
+        if not to_json:
+            return self.Result(success=False, message=UMsg.Warning.RAW_DATA_IS_NULL)
 
-            detail = data.get(self.receive_type, None)
-            if not detail:
-                return self.Result(success=False, message='')
+        data = to_json.get(self.receive_type, None)
+        if data is None:
+            return self.Result(success=False, message=UMsg.Warning.RECEIVE_TYPE_DATA_IS_NULL)
 
-            result = {}
-            for key in detail.keys():
-                if key not in self.require_functions:
-                    continue
+        result = {}
+        for key in data.keys():
+            if key not in self.require_functions:
+                continue
 
-                result[key] = data[key]
-            else:
-                return self.Result(success=True, data=result)
+            result[key] = data[key]
+        else:
+            return self.Result(success=True, data=result)
 
     def publish_redis_to_api_process(self, fn_name, publish_key, logging=None, is_async=False, is_lazy=False, args=None, kwargs=None, api_priority=APIPriority.SEARCH):
         if args is None:
