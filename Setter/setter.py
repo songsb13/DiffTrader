@@ -16,7 +16,7 @@ from DiffTrader.Util.logger import SetLogger
 from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
 from DiffTrader.GlobalSetting.settings import TEST_USER
 from DiffTrader.GlobalSetting.objects import MessageControlMixin
-from DiffTrader.GlobalSetting.settings import (RedisKey, Domains)
+from DiffTrader.GlobalSetting.settings import (RedisKey, Domains, DEBUG)
 
 
 import time
@@ -32,7 +32,7 @@ logging.config.dictConfig(logging_config)
 
 class Setter(MessageControlMixin):
     receive_type = 'common'
-    require_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
+    require_functions = {'get_balance', 'get_deposit_addrs', 'get_transaction_fee'}
 
     name, name_kor = Domains.SETTER, '데이터 세터'
 
@@ -50,23 +50,21 @@ class Setter(MessageControlMixin):
     def run(self) -> None:
         logging.debug(CMsg.ENTRANCE)
         exchanges = get_exchanges()
-        set_quick, set_lazy = False, False
+        flag = False
         self._exchange = exchanges[self._exchange_str]
         api_subscriber = subscribe_redis(self._sub_api_redis_key)
 
         total_data = {**self._get_one_time_fresh_data()}
         init_update = set()
         while True:
-            if not set_lazy:
+            if not flag:
                 self.publish_redis_to_api_process('get_deposit_addrs', self._pub_api_redis_key, logging=logging,
                                                   is_async=True, is_lazy=True)
                 self.publish_redis_to_api_process('get_transaction_fee', self._pub_api_redis_key, logging=logging,
                                                   is_async=True, is_lazy=True)
-                set_lazy = True
 
-            if not set_quick:
-                self.publish_redis_to_api_process(self.name, 'get_balance', self._pub_api_redis_key)
-                set_quick = True
+            if not flag:
+                self.publish_redis_to_api_process('get_balance', self._pub_api_redis_key, logging=logging)
 
             result = self.get_subscribe_result(api_subscriber)
 
@@ -75,19 +73,23 @@ class Setter(MessageControlMixin):
                 continue
 
             total_message = []
-            for key in result.keys():
+            for key in result.data.keys():
                 if result.data[key]['success']:
-                    total_data.update(result.data[key]['data'])
+                    total_data[key] = result.data[key]['data']
                     init_update.add(key)
                 else:
-                    total_message.append(result.data[key]['message'])
+                    total_message[key] = result.data[key]['message']
 
             if not init_update == self.require_functions:
                 time.sleep(1)
                 continue
 
+            if DEBUG:
+                logging.info(total_data)
+
             publish_redis(self._exchange_str, total_data, use_decimal=True, logging=logging)
-            set_quick, set_lazy = False, False
+
+            flag = False
             time.sleep(1)
 
     def _get_one_time_fresh_data(self):
