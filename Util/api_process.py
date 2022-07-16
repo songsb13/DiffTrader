@@ -5,7 +5,9 @@
 
 
 from multiprocessing import Process
+import inspect
 import time
+import asyncio
 import json
 
 from DiffTrader.GlobalSetting.settings import (
@@ -30,16 +32,25 @@ class BaseAPIProcess(Process):
     def __init__(self, exchange_str):
         super(BaseAPIProcess, self).__init__()
         self._exchange_str = exchange_str
-        self._wait_time = 3
-        self._api_container = [[] for _ in range(APIPriority.LENGTH)]
+        self._wait_time = 10
+        self.__api_container = self.__set_api_container()
         self._api_subscriber = subscribe_redis(self.pub_api_redis_key)
+
+    def __set_api_container(self):
+        return [[] for _ in range(APIPriority.LENGTH)]
+
+    def __set_after_time(self):
+        return self.__get_seconds() + self._wait_time
+
+    def __get_seconds(self):
+        return int(time.time())
 
     def run(self) -> None:
         exchanges = get_exchanges()
         exchange = exchanges[self._exchange_str]
 
-        after_time = time.time() + self._wait_time
-        refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
+        after_time = self.__get_seconds() + self._wait_time
+        refresh_time = self.__get_seconds() + TraderConsts.DEFAULT_REFRESH_TIME
         lazy_cache = {}
         while True:
             """
@@ -51,39 +62,44 @@ class BaseAPIProcess(Process):
                 info = message.get('data', 1)
             else:
                 info = message
-            if not info or isinstance(info, int):
+            if info and not isinstance(info, int):
+                info = json.loads(info, cls=DecimalDecoder)
+                if time.time() > refresh_time and info['is_lazy'] and info['fn_name'] in lazy_cache:
+                    refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
+                    publish_redis(self.sub_api_redis_key, lazy_cache[info['receive_type']][info['fn_name']])
+                else:
+                    function_ = getattr(exchange, info['fn_name'])
+
+                    self.__api_container[int(info['priority'])].append((function_, info))
+            if self.__get_seconds() < after_time:
                 time.sleep(1)
                 continue
-            info = json.loads(info, cls=DecimalDecoder)
-            if time.time() > refresh_time and info['is_lazy'] and info['fn_name'] in lazy_cache:
-                refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
-                publish_redis(self.sub_api_redis_key, lazy_cache[info['receive_type']][info['fn_name']])
-
-            function_ = getattr(exchange, info['fn_name'])
-
-            self._api_container[int(info['priority'])].append((function_, info['args'], info['kwargs']))
-            if time.time() >= after_time:
-                for container in self._api_container:
-                    if not container:
-                        continue
-                    for fn, args, kwargs, *_ in container:
-                        # corutine에 대한 처리 필요함.
-                        result = fn(*args, **kwargs)
-                        if not result.success:
-                            debugger.debug(result.message)
-                            # set log
-                        data = {
-                            info['receive_type']: {
-                                info['fn_name']: {
-                                    'success': result.success,
-                                    'data': result.data,
-                                    'message': result.message
-                                }
+            print(self.__api_container)
+            for container in self.__api_container:
+                if not container:
+                    continue
+                for fn, container_info in container:
+                    # corutine에 대한 처리 필요함.
+                    result = asyncio.run(fn(*container_info['args'], **container_info['kwargs'])) \
+                        if asyncio.iscoroutinefunction(fn) else fn(*container_info['args'], **container_info['kwargs'])
+                    if not result.success:
+                        debugger.debug(result.message)
+                        # set log
+                    data = {
+                        container_info['receive_type']: {
+                            container_info['fn_name']: {
+                                'success': result.success,
+                                'data': result.data,
+                                'message': result.message
                             }
                         }
-                        lazy_cache.update(data)
-                        publish_redis(self.sub_api_redis_key, data)
-                after_time = time.time() + self._wait_time
+                    }
+                    lazy_cache.update(data)
+                    print(data)
+                    publish_redis(self.sub_api_redis_key, data, use_decimal=True)
+            else:
+                self.__api_container = self.__set_api_container()
+            after_time = self.__set_after_time()
 
 
 class UpbitAPIProcess(BaseAPIProcess):
