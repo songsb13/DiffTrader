@@ -105,7 +105,7 @@ class Monitoring(object):
                                                latest_primary_information,
                                                latest_secondary_information,
                                                arbitrage_data)
-            if not profit_dict:
+            if not profit_dict or self._min_profit > profit_dict['btc_profit']:
                 logging.info(Msg.Info.ALL_COINS_NOT_REACHED_EXPECTED_PROFIT)
                 time.sleep(5)
                 continue
@@ -295,17 +295,11 @@ class Monitoring(object):
                             'created_time': datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
 
                             'from_exchange_str': expectation_data['from']['exchange'].name,
-                            'from_pub_apikey': expectation_data['from']['information']['pub-apikey'],
-                            'from_sub_apikey': expectation_data['from']['information']['sub-apikey'],
 
                             'to_exchange_str': expectation_data['to']['exchange'].name,
-                            'to_pub_apikey': expectation_data['to']['information']['pub-apikey'],
-                            'to_sub_apikey': expectation_data['to']['information']['sub-apikey'],
-
                             'arbitrage_data': arbitrage_data
                         }
                     }
-
         return profit_dict
 
     def _get_expectation(self, expectation_data, expected_profit_percent, sai_symbol):
