@@ -74,7 +74,6 @@ class BaseAPIProcess(Process):
             if self.__get_seconds() < after_time:
                 time.sleep(1)
                 continue
-            print(self.__api_container)
             for container in self.__api_container:
                 if not container:
                     continue
@@ -95,7 +94,6 @@ class BaseAPIProcess(Process):
                         }
                     }
                     lazy_cache.update(data)
-                    print(data)
                     publish_redis(self.sub_api_redis_key, data, use_decimal=True)
             else:
                 self.__api_container = self.__set_api_container()
