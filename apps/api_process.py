@@ -4,15 +4,15 @@
 """
 
 
-from DiffTrader.GlobalSetting.settings import RedisKey
+from DiffTrader.settings.base import RedisKey
 import time
 
 from multiprocessing import Process
-from DiffTrader.GlobalSetting.settings import (
+from DiffTrader.settings.base import (
     APIPriority,
     TraderConsts
 )
-from DiffTrader.Util.utils import (
+from DiffTrader.utils.util import (
     get_exchanges,
     subscribe_redis,
     get_redis,

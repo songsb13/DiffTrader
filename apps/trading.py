@@ -14,12 +14,12 @@ import json
 import logging.config
 
 from Exchanges.settings import BaseTradeType, SaiOrderStatus, Consts
-from DiffTrader.Util.utils import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis, DecimalDecoder
-from DiffTrader.GlobalSetting.settings import RedisKey, SaiUrls, DEBUG, TraderConsts
-from DiffTrader.GlobalSetting.test_settings import *
-from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
-from DiffTrader.GlobalSetting.messages import TradingMessage as TMsg
-from DiffTrader.Util.logger import SetLogger
+from DiffTrader.utils.util import get_exchanges, get_auto_withdrawal, FunctionExecutor, set_redis, get_redis, DecimalDecoder
+from DiffTrader.settings.base import RedisKey, SaiUrls, DEBUG, TraderConsts
+from DiffTrader.settings.test_settings import *
+from DiffTrader.settings.message import CommonMessage as CMsg
+from DiffTrader.settings.message import TradingMessage as TMsg
+from DiffTrader.utils.logger import SetLogger
 
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Process

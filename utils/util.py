@@ -1,8 +1,8 @@
 from Exchanges.upbit.upbit import BaseUpbit
 from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
-from DiffTrader.GlobalSetting.settings import REDIS_SERVER, CONFIG, AGREE_WORDS
-from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
+from DiffTrader.settings.base import REDIS_SERVER, CONFIG, AGREE_WORDS
+from DiffTrader.settings.message import CommonMessage as CMsg
 
 from decimal import Decimal, getcontext, InvalidOperation
 import asyncio

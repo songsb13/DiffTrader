@@ -2,9 +2,8 @@ import json
 import requests
 import time
 
-from DiffTrader.Util.utils import set_redis, get_redis, FunctionExecutor
-from DiffTrader.GlobalSetting.settings import RedisKey, SaiUrls
-
+from DiffTrader.utils.util import set_redis, get_redis, FunctionExecutor
+from DiffTrader.settings.base import RedisKey, SaiUrls
 
 
 class Sender(object):

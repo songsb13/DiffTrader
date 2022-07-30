@@ -1,16 +1,5 @@
-from DiffTrader.Setter.setter import Setter
-from DiffTrader.Monitoring.monitoring import Monitoring
-from DiffTrader.Trading.trading import Trading
-from DiffTrader.Withdrawal.withdrawal import Withdrawal
-
-from DiffTrader.Util.utils import get_exchanges
-from DiffTrader.Util.api_process import BaseAPIProcess
-from DiffTrader.GlobalSetting.settings import TEST_USER
-from DiffTrader.GlobalSetting.settings import RedisKey
-
-
-from DiffTrader.Monitoring.monitoring import LogTest as mLog
-from DiffTrader.Setter.setter import LogTest as sLog
+from DiffTrader.apps.monitoring import LogTest as mLog
+from DiffTrader.apps.setter import LogTest as sLog
 
 import time
 

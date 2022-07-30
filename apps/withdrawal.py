@@ -15,12 +15,12 @@ import time
 import logging.config
 
 
-from DiffTrader.GlobalSetting.messages import (
+from DiffTrader.settings.message import (
     WithdrawalMessage as Msg,
     CommonMessage as CMsg
 )
 
-from DiffTrader.Util.utils import (
+from DiffTrader.utils.util import (
     get_exchanges,
     FunctionExecutor,
     set_redis,
@@ -30,14 +30,14 @@ from DiffTrader.Util.utils import (
     CustomPickle,
     subscribe_redis
 )
-from DiffTrader.Util.logger import SetLogger
+from DiffTrader.utils.logger import SetLogger
 
-from DiffTrader.GlobalSetting.settings import (
+from DiffTrader.settings.base import (
     RedisKey,
     SaiUrls,
     PicklePath
 )
-from DiffTrader.GlobalSetting.objects import MessageControlMixin
+from DiffTrader.settings.objects import MessageControlMixin
 
 from decimal import getcontext
 
