@@ -109,5 +109,8 @@ class Setter(MessageControlMixin):
 
 if __name__ == '__main__':
     from DiffTrader.Util.utils import get_exchanges
-    st = Setter(TEST_USER, 'Upbit')
-    st.run()
+    from DiffTrader.Util.api_process import UpbitAPIProcess
+
+    UpbitAPIProcess().start()
+    time.sleep(3)
+    Setter(TEST_USER, 'Upbit').run()

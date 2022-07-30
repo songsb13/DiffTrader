@@ -5,6 +5,8 @@
 
 
 from multiprocessing import Process
+from functools import wraps
+
 import inspect
 import time
 import asyncio
@@ -22,7 +24,16 @@ from DiffTrader.Util.utils import (
     DecimalDecoder
 )
 
-from Util.pyinstaller_patch import debugger
+from DiffTrader.Util.logger import SetLogger
+
+import logging.config
+
+
+__file__ = 'api_process.py'
+
+
+logging_config = SetLogger.get_config_base_process(__file__)
+logging.config.dictConfig(logging_config)
 
 
 class BaseAPIProcess(Process):
@@ -34,7 +45,7 @@ class BaseAPIProcess(Process):
         self._exchange_str = exchange_str
         self._wait_time = 10
         self.__api_container = self.__set_api_container()
-        self._api_subscriber = subscribe_redis(self.pub_api_redis_key)
+        logging.info('api_process를 실행합니다.')
 
     def __set_api_container(self):
         return [[] for _ in range(APIPriority.LENGTH)]
@@ -48,6 +59,7 @@ class BaseAPIProcess(Process):
     def run(self) -> None:
         exchanges = get_exchanges()
         exchange = exchanges[self._exchange_str]
+        _api_subscriber = subscribe_redis(self.pub_api_redis_key)
 
         after_time = self.__get_seconds() + self._wait_time
         refresh_time = self.__get_seconds() + TraderConsts.DEFAULT_REFRESH_TIME
@@ -57,7 +69,7 @@ class BaseAPIProcess(Process):
                 결과 값을 전체 도메인에 broadcast하고, 결과 값 receive_type을 통해 각 도메인에서 데이터 판단을 진행한다.
                 현재 사용 도메인: setter, withdrawal
             """
-            message = self._api_subscriber.get_message()
+            message = _api_subscriber.get_message()
             if message:
                 info = message.get('data', 1)
             else:
@@ -79,11 +91,21 @@ class BaseAPIProcess(Process):
                     continue
                 for fn, container_info in container:
                     # corutine에 대한 처리 필요함.
-                    result = asyncio.run(fn(*container_info['args'], **container_info['kwargs'])) \
-                        if asyncio.iscoroutinefunction(fn) else fn(*container_info['args'], **container_info['kwargs'])
+                    for _ in range(2):
+                        try:
+                            result = asyncio.run(fn(*container_info['args'], **container_info['kwargs'])) \
+                                if asyncio.iscoroutinefunction(fn) else fn(*container_info['args'], **container_info['kwargs'])
+                            break
+                        except RuntimeError as e:
+                            if str(e) != 'Event loop is closed':
+                                logging.error(e)
+                                raise
+                        time.sleep(1)
+                    else:
+                        raise
                     if not result.success:
-                        debugger.debug(result.message)
-                        # set log
+                        logging.debug(result.message)
+
                     data = {
                         container_info['receive_type']: {
                             container_info['fn_name']: {

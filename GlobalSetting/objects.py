@@ -45,7 +45,7 @@ class MessageControlMixin(object):
 
     def _unpacking_message(self, api_contents):
         if not api_contents:
-            return self.Result(success=False, message='')
+            return self.Result(success=False, message=UMsg.Warning.API_CONTENTS_IS_NULL)
 
         raw_data = api_contents.get('data', 1)
         if isinstance(raw_data, int):

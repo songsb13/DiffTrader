@@ -93,3 +93,4 @@ class UtilMessage(object):
         INCORRECT_RAW_DATA = 'API Raw data is not correct'
         RAW_DATA_IS_NULL = 'API Result data is null'
         RECEIVE_TYPE_DATA_IS_NULL = 'Not found data containing input return type.'
+        API_CONTENTS_IS_NULL = 'API content from api_process is null'

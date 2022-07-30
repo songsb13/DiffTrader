@@ -4,25 +4,21 @@ from DiffTrader.Trading.trading import Trading
 from DiffTrader.Withdrawal.withdrawal import Withdrawal
 
 from DiffTrader.Util.utils import get_exchanges
-from DiffTrader.Util.api_process import BaseAPIProcess
+from DiffTrader.Util.api_process import UpbitAPIProcess, BinanceAPIProcess
 from DiffTrader.GlobalSetting.settings import TEST_USER
 from DiffTrader.GlobalSetting.settings import RedisKey
 
-
-from DiffTrader.Monitoring.monitoring import LogTest as mLog
-from DiffTrader.Setter.setter import LogTest as sLog
-
 import time
+import os
 
 
-def run_for_log_test():
-    t1 = mLog()
-    t2 = sLog()
-    while True:
-        t1.logt()
-        t2.logt()
-        time.sleep(1)
+TEST_EXCHANGES = ["Upbit", "Binance"]
 
 
-if __name__ == '__main__':
-    run_for_log_test()
+for ps in [UpbitAPIProcess, BinanceAPIProcess]:
+    ps().start()
+#
+#
+# for each in TEST_EXCHANGES:
+#     st = Setter(TEST_USER, each)
+#     st.run()
