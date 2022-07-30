@@ -15,7 +15,7 @@ from DiffTrader.utils.util import (
 from DiffTrader.utils.logger import SetLogger
 from DiffTrader.settings.message import CommonMessage as CMsg
 from DiffTrader.settings.base import TEST_USER
-from DiffTrader.settings.objects import MessageControlMixin
+from DiffTrader.utils.util import MessageControlMixin
 from DiffTrader.settings.base import (RedisKey, Domains)
 
 

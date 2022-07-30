@@ -37,7 +37,7 @@ from DiffTrader.settings.base import (
     SaiUrls,
     PicklePath
 )
-from DiffTrader.settings.objects import MessageControlMixin
+from DiffTrader.utils.util import MessageControlMixin
 
 from decimal import getcontext
 
