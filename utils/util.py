@@ -1,8 +1,8 @@
 from Exchanges.upbit.upbit import BaseUpbit
 from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
-from DiffTrader.GlobalSetting.settings import REDIS_SERVER, CONFIG, AGREE_WORDS
-from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
+from DiffTrader.settings.base import REDIS_SERVER, CONFIG, AGREE_WORDS
+from DiffTrader.settings.message import CommonMessage as CMsg
 
 from decimal import Decimal, getcontext, InvalidOperation
 import asyncio
@@ -11,6 +11,82 @@ import time
 import pickle
 
 getcontext().prec = 8
+
+
+class MessageControlMixin(object):
+    """
+        api_process와 통신하기 위한 domain process 들의 공통 함수 mixin
+        api_process로 특정 함수 실행 및 결과를 요청하는 publish_redis_to_api_process
+        특정 함수 결과 값을 검증하는 get_subscribe_result가 있음.
+    """
+    receive_type = ''
+    require_functions = []
+
+    class Result:
+        def __init__(self, success=False, data=None, message=''):
+            self.success = success
+            self.data = data
+            self.message = message
+
+    def get_subscribe_result(self, subscriber):
+        for _ in range(3):
+            api_contents = subscriber.get_message()
+            result = self._unpacking_message(api_contents)
+            if result.success:
+                return result
+            time.sleep(0.5)
+        else:
+            return result
+
+    def _unpacking_message(self, api_contents):
+        if api_contents:
+            raw_data = api_contents.get('data', 1)
+            if isinstance(raw_data, int):
+                return self.Result(success=False, message=UMsg.Warning.INCORRECT_RAW_DATA)
+
+            to_json = json.loads(raw_data, cls=DecimalDecoder)
+            if not to_json:
+                return self.Result(success=False, message=UMsg.Warning.RAW_DATA_IS_NULL)
+
+            data = to_json.get(self.receive_type, None)
+            if data is None:
+                return self.Result(success=False, message=UMsg.Warning.RECEIVE_TYPE_DATA_IS_NULL)
+
+            detail = data.get(self.receive_type, None)
+            if not detail:
+                return self.Result(success=False, message='')
+
+            result = {}
+            for key in detail.keys():
+                if key not in self.require_functions:
+                    continue
+
+                result[key] = data[key]
+            else:
+                return self.Result(success=True, data=result)
+
+    def publish_redis_to_api_process(self, fn_name, publish_key, logging=None, is_async=False, is_lazy=False, args=None, kwargs=None, api_priority=APIPriority.SEARCH):
+        if args is None:
+            args = []
+
+        if kwargs is None:
+            kwargs = {}
+
+        if logging:
+            logging.debug(CMsg.entrance_with_parameter(
+                self.publish_redis_to_api_process,
+                (fn_name, publish_key, logging, is_async, is_lazy, args, kwargs, api_priority)
+            ))
+
+        publish_redis(publish_key, {
+            'is_async': is_async,
+            'is_lazy': is_lazy,
+            'receive_type': self.receive_type,
+            'fn_name': fn_name,
+            'args': args,
+            'kwargs': kwargs,
+            'priority': api_priority,
+        })
 
 
 class FunctionExecutor(object):

@@ -9,12 +9,12 @@
         3. 유저가 입력한 최소 BTC profit을 넘는 경우 trading process로 거래 관련 데이터를 set한다.
 """
 
-from DiffTrader.Util.utils import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder, task_wrapper
-from DiffTrader.Util.logger import SetLogger
-from DiffTrader.GlobalSetting.settings import (TraderConsts, RedisKey, DEBUG, TEST_USER, Domains)
-from DiffTrader.GlobalSetting.messages import MonitoringMessage as Msg
-from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
-from DiffTrader.GlobalSetting.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
+from DiffTrader.utils.util import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder, task_wrapper
+from DiffTrader.utils.logger import SetLogger
+from DiffTrader.settings.base import (TraderConsts, RedisKey, DEBUG, TEST_USER, Domains)
+from DiffTrader.settings.message import MonitoringMessage as Msg
+from DiffTrader.settings.message import CommonMessage as CMsg
+from DiffTrader.settings.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
 from Exchanges.settings import Consts
 
 from decimal import Decimal

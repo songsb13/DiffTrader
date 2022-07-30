@@ -4,7 +4,11 @@
 """
 
 
+from DiffTrader.settings.base import RedisKey
+import time
+
 from multiprocessing import Process
+from DiffTrader.settings.base import (
 from functools import wraps
 
 import inspect
@@ -17,7 +21,7 @@ from DiffTrader.GlobalSetting.settings import (
     TraderConsts,
     RedisKey
 )
-from DiffTrader.Util.utils import (
+from DiffTrader.utils.util import (
     get_exchanges,
     subscribe_redis,
     publish_redis,

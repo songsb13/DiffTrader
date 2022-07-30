@@ -8,6 +8,9 @@ from DiffTrader.Util.api_process import UpbitAPIProcess, BinanceAPIProcess
 from DiffTrader.GlobalSetting.settings import TEST_USER
 from DiffTrader.GlobalSetting.settings import RedisKey
 
+from DiffTrader.apps.monitoring import LogTest as mLog
+from DiffTrader.apps.setter import LogTest as sLog
+
 import time
 import os
 
