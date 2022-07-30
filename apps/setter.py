@@ -8,15 +8,15 @@
         3. 결과 값은 monitoring process로 publish된다.
 """
 
-from DiffTrader.Util.utils import (
+from DiffTrader.utils.util import (
     publish_redis,
     subscribe_redis
 )
-from DiffTrader.Util.logger import SetLogger
-from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
-from DiffTrader.GlobalSetting.settings import TEST_USER
-from DiffTrader.GlobalSetting.objects import MessageControlMixin
-from DiffTrader.GlobalSetting.settings import (RedisKey, Domains)
+from DiffTrader.utils.logger import SetLogger
+from DiffTrader.settings.message import CommonMessage as CMsg
+from DiffTrader.settings.base import TEST_USER
+from DiffTrader.utils.util import MessageControlMixin
+from DiffTrader.settings.base import (RedisKey, Domains)
 
 
 import time
@@ -106,6 +106,6 @@ class Setter(MessageControlMixin):
 
 
 if __name__ == '__main__':
-    from DiffTrader.Util.utils import get_exchanges
+    from DiffTrader.utils.util import get_exchanges
     st = Setter(TEST_USER, 'Upbit')
     st.run()
