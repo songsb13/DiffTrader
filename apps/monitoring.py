@@ -11,7 +11,7 @@
 
 from DiffTrader.utils.util import get_exchanges, subscribe_redis, get_min_profit, set_redis, DecimalDecoder, task_wrapper
 from DiffTrader.utils.logger import SetLogger
-from DiffTrader.settings.base import (TraderConsts, RedisKey, DEBUG, TEST_USER, Domains)
+from DiffTrader.settings.base import (TraderConsts, RedisKey, DEBUG, TEST_USER)
 from DiffTrader.settings.message import MonitoringMessage as Msg
 from DiffTrader.settings.message import CommonMessage as CMsg
 from DiffTrader.settings.test_settings import UPBIT_TEST_INFORMATION, BINANCE_TEST_INFORMATION
@@ -34,7 +34,7 @@ logging.config.dictConfig(logging_config)
 
 
 class Monitoring(object):
-    name, name_kor = Domains.MONITORING, '모니터링'
+    name, name_kor = 'Monitoring', '모니터링'
 
     def __init__(self, user, primary_str, secondary_str):
         logging.info(CMsg.START)

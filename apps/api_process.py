@@ -8,7 +8,6 @@ from DiffTrader.settings.base import RedisKey
 import time
 
 from multiprocessing import Process
-from DiffTrader.settings.base import (
 from functools import wraps
 
 import inspect
@@ -16,7 +15,7 @@ import time
 import asyncio
 import json
 
-from DiffTrader.GlobalSetting.settings import (
+from DiffTrader.settings.base import (
     APIPriority,
     TraderConsts,
     RedisKey
@@ -28,7 +27,7 @@ from DiffTrader.utils.util import (
     DecimalDecoder
 )
 
-from DiffTrader.Util.logger import SetLogger
+from DiffTrader.utils.logger import SetLogger
 
 import logging.config
 

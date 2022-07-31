@@ -12,16 +12,16 @@ from DiffTrader.utils.util import (
     publish_redis,
     subscribe_redis
 )
-from DiffTrader.Util.logger import SetLogger
-from DiffTrader.GlobalSetting.messages import CommonMessage as CMsg
-from DiffTrader.GlobalSetting.settings import TEST_USER
-from DiffTrader.GlobalSetting.objects import MessageControlMixin
-from DiffTrader.GlobalSetting.settings import (RedisKey, Domains, DEBUG)
 from DiffTrader.utils.logger import SetLogger
 from DiffTrader.settings.message import CommonMessage as CMsg
 from DiffTrader.settings.base import TEST_USER
 from DiffTrader.utils.util import MessageControlMixin
-from DiffTrader.settings.base import (RedisKey, Domains)
+from DiffTrader.settings.base import (RedisKey, DEBUG)
+from DiffTrader.utils.logger import SetLogger
+from DiffTrader.settings.message import CommonMessage as CMsg
+from DiffTrader.settings.base import TEST_USER
+from DiffTrader.utils.util import MessageControlMixin
+from DiffTrader.settings.base import (RedisKey)
 
 
 import time
@@ -39,7 +39,7 @@ class Setter(MessageControlMixin):
     receive_type = 'common'
     require_functions = {'get_balance', 'get_deposit_addrs', 'get_transaction_fee'}
 
-    name, name_kor = Domains.SETTER, '데이터 세터'
+    name, name_kor = 'Setter', '데이터 세터'
 
     def __init__(self, user, exchange_str):
         logging.info(CMsg.START)
@@ -113,8 +113,8 @@ class Setter(MessageControlMixin):
 
 
 if __name__ == '__main__':
-    from DiffTrader.Util.utils import get_exchanges
-    from DiffTrader.Util.api_process import UpbitAPIProcess
+    from DiffTrader.utils.util import get_exchanges
+    from DiffTrader.apps.api_process import UpbitAPIProcess
 
     UpbitAPIProcess().start()
     time.sleep(3)
