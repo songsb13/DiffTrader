@@ -37,9 +37,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_LOGGING_CONFIG = {
     "version": 1,
     "formatters": {
-        "simple": {
-            "format": "[%(name)s][%(message)s]"
-        },
+        "simple": {"format": "[%(name)s][%(message)s]"},
         "complex": {
             "format": "[%(asctime)s][%(levelname)s][%(filename)s][%(funcName)s][%(message)s]"
         },
@@ -51,14 +49,8 @@ BASE_LOGGING_CONFIG = {
             "level": "INFO",
         },
     },
-    "root": {
-        "handlers": ["console"],
-        "level": "INFO"
-    },
-    "loggers": {
-        "parent": {"level": "INFO"},
-        "parent.child": {"level": "DEBUG"}
-    }
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {"parent": {"level": "INFO"}, "parent.child": {"level": "DEBUG"}},
 }
 
 
@@ -67,9 +59,9 @@ class SetLogger(object):
     def get_config_base_process(process_name):
         try:
             now = datetime.datetime.now()
-            now_date, now_hour = str(now.date()), now.strftime('%Hh%Mm%Ss')
+            now_date, now_hour = str(now.date()), now.strftime("%Hh%Mm%Ss")
 
-            log_path = os.path.join(ROOT_DIR, 'Logs')
+            log_path = os.path.join(ROOT_DIR, "Logs")
             SetLogger.create_dir(log_path)
 
             log_process_path = os.path.join(log_path, process_name)
@@ -80,13 +72,13 @@ class SetLogger(object):
 
             copied_base_config = copy.deepcopy(BASE_LOGGING_CONFIG)
 
-            copied_base_config['handlers'][process_name] = {
+            copied_base_config["handlers"][process_name] = {
                 "class": "logging.FileHandler",
-                "filename": os.path.join(log_date_path, f'{now_hour}.log'),
+                "filename": os.path.join(log_date_path, f"{now_hour}.log"),
                 "formatter": "complex",
-                "level": "DEBUG"
+                "level": "DEBUG",
             }
-            copied_base_config['root']['handlers'].append(process_name)
+            copied_base_config["root"]["handlers"].append(process_name)
 
             return copied_base_config
 
@@ -97,4 +89,3 @@ class SetLogger(object):
     def create_dir(path):
         if not os.path.isdir(path):
             os.mkdir(path)
-

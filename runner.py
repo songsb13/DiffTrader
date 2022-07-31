@@ -1,9 +1,4 @@
 from DiffTrader.apps.api_process import UpbitAPIProcess, BinanceAPIProcess
-from DiffTrader.settings.base import TEST_USER
-from DiffTrader.settings.base import RedisKey
-
-import time
-import os
 
 
 TEST_EXCHANGES = ["Upbit", "Binance"]

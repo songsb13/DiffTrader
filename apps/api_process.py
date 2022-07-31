@@ -4,27 +4,17 @@
 """
 
 
-from DiffTrader.settings.base import RedisKey
-import time
-
 from multiprocessing import Process
-from functools import wraps
-
-import inspect
 import time
 import asyncio
 import json
 
-from DiffTrader.settings.base import (
-    APIPriority,
-    TraderConsts,
-    RedisKey
-)
+from DiffTrader.settings.base import APIPriority, TraderConsts, RedisKey
 from DiffTrader.utils.util import (
     get_exchanges,
     subscribe_redis,
     publish_redis,
-    DecimalDecoder
+    DecimalDecoder,
 )
 
 from DiffTrader.utils.logger import SetLogger
@@ -32,7 +22,7 @@ from DiffTrader.utils.logger import SetLogger
 import logging.config
 
 
-__file__ = 'api_process.py'
+__file__ = "api_process.py"
 
 
 logging_config = SetLogger.get_config_base_process(__file__)
@@ -40,15 +30,15 @@ logging.config.dictConfig(logging_config)
 
 
 class BaseAPIProcess(Process):
-    pub_api_redis_key = ''
-    sub_api_redis_key = ''
+    pub_api_redis_key = ""
+    sub_api_redis_key = ""
 
     def __init__(self, exchange_str):
         super(BaseAPIProcess, self).__init__()
         self._exchange_str = exchange_str
         self._wait_time = 10
         self.__api_container = self.__set_api_container()
-        logging.info('api_process를 실행합니다.')
+        logging.info("api_process를 실행합니다.")
 
     def __set_api_container(self):
         return [[] for _ in range(APIPriority.LENGTH)]
@@ -69,23 +59,32 @@ class BaseAPIProcess(Process):
         lazy_cache = {}
         while True:
             """
-                결과 값을 전체 도메인에 broadcast하고, 결과 값 receive_type을 통해 각 도메인에서 데이터 판단을 진행한다.
-                현재 사용 도메인: setter, withdrawal
+            결과 값을 전체 도메인에 broadcast하고, 결과 값 receive_type을 통해 각 도메인에서 데이터 판단을 진행한다.
+            현재 사용 도메인: setter, withdrawal
             """
             message = _api_subscriber.get_message()
             if message:
-                info = message.get('data', 1)
+                info = message.get("data", 1)
             else:
                 info = message
             if info and not isinstance(info, int):
                 info = json.loads(info, cls=DecimalDecoder)
-                if time.time() > refresh_time and info['is_lazy'] and info['fn_name'] in lazy_cache:
+                if (
+                    time.time() > refresh_time
+                    and info["is_lazy"]
+                    and info["fn_name"] in lazy_cache
+                ):
                     refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
-                    publish_redis(self.sub_api_redis_key, lazy_cache[info['receive_type']][info['fn_name']])
+                    publish_redis(
+                        self.sub_api_redis_key,
+                        lazy_cache[info["receive_type"]][info["fn_name"]],
+                    )
                 else:
-                    function_ = getattr(exchange, info['fn_name'])
+                    function_ = getattr(exchange, info["fn_name"])
 
-                    self.__api_container[int(info['priority'])].append((function_, info))
+                    self.__api_container[int(info["priority"])].append(
+                        (function_, info)
+                    )
             if self.__get_seconds() < after_time:
                 time.sleep(1)
                 continue
@@ -96,11 +95,21 @@ class BaseAPIProcess(Process):
                     # corutine에 대한 처리 필요함.
                     for _ in range(2):
                         try:
-                            result = asyncio.run(fn(*container_info['args'], **container_info['kwargs'])) \
-                                if asyncio.iscoroutinefunction(fn) else fn(*container_info['args'], **container_info['kwargs'])
+                            result = (
+                                asyncio.run(
+                                    fn(
+                                        *container_info["args"],
+                                        **container_info["kwargs"]
+                                    )
+                                )
+                                if asyncio.iscoroutinefunction(fn)
+                                else fn(
+                                    *container_info["args"], **container_info["kwargs"]
+                                )
+                            )
                             break
                         except RuntimeError as e:
-                            if str(e) != 'Event loop is closed':
+                            if str(e) != "Event loop is closed":
                                 logging.error(e)
                                 raise
                         time.sleep(1)
@@ -110,11 +119,11 @@ class BaseAPIProcess(Process):
                         logging.debug(result.message)
 
                     data = {
-                        container_info['receive_type']: {
-                            container_info['fn_name']: {
-                                'success': result.success,
-                                'data': result.data,
-                                'message': result.message
+                        container_info["receive_type"]: {
+                            container_info["fn_name"]: {
+                                "success": result.success,
+                                "data": result.data,
+                                "message": result.message,
                             }
                         }
                     }
@@ -126,21 +135,21 @@ class BaseAPIProcess(Process):
 
 
 class UpbitAPIProcess(BaseAPIProcess):
-    pub_api_redis_key = RedisKey.ApiKey['Upbit']['publish']
-    sub_api_redis_key = RedisKey.ApiKey['Upbit']['subscribe']
+    pub_api_redis_key = RedisKey.ApiKey["Upbit"]["publish"]
+    sub_api_redis_key = RedisKey.ApiKey["Upbit"]["subscribe"]
 
     def __init__(self):
         super(UpbitAPIProcess, self).__init__("Upbit")
 
 
 class BinanceAPIProcess(BaseAPIProcess):
-    pub_api_redis_key = RedisKey.ApiKey['Binance']['publish']
-    sub_api_redis_key = RedisKey.ApiKey['Binance']['subscribe']
+    pub_api_redis_key = RedisKey.ApiKey["Binance"]["publish"]
+    sub_api_redis_key = RedisKey.ApiKey["Binance"]["subscribe"]
 
     def __init__(self):
         super(BinanceAPIProcess, self).__init__("Binance")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     ua = UpbitAPIProcess()
     ua.run()
