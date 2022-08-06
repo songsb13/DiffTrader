@@ -1,7 +1,7 @@
 from Exchanges.upbit.upbit import BaseUpbit
 from Exchanges.binance.binance import Binance
 from Exchanges.bithumb.bithumb import BaseBithumb
-from DiffTrader.settings.base import REDIS_SERVER, CONFIG, AGREE_WORDS
+from DiffTrader.settings.base import REDIS_SERVER, CONFIG, AGREE_WORDS, APIPriority
 from DiffTrader.settings.message import CommonMessage as CMsg
 from DiffTrader.settings.message import UtilMessage as UMsg
 
@@ -302,13 +302,13 @@ def set_redis(key, value, use_decimal=False, logging=None):
 
 def get_exchanges():
     obj = dict()
-    if CONFIG["Upbit"]["Run"].upper() in AGREE_WORDS:
-        obj["Upbit"] = BaseUpbit(CONFIG["Upbit"]["Key"], CONFIG["Upbit"]["Secret"])
-    if CONFIG["Binance"]["Run"].upper() in AGREE_WORDS:
-        obj["Binance"] = Binance(CONFIG["Binance"]["Key"], CONFIG["Binance"]["Secret"])
-    if CONFIG["Bithumb"]["Run"].upper() in AGREE_WORDS:
-        obj["Bithumb"] = BaseBithumb(
-            CONFIG["Bithumb"]["Key"], CONFIG["Bithumb"]["Secret"]
+    if CONFIG["upbit"]["run"].upper() in AGREE_WORDS:
+        obj["upbit"] = BaseUpbit(CONFIG["upbit"]["key"], CONFIG["upbit"]["secret"])
+    if CONFIG["binance"]["run"].upper() in AGREE_WORDS:
+        obj["binance"] = Binance(CONFIG["binance"]["key"], CONFIG["binance"]["secret"])
+    if CONFIG["bithumb"]["run"].upper() in AGREE_WORDS:
+        obj["bithumb"] = BaseBithumb(
+            CONFIG["bithumb"]["key"], CONFIG["bithumb"]["secret"]
         )
 
     return obj
@@ -316,20 +316,20 @@ def get_exchanges():
 
 def get_auto_withdrawal():
     return (
-        True if CONFIG["General"]["Auto Withdrawal"].upper() in AGREE_WORDS else False
+        True if CONFIG["withdrawal"]["auto withdrawal"].upper() in AGREE_WORDS else False
     )
 
 
 def get_withdrawal_info():
     withdrawal_info = {
-        "minimum_profit_amount": CONFIG["General"]["Minimum Profit Amount"],
-        "balance_withdrawal_percent": CONFIG["General"]["Balance Withdrawal Percent"],
+        "minimum_profit_amount": CONFIG["withdrawal"]["minimum profit amount"],
+        "balance_withdrawal_percent": CONFIG["withdrawal"]["balance withdrawal percent"],
     }
     return withdrawal_info
 
 
 def get_min_profit():
-    return Decimal(CONFIG["Profit"]["Withdrawal Percent"]).quantize(Decimal(10) ** -6)
+    return Decimal(CONFIG["profit"]["withdrawal percent"]).quantize(Decimal(10) ** -6)
 
 
 class CustomPickle(object):
