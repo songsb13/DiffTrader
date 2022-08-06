@@ -118,16 +118,18 @@ class BaseAPIProcess(Process):
                     if not result.success:
                         logging.debug(result.message)
 
+                    fn_result = {
+                        "success": result.success,
+                        "data": result.data,
+                        "message": result.message,
+                    }
+
                     data = {
                         container_info["receive_type"]: {
-                            container_info["fn_name"]: {
-                                "success": result.success,
-                                "data": result.data,
-                                "message": result.message,
-                            }
+                            container_info["fn_name"]: fn_result
                         }
                     }
-                    lazy_cache.update(data)
+                    lazy_cache.update({container_info['fn_name']: fn_result})
                     publish_redis(self.sub_api_redis_key, data, use_decimal=True)
             else:
                 self.__api_container = self.__set_api_container()
@@ -135,21 +137,24 @@ class BaseAPIProcess(Process):
 
 
 class UpbitAPIProcess(BaseAPIProcess):
-    pub_api_redis_key = RedisKey.ApiKey["Upbit"]["publish"]
-    sub_api_redis_key = RedisKey.ApiKey["Upbit"]["subscribe"]
+    pub_api_redis_key = RedisKey.ApiKey["upbit"]["publish"]
+    sub_api_redis_key = RedisKey.ApiKey["upbit"]["subscribe"]
 
     def __init__(self):
-        super(UpbitAPIProcess, self).__init__("Upbit")
+        super(UpbitAPIProcess, self).__init__("upbit")
 
 
 class BinanceAPIProcess(BaseAPIProcess):
-    pub_api_redis_key = RedisKey.ApiKey["Binance"]["publish"]
-    sub_api_redis_key = RedisKey.ApiKey["Binance"]["subscribe"]
+    pub_api_redis_key = RedisKey.ApiKey["binance"]["publish"]
+    sub_api_redis_key = RedisKey.ApiKey["binance"]["subscribe"]
 
     def __init__(self):
-        super(BinanceAPIProcess, self).__init__("Binance")
+        super(BinanceAPIProcess, self).__init__("binance")
 
 
 if __name__ == "__main__":
-    ua = UpbitAPIProcess()
-    ua.run()
+    try:
+        ua = UpbitAPIProcess()
+        ua.run()
+    except Exception as ex:
+        print('PROGRAMCLOSED', ex)
