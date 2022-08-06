@@ -44,8 +44,6 @@ logging.config.dictConfig(logging_config)
 
 
 class Monitoring(object):
-    name, name_kor = "Monitoring", "모니터링"
-
     def __init__(self, user, primary_str, secondary_str):
         logging.info(CMsg.START)
         logging.debug(Msg.Debug.SET_MONITORING.format(primary_str, secondary_str, user))

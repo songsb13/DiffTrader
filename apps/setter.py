@@ -26,13 +26,11 @@ class Setter(MessageControlMixin):
     receive_type = "common"
     require_functions = {"get_balance", "get_deposit_addrs", "get_transaction_fee"}
 
-    name, name_kor = "Setter", "데이터 세터"
-
     def __init__(self, user, exchange_str):
         super(Setter, self).__init__()
         logging.info(CMsg.START)
 
-        exchange_str = exchange_str.upper()
+        exchange_str = exchange_str.lower()
 
         self._pub_api_redis_key = RedisKey.ApiKey[exchange_str]["publish"]
         self._sub_api_redis_key = RedisKey.ApiKey[exchange_str]["subscribe"]

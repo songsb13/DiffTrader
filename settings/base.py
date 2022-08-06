@@ -59,9 +59,10 @@ class RedisKey(object):
     ProfitInformation = "profit_information"
     SendInformation = "send_information"
 
-    PUBSUB = {"publish": "publish", "subscribe": "subscribe"}
-
-    ApiKey = {"Upbit": PUBSUB, "Binance": PUBSUB}
+    ApiKey = {
+            "upbit": {"publish": "publish", "subscribe": "subscribe"},
+            "binance": {"publish": "publish", "subscribe": "subscribe"}
+    }
 
 
 class APIPriority(object):
