@@ -7,26 +7,16 @@
         2. 각 Process들은 각 api_process와 통신하며, 거래에 필요한 데이터들을 요청한다.
         3. 결과 값은 monitoring process로 publish된다.
 """
-
-from DiffTrader.utils.util import publish_redis, subscribe_redis
+from DiffTrader.utils.util import subscribe_redis, publish_redis, get_exchanges, MessageControlMixin
+from DiffTrader.settings.base import RedisKey, DEBUG, TEST_USER, REDIS_SERVER
 from DiffTrader.utils.logger import SetLogger
 from DiffTrader.settings.message import CommonMessage as CMsg
-from DiffTrader.settings.base import TEST_USER
-from DiffTrader.utils.util import MessageControlMixin
-from DiffTrader.settings.base import RedisKey, DEBUG
-from DiffTrader.utils.logger import SetLogger
-from DiffTrader.settings.message import CommonMessage as CMsg
-from DiffTrader.settings.base import TEST_USER
-from DiffTrader.utils.util import MessageControlMixin
-from DiffTrader.settings.base import RedisKey
-
 
 import time
 import logging.config
 
 
 __file__ = "setter.py"
-
 
 logging_config = SetLogger.get_config_base_process(__file__)
 logging.config.dictConfig(logging_config)
@@ -39,8 +29,11 @@ class Setter(MessageControlMixin):
     name, name_kor = "Setter", "데이터 세터"
 
     def __init__(self, user, exchange_str):
-        logging.info(CMsg.START)
         super(Setter, self).__init__()
+        logging.info(CMsg.START)
+
+        exchange_str = exchange_str.upper()
+
         self._pub_api_redis_key = RedisKey.ApiKey[exchange_str]["publish"]
         self._sub_api_redis_key = RedisKey.ApiKey[exchange_str]["subscribe"]
 
@@ -121,13 +114,11 @@ class Setter(MessageControlMixin):
 
 
 if __name__ == "__main__":
-    from DiffTrader.utils.util import get_exchanges
-    from DiffTrader.apps.api_process import UpbitAPIProcess
+    try:
+        import sys
+        ff = Setter(TEST_USER, sys.argv[1])
+        print(ff)
 
-    UpbitAPIProcess().start()
-    time.sleep(3)
-    Setter(TEST_USER, "Upbit").run()
-    from DiffTrader.utils.util import get_exchanges
-
-    st = Setter(TEST_USER, "Upbit")
-    st.run()
+        ff.run()
+    except Exception as ex:
+        print(ex)
