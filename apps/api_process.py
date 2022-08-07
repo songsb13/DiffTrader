@@ -82,6 +82,7 @@ class BaseAPIProcess(Process):
                     publish_redis(
                         self.sub_api_redis_key,
                         lazy_cache[info["fn_name"]],
+                        use_decimal=True
                     )
                 else:
                     function_ = getattr(exchange, info["fn_name"])

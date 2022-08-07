@@ -65,7 +65,6 @@ class Setter(MessageControlMixin):
             )
             self.publish_redis_to_api_process(
                 "get_balance", self._pub_api_redis_key, logging=logging,
-                is_lazy=True,
             )
 
             result = self.get_subscribe_result(api_subscriber)
