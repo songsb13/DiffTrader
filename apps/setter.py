@@ -43,33 +43,30 @@ class Setter(MessageControlMixin):
     def run(self) -> None:
         logging.debug(CMsg.ENTRANCE)
         exchanges = get_exchanges()
-        flag = False
         self._exchange = exchanges[self._exchange_str]
         api_subscriber = subscribe_redis(self._sub_api_redis_key)
 
         total_data = {**self._get_one_time_fresh_data()}
         init_update = set()
         while True:
-            if not flag:
-                self.publish_redis_to_api_process(
-                    "get_deposit_addrs",
-                    self._pub_api_redis_key,
-                    logging=logging,
-                    is_async=True,
-                    is_lazy=True,
-                )
-                self.publish_redis_to_api_process(
-                    "get_transaction_fee",
-                    self._pub_api_redis_key,
-                    logging=logging,
-                    is_async=True,
-                    is_lazy=True,
-                )
-
-            if not flag:
-                self.publish_redis_to_api_process(
-                    "get_balance", self._pub_api_redis_key, logging=logging
-                )
+            self.publish_redis_to_api_process(
+                "get_deposit_addrs",
+                self._pub_api_redis_key,
+                logging=logging,
+                is_async=True,
+                is_lazy=True,
+            )
+            self.publish_redis_to_api_process(
+                "get_transaction_fee",
+                self._pub_api_redis_key,
+                logging=logging,
+                is_async=True,
+                is_lazy=True,
+            )
+            self.publish_redis_to_api_process(
+                "get_balance", self._pub_api_redis_key, logging=logging,
+                is_lazy=True,
+            )
 
             result = self.get_subscribe_result(api_subscriber)
 
@@ -95,8 +92,6 @@ class Setter(MessageControlMixin):
             publish_redis(
                 self._exchange_str, total_data, use_decimal=True, logging=logging
             )
-
-            flag = False
             time.sleep(1)
 
     def _get_one_time_fresh_data(self):
@@ -114,7 +109,7 @@ class Setter(MessageControlMixin):
 if __name__ == "__main__":
     try:
         import sys
-        ff = Setter(TEST_USER, sys.argv[1])
+        ff = Setter(TEST_USER, 'upbit')
         print(ff)
 
         ff.run()
