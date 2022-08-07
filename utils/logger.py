@@ -46,7 +46,7 @@ BASE_LOGGING_CONFIG = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "simple",
-            "level": "INFO",
+            "level": "DEBUG",
         },
     },
     "root": {"handlers": ["console"], "level": "INFO"},
