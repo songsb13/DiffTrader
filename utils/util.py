@@ -20,8 +20,6 @@ class MessageControlMixin(object):
     api_process로 특정 함수 실행 및 결과를 요청하는 publish_redis_to_api_process
     특정 함수 결과 값을 검증하는 get_subscribe_result가 있음.
     """
-
-    receive_type = ""
     require_functions = []
 
     class Result:
@@ -48,15 +46,9 @@ class MessageControlMixin(object):
         if isinstance(raw_data, int):
             return self.Result(success=False, message=UMsg.Warning.INCORRECT_RAW_DATA)
 
-        to_json = json.loads(raw_data, cls=DecimalDecoder)
-        if not to_json:
+        data = json.loads(raw_data, cls=DecimalDecoder)
+        if not data:
             return self.Result(success=False, message=UMsg.Warning.RAW_DATA_IS_NULL)
-
-        data = to_json.get(self.receive_type, None)
-        if data is None:
-            return self.Result(
-                success=False, message=UMsg.Warning.RECEIVE_TYPE_DATA_IS_NULL
-            )
 
         result = {}
         for key in data.keys():
@@ -106,7 +98,6 @@ class MessageControlMixin(object):
             {
                 "is_async": is_async,
                 "is_lazy": is_lazy,
-                "receive_type": self.receive_type,
                 "fn_name": fn_name,
                 "args": args,
                 "kwargs": kwargs,

@@ -60,7 +60,7 @@ class BaseAPIProcess(Process):
         on_waiting = set()
         while True:
             """
-            결과 값을 전체 도메인에 broadcast하고, 결과 값 receive_type을 통해 각 도메인에서 데이터 판단을 진행한다.
+            결과 값을 전체 도메인에 broadcast하고, 결과 값 function_name 통해 각 도메인에서 데이터 판단을 진행한다.
             현재 사용 도메인: setter, withdrawal
             """
             message = _api_subscriber.get_message()
@@ -71,6 +71,7 @@ class BaseAPIProcess(Process):
             if info and not isinstance(info, int):
                 info = json.loads(info, cls=DecimalDecoder)
                 if info["fn_name"] in on_waiting:
+                    print('onwaiting_function', info["fn_name"])
                     continue
 
                 if (
@@ -79,6 +80,7 @@ class BaseAPIProcess(Process):
                     and info["fn_name"] in lazy_cache
                 ):
                     refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
+                    print('lazy-data', info["fn_name"])
                     publish_redis(
                         self.sub_api_redis_key,
                         lazy_cache[info["fn_name"]],
@@ -132,12 +134,10 @@ class BaseAPIProcess(Process):
                     }
 
                     data = {
-                        container_info["receive_type"]: {
-                            container_info["fn_name"]: fn_result
-                        }
+                        container_info["fn_name"]: fn_result
                     }
                     on_waiting.remove(container_info["fn_name"])
-                    lazy_cache.update({container_info['fn_name']: fn_result})
+                    lazy_cache.update(data)
                     publish_redis(self.sub_api_redis_key, data, use_decimal=True)
             else:
                 self.__api_container = self.__set_api_container()

@@ -23,7 +23,6 @@ logging.config.dictConfig(logging_config)
 
 
 class Setter(MessageControlMixin):
-    receive_type = "common"
     require_functions = {"get_balance", "get_deposit_addrs", "get_transaction_fee"}
 
     def __init__(self, user, exchange_str):
