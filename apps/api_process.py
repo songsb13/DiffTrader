@@ -56,7 +56,8 @@ class BaseAPIProcess(Process):
 
         after_time = self.__get_seconds() + self._wait_time
         refresh_time = self.__get_seconds() + TraderConsts.DEFAULT_REFRESH_TIME
-        lazy_cache = {}
+        lazy_cache = dict()
+        on_waiting = set()
         while True:
             """
             결과 값을 전체 도메인에 broadcast하고, 결과 값 receive_type을 통해 각 도메인에서 데이터 판단을 진행한다.
@@ -69,19 +70,22 @@ class BaseAPIProcess(Process):
                 info = message
             if info and not isinstance(info, int):
                 info = json.loads(info, cls=DecimalDecoder)
+                if info["fn_name"] in on_waiting:
+                    continue
+
                 if (
-                    time.time() > refresh_time
+                    time.time() <= refresh_time
                     and info["is_lazy"]
                     and info["fn_name"] in lazy_cache
                 ):
                     refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
                     publish_redis(
                         self.sub_api_redis_key,
-                        lazy_cache[info["receive_type"]][info["fn_name"]],
+                        lazy_cache[info["fn_name"]],
                     )
                 else:
                     function_ = getattr(exchange, info["fn_name"])
-
+                    on_waiting.add(info["fn_name"])
                     self.__api_container[int(info["priority"])].append(
                         (function_, info)
                     )
@@ -111,9 +115,11 @@ class BaseAPIProcess(Process):
                         except RuntimeError as e:
                             if str(e) != "Event loop is closed":
                                 logging.error(e)
+                                on_waiting.remove(info["fn_name"])
                                 raise
                         time.sleep(1)
                     else:
+                        on_waiting.remove(info["fn_name"])
                         raise
                     if not result.success:
                         logging.debug(result.message)
@@ -129,6 +135,7 @@ class BaseAPIProcess(Process):
                             container_info["fn_name"]: fn_result
                         }
                     }
+                    on_waiting.remove(container_info["fn_name"])
                     lazy_cache.update({container_info['fn_name']: fn_result})
                     publish_redis(self.sub_api_redis_key, data, use_decimal=True)
             else:
