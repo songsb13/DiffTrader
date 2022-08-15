@@ -159,8 +159,13 @@ class BinanceAPIProcess(BaseAPIProcess):
 
 
 if __name__ == "__main__":
+    import sys
     try:
-        ua = UpbitAPIProcess()
-        ua.run()
+        filename, exchange_str, *_ = sys.argv
+        logging.debug(f"{filename=}, {exchange_str=}")
+        if exchange_str == 'upbit':
+            UpbitAPIProcess().run()
+        elif exchange_str == 'binance':
+            BinanceAPIProcess().run()
     except Exception as ex:
         print('PROGRAMCLOSED', ex)

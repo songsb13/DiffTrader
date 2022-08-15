@@ -1,13 +1,12 @@
-from DiffTrader.apps.api_process import UpbitAPIProcess, BinanceAPIProcess
+import os
+
+TEST_EXCHANGES = ["upbit", "binance"]
 
 
-TEST_EXCHANGES = ["Upbit", "Binance"]
+def run_api_processes():
+    for exchange in TEST_EXCHANGES:
+        os.system(f"python apps/api_process.py {exchange} &")
 
 
-for ps in [UpbitAPIProcess, BinanceAPIProcess]:
-    ps().start()
-#
-#
-# for each in TEST_EXCHANGES:
-#     st = Setter(TEST_USER, each)
-#     st.run()
+if __name__ == '__main__':
+    run_api_processes()
