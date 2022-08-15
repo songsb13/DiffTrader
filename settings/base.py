@@ -36,8 +36,8 @@ BASE_LOGGING_CONFIG = {
             "level": "DEBUG",
         },
     },
-    "root": {"handlers": ["console"], "level": "INFO"},
-    "loggers": {"parent": {"level": "INFO"}, "parent.child": {"level": "DEBUG"}},
+    "root": {"handlers": ["console"], "level": "DEBUG"},
+    "loggers": {"parent": {"level": "DEBUG"}, "parent.child": {"level": "DEBUG"}},
 }
 
 
