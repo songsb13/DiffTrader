@@ -27,9 +27,7 @@ from DiffTrader.utils.util import (
     CustomPickle,
     subscribe_redis,
 )
-from DiffTrader.utils.logger import SetLogger
-
-from DiffTrader.settings.base import RedisKey, SaiUrls, PicklePath
+from DiffTrader.settings.base import RedisKey, SaiUrls, PICKLE_WITHDRAW, SetLogger
 from DiffTrader.utils.util import MessageControlMixin
 
 from decimal import getcontext
@@ -71,7 +69,7 @@ class Withdrawal(MessageControlMixin):
             "withdrawal"
         ]
 
-        self._pickle = CustomPickle(PicklePath.WITHDRAWAL)
+        self._pickle = CustomPickle(PICKLE_WITHDRAW)
         self._pickle.load()
 
         self._withdrew_dict = dict() if self._pickle.obj is None else self._pickle.obj

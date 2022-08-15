@@ -15,9 +15,28 @@ CONFIG.read(os.path.join(os.path.dirname(__file__), "config.cfg"))
 REDIS_SERVER = redis.StrictRedis(host="localhost", port=6379, db=0)
 AGREE_WORDS = ["Y", "YES", "TRUE", "T"]
 
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PICKLE_WITHDRAW = "./withdrawal.pickle"
 
-class PicklePath(object):
-    WITHDRAWAL = "./withdrawal.pickle"
+
+BASE_LOGGING_CONFIG = {
+    "version": 1,
+    "formatters": {
+        "simple": {"format": "[%(name)s][%(message)s]"},
+        "complex": {
+            "format": "[%(asctime)s][%(levelname)s][%(filename)s][%(funcName)s][%(message)s]"
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "level": "DEBUG",
+        },
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {"parent": {"level": "INFO"}, "parent.child": {"level": "DEBUG"}},
+}
 
 
 class TraderConsts(object):
@@ -69,3 +88,40 @@ class APIPriority(object):
     EXECUTE = 0
     SEARCH = 1
     LENGTH = len([EXECUTE, SEARCH])
+
+
+class SetLogger(object):
+    @staticmethod
+    def get_config_base_process(process_name):
+        try:
+            now = datetime.datetime.now()
+            now_date, now_hour = str(now.date()), now.strftime("%Hh%Mm%Ss")
+
+            log_path = os.path.join(ROOT_DIR, "Logs")
+            SetLogger.create_dir(log_path)
+
+            log_process_path = os.path.join(log_path, process_name)
+            SetLogger.create_dir(log_process_path)
+
+            log_date_path = os.path.join(log_process_path, now_date)
+            SetLogger.create_dir(log_date_path)
+
+            copied_base_config = copy.deepcopy(BASE_LOGGING_CONFIG)
+
+            copied_base_config["handlers"][process_name] = {
+                "class": "logging.FileHandler",
+                "filename": os.path.join(log_date_path, f"{now_hour}.log"),
+                "formatter": "complex",
+                "level": "DEBUG",
+            }
+            copied_base_config["root"]["handlers"].append(process_name)
+
+            return copied_base_config
+
+        except Exception as ex:
+            print(ex)
+
+    @staticmethod
+    def create_dir(path):
+        if not os.path.isdir(path):
+            os.mkdir(path)

@@ -9,15 +9,13 @@ import time
 import asyncio
 import json
 
-from DiffTrader.settings.base import APIPriority, TraderConsts, RedisKey
+from DiffTrader.settings.base import APIPriority, TraderConsts, RedisKey, SetLogger
 from DiffTrader.utils.util import (
     get_exchanges,
     subscribe_redis,
     publish_redis,
     DecimalDecoder,
 )
-
-from DiffTrader.utils.logger import SetLogger
 
 import logging.config
 

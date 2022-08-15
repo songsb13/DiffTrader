@@ -17,8 +17,7 @@ from DiffTrader.utils.util import (
     DecimalDecoder,
     task_wrapper,
 )
-from DiffTrader.utils.logger import SetLogger
-from DiffTrader.settings.base import TraderConsts, RedisKey, DEBUG, TEST_USER
+from DiffTrader.settings.base import TraderConsts, RedisKey, DEBUG, TEST_USER, SetLogger
 from DiffTrader.settings.message import MonitoringMessage as Msg
 from DiffTrader.settings.message import CommonMessage as CMsg
 from DiffTrader.settings.test_settings import (

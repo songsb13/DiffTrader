@@ -23,11 +23,10 @@ from DiffTrader.utils.util import (
     get_redis,
     DecimalDecoder,
 )
-from DiffTrader.settings.base import RedisKey, SaiUrls, DEBUG, TraderConsts
+from DiffTrader.settings.base import RedisKey, SaiUrls, DEBUG, TraderConsts, SetLogger
 from DiffTrader.settings.test_settings import *
 from DiffTrader.settings.message import CommonMessage as CMsg
 from DiffTrader.settings.message import TradingMessage as TMsg
-from DiffTrader.utils.logger import SetLogger
 
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Process

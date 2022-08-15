@@ -8,8 +8,7 @@
         3. 결과 값은 monitoring process로 publish된다.
 """
 from DiffTrader.utils.util import subscribe_redis, publish_redis, get_exchanges, MessageControlMixin
-from DiffTrader.settings.base import RedisKey, DEBUG, TEST_USER, REDIS_SERVER
-from DiffTrader.utils.logger import SetLogger
+from DiffTrader.settings.base import RedisKey, DEBUG, TEST_USER, REDIS_SERVER, SetLogger
 from DiffTrader.settings.message import CommonMessage as CMsg
 
 import time
