@@ -8,7 +8,7 @@
         3. 결과 값은 monitoring process로 publish된다.
 """
 from DiffTrader.utils.util import subscribe_redis, publish_redis, get_exchanges, MessageControlMixin
-from DiffTrader.settings.base import RedisKey, DEBUG, TEST_USER, REDIS_SERVER, SetLogger
+from DiffTrader.settings.base import RedisKey, DEBUG, SetLogger
 from DiffTrader.settings.message import CommonMessage as CMsg
 
 import time
@@ -24,7 +24,7 @@ logging.config.dictConfig(logging_config)
 class Setter(MessageControlMixin):
     require_functions = {"get_balance", "get_deposit_addrs", "get_transaction_fee"}
 
-    def __init__(self, user, exchange_str):
+    def __init__(self, exchange_str):
         super(Setter, self).__init__()
         logging.info(CMsg.START)
 
@@ -33,7 +33,6 @@ class Setter(MessageControlMixin):
         self._pub_api_redis_key = RedisKey.ApiKey[exchange_str]["publish"]
         self._sub_api_redis_key = RedisKey.ApiKey[exchange_str]["subscribe"]
 
-        self._user = user
         self._exchange_str = exchange_str
 
         self._exchange = None
@@ -104,11 +103,11 @@ class Setter(MessageControlMixin):
 
 
 if __name__ == "__main__":
+    import sys
     try:
-        import sys
-        ff = Setter(TEST_USER, 'upbit')
-        print(ff)
+        filename, _exchange_str, *_ = sys.argv
+        logging.debug(f"{filename=}, {_exchange_str=}")
+        Setter(_exchange_str).run()
 
-        ff.run()
     except Exception as ex:
-        print(ex)
+        print('PROGRAMCLOSED', ex)

@@ -43,11 +43,11 @@ logging.config.dictConfig(logging_config)
 
 
 class Monitoring(object):
-    def __init__(self, user, primary_str, secondary_str):
+    def __init__(self, primary_str, secondary_str):
         logging.info(CMsg.START)
-        logging.debug(Msg.Debug.SET_MONITORING.format(primary_str, secondary_str, user))
+        logging.debug(Msg.Debug.SET_MONITORING.format(primary_str, secondary_str))
         super(Monitoring, self).__init__()
-        self._user = user
+        # self._user = user
 
         self._primary_str = primary_str
         self._secondary_str = secondary_str
@@ -397,7 +397,7 @@ class Monitoring(object):
                         "exchange_running_type": exchange_running_type,
                         "sai_symbol": sai_symbol,
                         "additional_information": {
-                            "user": self._user,
+                            # "user": self._user,
                             "real_difference": real_difference,
                             "created_time": datetime.datetime.now().strftime(
                                 "%Y-%m-%dT%H:%M:%S"
@@ -482,5 +482,11 @@ class Monitoring(object):
 
 
 if __name__ == "__main__":
-    st = Monitoring(TEST_USER, "Upbit", "Binance")
-    st.run()
+    import sys
+    try:
+        filename, _primary, _secondary, *_ = sys.argv
+        logging.debug(f"{filename=}, {_primary=}, {_secondary}")
+        Monitoring(_primary, _secondary).run()
+
+    except Exception as ex:
+        print('PROGRAMCLOSED', ex)
