@@ -81,8 +81,8 @@ class Setter(MessageControlMixin):
                 time.sleep(1)
                 continue
 
-            if DEBUG:
-                logging.info(total_data)
+            # if DEBUG:
+            #     logging.info(total_data)
 
             publish_redis(
                 self._exchange_str, total_data, use_decimal=True, logging=logging

@@ -212,7 +212,7 @@ def publish_redis(key, value, use_decimal=False, logging=None):
     """
     if logging:
         logging.debug(
-            CMsg.entrance_with_parameter(publish_redis, (key, value, use_decimal))
+            f"published by {key=}"
         )
 
     if use_decimal:

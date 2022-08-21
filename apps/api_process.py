@@ -68,7 +68,6 @@ class BaseAPIProcess(Process):
             if info and not isinstance(info, int):
                 info = json.loads(info, cls=DecimalDecoder)
                 if info["fn_name"] in on_waiting:
-                    print('onwaiting_function', info["fn_name"])
                     continue
 
                 if (
@@ -77,7 +76,6 @@ class BaseAPIProcess(Process):
                     and info["fn_name"] in lazy_cache
                 ):
                     refresh_time = time.time() + TraderConsts.DEFAULT_REFRESH_TIME
-                    print('lazy-data', info["fn_name"])
                     publish_redis(
                         self.sub_api_redis_key,
                         lazy_cache[info["fn_name"]],
