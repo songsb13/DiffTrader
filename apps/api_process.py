@@ -11,7 +11,7 @@ import json
 
 from DiffTrader.settings.base import APIPriority, TraderConsts, RedisKey, SetLogger
 from DiffTrader.utils.util import (
-    get_exchanges,
+    get_exchange_by_name,
     subscribe_redis,
     publish_redis,
     DecimalDecoder,
@@ -36,7 +36,7 @@ class BaseAPIProcess(Process):
         self._exchange_str = exchange_str
         self._wait_time = 10
         self.__api_container = self.__set_api_container()
-        logging.info("api_process를 실행합니다.")
+        logging.info(f"{exchange_str}, api_process를 실행합니다.")
 
     def __set_api_container(self):
         return [[] for _ in range(APIPriority.LENGTH)]
@@ -48,8 +48,7 @@ class BaseAPIProcess(Process):
         return int(time.time())
 
     def run(self) -> None:
-        exchanges = get_exchanges()
-        exchange = exchanges[self._exchange_str]
+        exchange = get_exchange_by_name(self._exchange_str)
         _api_subscriber = subscribe_redis(self.pub_api_redis_key)
 
         after_time = self.__get_seconds() + self._wait_time

@@ -301,8 +301,18 @@ def get_exchanges():
         obj["bithumb"] = BaseBithumb(
             CONFIG["bithumb"]["key"], CONFIG["bithumb"]["secret"]
         )
-
     return obj
+
+
+def get_exchange_by_name(exchange_str):
+    if exchange_str == "upbit":
+        return BaseUpbit(CONFIG["upbit"]["key"], CONFIG["upbit"]["secret"])
+    elif exchange_str == "binance":
+        return Binance(CONFIG["binance"]["key"], CONFIG["binance"]["secret"])
+    elif exchange_str == "bithumb":
+        return BaseBithumb(CONFIG["bithumb"]["key"], CONFIG["bithumb"]["secret"])
+    else:
+        return None
 
 
 def get_auto_withdrawal():

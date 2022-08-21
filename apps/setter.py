@@ -7,7 +7,7 @@
         2. 각 Process들은 각 api_process와 통신하며, 거래에 필요한 데이터들을 요청한다.
         3. 결과 값은 monitoring process로 publish된다.
 """
-from DiffTrader.utils.util import subscribe_redis, publish_redis, get_exchanges, MessageControlMixin
+from DiffTrader.utils.util import subscribe_redis, publish_redis, get_exchange_by_name, MessageControlMixin
 from DiffTrader.settings.base import RedisKey, DEBUG, SetLogger
 from DiffTrader.settings.message import CommonMessage as CMsg
 
@@ -39,8 +39,7 @@ class Setter(MessageControlMixin):
 
     def run(self) -> None:
         logging.debug(CMsg.ENTRANCE)
-        exchanges = get_exchanges()
-        self._exchange = exchanges[self._exchange_str]
+        self._exchange = get_exchange_by_name(self._exchange_str)
         api_subscriber = subscribe_redis(self._sub_api_redis_key)
 
         total_data = {**self._get_one_time_fresh_data()}
