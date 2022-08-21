@@ -296,7 +296,9 @@ def get_exchanges():
     if CONFIG["upbit"]["run"].upper() in AGREE_WORDS:
         obj["upbit"] = BaseUpbit(CONFIG["upbit"]["key"], CONFIG["upbit"]["secret"])
     if CONFIG["binance"]["run"].upper() in AGREE_WORDS:
-        obj["binance"] = Binance(CONFIG["binance"]["key"], CONFIG["binance"]["secret"])
+        binance = Binance(CONFIG["binance"]["key"], CONFIG["binance"]["secret"])
+        binance.setup()
+        obj["binance"] = binance
     if CONFIG["bithumb"]["run"].upper() in AGREE_WORDS:
         obj["bithumb"] = BaseBithumb(
             CONFIG["bithumb"]["key"], CONFIG["bithumb"]["secret"]
@@ -308,7 +310,9 @@ def get_exchange_by_name(exchange_str):
     if exchange_str == "upbit":
         return BaseUpbit(CONFIG["upbit"]["key"], CONFIG["upbit"]["secret"])
     elif exchange_str == "binance":
-        return Binance(CONFIG["binance"]["key"], CONFIG["binance"]["secret"])
+        binance = Binance(CONFIG["binance"]["key"], CONFIG["binance"]["secret"])
+        binance.setup()
+        return binance
     elif exchange_str == "bithumb":
         return BaseBithumb(CONFIG["bithumb"]["key"], CONFIG["bithumb"]["secret"])
     else:
