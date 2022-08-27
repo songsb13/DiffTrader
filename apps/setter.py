@@ -114,4 +114,5 @@ if __name__ == "__main__":
         Setter(_exchange_str).run()
 
     except Exception as ex:
+        logging.exception("FATAL")
         print('PROGRAMCLOSED', ex)

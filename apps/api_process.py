@@ -170,4 +170,5 @@ if __name__ == "__main__":
         elif exchange_str == 'binance':
             BinanceAPIProcess().run()
     except Exception as ex:
+        logging.exception("FATAL")
         print('PROGRAMCLOSED', ex)
