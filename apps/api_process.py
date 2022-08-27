@@ -36,6 +36,7 @@ class BaseAPIProcess(Process):
         self._exchange_str = exchange_str
         self._wait_time = 10
         self.__api_container = self.__set_api_container()
+        self._live_check = time.time() + 60
         logging.info(f"{exchange_str}, api_process를 실행합니다.")
 
     def __set_api_container(self):
@@ -60,6 +61,10 @@ class BaseAPIProcess(Process):
             결과 값을 전체 도메인에 broadcast하고, 결과 값 function_name 통해 각 도메인에서 데이터 판단을 진행한다.
             현재 사용 도메인: setter, withdrawal
             """
+            if time.time() >= self._live_check:
+                self._live_check = time.time() + 60
+                logging.debug(f"live check in api_process, {self._exchange_str}")
+
             message = _api_subscriber.get_message()
             if message:
                 info = message.get("data", 1)

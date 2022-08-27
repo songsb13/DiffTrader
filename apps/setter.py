@@ -36,6 +36,7 @@ class Setter(MessageControlMixin):
         self._exchange_str = exchange_str
 
         self._exchange = None
+        self._live_check = time.time() + 60
 
     def run(self) -> None:
         logging.debug(CMsg.ENTRANCE)
@@ -45,6 +46,10 @@ class Setter(MessageControlMixin):
         total_data = {**self._get_one_time_fresh_data()}
         init_update = set()
         while True:
+            if time.time() >= self._live_check:
+                self._live_check = time.time() + 60
+                logging.debug(f"live check in setter, {self._exchange_str}")
+
             self.publish_redis_to_api_process(
                 "get_deposit_addrs",
                 self._pub_api_redis_key,
