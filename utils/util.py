@@ -77,21 +77,22 @@ class MessageControlMixin(object):
             kwargs = {}
 
         if logging:
-            logging.debug(
-                CMsg.entrance_with_parameter(
-                    self.publish_redis_to_api_process,
-                    (
-                        fn_name,
-                        publish_key,
-                        logging,
-                        is_async,
-                        is_lazy,
-                        args,
-                        kwargs,
-                        api_priority,
-                    ),
-                )
-            )
+            pass
+            # logging.debug(
+            #     CMsg.entrance_with_parameter(
+            #         self.publish_redis_to_api_process,
+            #         (
+            #             fn_name,
+            #             publish_key,
+            #             logging,
+            #             is_async,
+            #             is_lazy,
+            #             args,
+            #             kwargs,
+            #             api_priority,
+            #         ),
+            #     )
+            # )
 
         publish_redis(
             publish_key,
@@ -211,9 +212,10 @@ def publish_redis(key, value, use_decimal=False, logging=None):
     value: dict
     """
     if logging:
-        logging.debug(
-            f"published by {key=}"
-        )
+        pass
+        # logging.debug(
+        #     f"published by {key=}"
+        # )
 
     if use_decimal:
         dict_to_json_value = json.dumps(value, cls=DecimalEncoder)
