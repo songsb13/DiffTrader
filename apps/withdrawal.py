@@ -15,10 +15,7 @@ import time
 import logging.config
 
 
-from DiffTrader.settings.message import (
-    WithdrawalMessage as Msg,
-    CommonMessage as CMsg
-)
+from DiffTrader.settings.message import WithdrawalMessage as Msg, CommonMessage as CMsg
 
 from DiffTrader.utils.util import (
     get_exchanges,
@@ -28,20 +25,14 @@ from DiffTrader.utils.util import (
     get_withdrawal_info,
     get_auto_withdrawal,
     CustomPickle,
-    subscribe_redis
+    subscribe_redis,
 )
-from DiffTrader.utils.logger import SetLogger
-
-from DiffTrader.settings.base import (
-    RedisKey,
-    SaiUrls,
-    PicklePath
-)
+from DiffTrader.settings.base import RedisKey, SaiUrls, PICKLE_WITHDRAW, SetLogger
 from DiffTrader.utils.util import MessageControlMixin
 
 from decimal import getcontext
 
-__file__ = 'monitoring.py'
+__file__ = "monitoring.py"
 
 
 logging_config = SetLogger.get_config_base_process(__file__)
@@ -52,9 +43,9 @@ getcontext().prec = 8
 
 
 class Withdrawal(MessageControlMixin):
-    name, name_kor = 'Withdrawal', '출금'
-    receive_type = 'withdrawal'
-    require_functions = ['get_balance', 'get_deposit_addrs', 'get_transaction_fee']
+    name, name_kor = "Withdrawal", "출금"
+    receive_type = "withdrawal"
+    require_functions = ["get_balance", "get_deposit_addrs", "get_transaction_fee"]
 
     def __init__(self, user, primary_str, secondary_str):
         logging.info(CMsg.START)
@@ -64,13 +55,21 @@ class Withdrawal(MessageControlMixin):
         self._primary_str = primary_str
         self._secondary_str = secondary_str
 
-        self._primary_pub_key = RedisKey.ApiKey[self._primary_str]['publish']['withdrawal']
-        self._secondary_pub_key = RedisKey.ApiKey[self._secondary_str]['publish']['withdrawal']
+        self._primary_pub_key = RedisKey.ApiKey[self._primary_str]["publish"][
+            "withdrawal"
+        ]
+        self._secondary_pub_key = RedisKey.ApiKey[self._secondary_str]["publish"][
+            "withdrawal"
+        ]
 
-        self._primary_sub_key = RedisKey.ApiKey[self._primary_str]['subscribe']['withdrawal']
-        self._secondary_sub_key = RedisKey.ApiKey[self._secondary_str]['subscribe']['withdrawal']
+        self._primary_sub_key = RedisKey.ApiKey[self._primary_str]["subscribe"][
+            "withdrawal"
+        ]
+        self._secondary_sub_key = RedisKey.ApiKey[self._secondary_str]["subscribe"][
+            "withdrawal"
+        ]
 
-        self._pickle = CustomPickle(PicklePath.WITHDRAWAL)
+        self._pickle = CustomPickle(PICKLE_WITHDRAW)
         self._pickle.load()
 
         self._withdrew_dict = dict() if self._pickle.obj is None else self._pickle.obj
@@ -84,20 +83,28 @@ class Withdrawal(MessageControlMixin):
 
     def run(self):
         """
-            1. 정
+        1. 정
         """
         exchange_dict = get_exchanges()
         subscriber_dict = {
             self._primary_str: subscribe_redis(self._primary_sub_key),
-            self._secondary_str: subscribe_redis(self._secondary_sub_key)
+            self._secondary_str: subscribe_redis(self._secondary_sub_key),
         }
         user_withdrawal_info = get_withdrawal_info()
 
-        self.publish_redis_to_api_process('get_balance', self._primary_pub_key, is_lazy=True)
-        self.publish_redis_to_api_process('get_transaction_fee', self._primary_pub_key, is_lazy=True)
+        self.publish_redis_to_api_process(
+            "get_balance", self._primary_pub_key, is_lazy=True
+        )
+        self.publish_redis_to_api_process(
+            "get_transaction_fee", self._primary_pub_key, is_lazy=True
+        )
 
-        self.publish_redis_to_api_process('get_balance', self._secondary_pub_key, is_lazy=True)
-        self.publish_redis_to_api_process('get_transaction_fee', self._secondary_pub_key, is_lazy=True)
+        self.publish_redis_to_api_process(
+            "get_balance", self._secondary_pub_key, is_lazy=True
+        )
+        self.publish_redis_to_api_process(
+            "get_transaction_fee", self._secondary_pub_key, is_lazy=True
+        )
 
         while True:
             trading_information = get_redis(RedisKey.TradingInformation)
@@ -109,8 +116,10 @@ class Withdrawal(MessageControlMixin):
             if not trading_information:
                 continue
 
-            from_str, to_str = (trading_information['from_exchange']['name'],
-                                trading_information['to_exchange']['name'])
+            from_str, to_str = (
+                trading_information["from_exchange"]["name"],
+                trading_information["to_exchange"]["name"],
+            )
 
             if not self._is_profit_subscribe_data({from_str, to_str}):
                 time.sleep(5)
@@ -130,16 +139,12 @@ class Withdrawal(MessageControlMixin):
                 continue
 
             subscribe_info = {
-                'from': {
-                    'exchange': from_exchange,
-                    **from_contents
-                },
-                'to': {
-                    'exchange': to_exchange,
-                    **to_contents
-                }
+                "from": {"exchange": from_exchange, **from_contents},
+                "to": {"exchange": to_exchange, **to_contents},
             }
-            need_to_withdrawal_dict = self.check_coins_need_to_withdrawal(subscribe_info, user_withdrawal_info)
+            need_to_withdrawal_dict = self.check_coins_need_to_withdrawal(
+                subscribe_info, user_withdrawal_info
+            )
             if need_to_withdrawal_dict:
                 for coin, info in need_to_withdrawal_dict.items():
                     if coin in self._withdrew_dict.keys():
@@ -147,21 +152,23 @@ class Withdrawal(MessageControlMixin):
                         continue
                     if not get_auto_withdrawal():
                         logging.info(Msg.Info.MANUAL_WITHDRAWAL)
-                        logging.info(Msg.Info.MANUAL_INFO.format(
-                            info['exchange'].name,
-                            info['coin'],
-                            info['send_amount'],
-                            info['to_address'],
-                            info['tag']
-                        ))
+                        logging.info(
+                            Msg.Info.MANUAL_INFO.format(
+                                info["exchange"].name,
+                                info["coin"],
+                                info["send_amount"],
+                                info["to_address"],
+                                info["tag"],
+                            )
+                        )
                         continue
 
-                    with FunctionExecutor(info['exchange'].withdraw) as executor:
+                    with FunctionExecutor(info["exchange"].withdraw) as executor:
                         result = executor.loop_executor(
-                            info['coin'],
-                            info['send_amount'],
-                            info['to_address'],
-                            info['tag']
+                            info["coin"],
+                            info["send_amount"],
+                            info["to_address"],
+                            info["tag"],
                         )
 
                         if not result.success:
@@ -170,8 +177,8 @@ class Withdrawal(MessageControlMixin):
                         else:
                             logging.info(Msg.Info.REQUEST_SUCCESS)
                             self._withdrew_dict[coin] = {
-                                'execute_info': info,
-                                'result_data': result.data
+                                "execute_info": info,
+                                "result_data": result.data,
                             }
                             self.save_pickle_withdrew_dict()
 
@@ -179,60 +186,74 @@ class Withdrawal(MessageControlMixin):
         return {self._primary_str, self._secondary_str} == string_set
 
     def get_subscriber_api_contents(self, subscriber):
-        logging.debug(CMsg.entrance_with_parameter(self.get_subscribe_result, (subscriber,)))
+        logging.debug(
+            CMsg.entrance_with_parameter(self.get_subscribe_result, (subscriber,))
+        )
         result = self.get_subscribe_result(subscriber)
 
         if not result:
             logging.warning(result.message)
             return dict()
 
-        balance = result.data.get('get_balance')
-        transaction_fee = result.data.get('transaction_fee')
+        balance = result.data.get("get_balance")
+        transaction_fee = result.data.get("transaction_fee")
 
         if balance is None or transaction_fee is None:
             return dict()
 
-        return {'balance': balance, 'transaction_fee': transaction_fee}
+        return {"balance": balance, "transaction_fee": transaction_fee}
 
     def check_coins_need_to_withdrawal(self, subscribe_info, withdrawal_info):
-        logging.debug(CMsg.entrance_with_parameter(
-            self.check_coins_need_to_withdrawal,
-            (subscribe_info, withdrawal_info)
-        ))
-        from_info = subscribe_info['from']
-        to_info = subscribe_info['to']
+        logging.debug(
+            CMsg.entrance_with_parameter(
+                self.check_coins_need_to_withdrawal, (subscribe_info, withdrawal_info)
+            )
+        )
+        from_info = subscribe_info["from"]
+        to_info = subscribe_info["to"]
 
-        intersection = set(from_info['balance'].keys()).intersection(list(to_info['balance'].keys()))
+        intersection = set(from_info["balance"].keys()).intersection(
+            list(to_info["balance"].keys())
+        )
         need_to_withdrawal_dict = dict()
         for coin in intersection:
-            from_amount, to_amount = ((from_info['balance'][coin] - from_info['transaction_fee'][coin]),
-                                      (to_info['balance'][coin] - to_info['transaction_fee'][coin]))
+            from_amount, to_amount = (
+                (from_info["balance"][coin] - from_info["transaction_fee"][coin]),
+                (to_info["balance"][coin] - to_info["transaction_fee"][coin]),
+            )
             difference_amount = from_amount - to_amount
 
-            send_exchange, min_amount = (from_info['exchange'], from_amount) if difference_amount > 0 \
-                else (to_info['exchange'], to_amount)
+            send_exchange, min_amount = (
+                (from_info["exchange"], from_amount)
+                if difference_amount > 0
+                else (to_info["exchange"], to_amount)
+            )
 
             difference_percent = (abs(difference_amount) / to_amount) * 100
 
-            if difference_percent >= withdrawal_info['balance_withdrawal_percent']:
-                need_to_withdrawal_dict.update({coin: {
-                    'send_exchange': send_exchange,
-                    'send_amount': difference_amount / 2
-                }})
+            if difference_percent >= withdrawal_info["balance_withdrawal_percent"]:
+                need_to_withdrawal_dict.update(
+                    {
+                        coin: {
+                            "send_exchange": send_exchange,
+                            "send_amount": difference_amount / 2,
+                        }
+                    }
+                )
         logging.debug(Msg.Debug.NEED_TO_WITHDRAWAL_DICT.format(need_to_withdrawal_dict))
         return need_to_withdrawal_dict
 
     def check_withdrawal_is_completed(self):
         copied_withdrew_dict = copy.deepcopy(self._withdrew_dict)
         for coin, info in copied_withdrew_dict:
-            check_result = info['execute_info']['exchange'].is_withdrawal_completed(
-                coin, info['result_data']['sai_id']
+            check_result = info["execute_info"]["exchange"].is_withdrawal_completed(
+                coin, info["result_data"]["sai_id"]
             )
 
             if check_result.success:
                 send_information = {
-                    'full_url_path': SaiUrls.BASE + SaiUrls.WITHDRAWAL,
-                    **check_result.data
+                    "full_url_path": SaiUrls.BASE + SaiUrls.WITHDRAWAL,
+                    **check_result.data,
                 }
                 set_redis(RedisKey.SendInformation, send_information)
                 logging.debug(Msg.Debug.COMPLETED)
@@ -246,31 +267,31 @@ class Withdrawal(MessageControlMixin):
 
     def start_withdrawal(self, info):
         """
-            exchange: Exchange object
-            coin: coin name, BTC, ETH, XRP and etc..
+        exchange: Exchange object
+        coin: coin name, BTC, ETH, XRP and etc..
         """
         # exchange, coin, send_amount, to_address, tag=None
-        with FunctionExecutor(info['exchange'].withdraw) as executor:
+        with FunctionExecutor(info["exchange"].withdraw) as executor:
             result = executor.loop_executor(
-                info['coin'],
-                info['send_amount'],
-                info['to_address'],
-                info['tag']
+                info["coin"], info["send_amount"], info["to_address"], info["tag"]
             )
 
             if not result.success:
                 return None
 
         while True:
-            check_result = info['exchange'].is_withdrawal_completed(info['coin'], result.data['sai_id'])
+            check_result = info["exchange"].is_withdrawal_completed(
+                info["coin"], result.data["sai_id"]
+            )
 
             if check_result.success:
                 send_information = {
-                    'full_url_path': SaiUrls.BASE + SaiUrls.WITHDRAWAL,
-                    **check_result.data
+                    "full_url_path": SaiUrls.BASE + SaiUrls.WITHDRAWAL,
+                    **check_result.data,
                 }
                 set_redis(RedisKey.SendInformation, send_information)
                 return
-            logging.debug(Msg.Debug.ON_WITHDRAW.format(info['exchange'].name, info['coin']))
+            logging.debug(
+                Msg.Debug.ON_WITHDRAW.format(info["exchange"].name, info["coin"])
+            )
             time.sleep(60)
-

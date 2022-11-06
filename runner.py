@@ -1,17 +1,21 @@
-from DiffTrader.apps.monitoring import LogTest as mLog
-from DiffTrader.apps.setter import LogTest as sLog
+import os
 
-import time
+TEST_EXCHANGES = ["upbit", "binance"]
+START_AT = os.path.dirname(os.path.abspath(__file__)) + "/DiffTrader/apps"
 
 
-def run_for_log_test():
-    t1 = mLog()
-    t2 = sLog()
-    while True:
-        t1.logt()
-        t2.logt()
-        time.sleep(1)
+def run_file(filename):
+    for exchange in TEST_EXCHANGES:
+        os.system(f"python {START_AT}/{filename} {exchange} &")
+
+
+def run_monitoring():
+    for n, primary in enumerate(TEST_EXCHANGES):
+        for secondary in TEST_EXCHANGES[n:]:
+            os.system(f"python {START_AT}/monitoring.py {primary} {secondary} &")
 
 
 if __name__ == '__main__':
-    run_for_log_test()
+    run_file("api_process.py")
+    run_file("setter.py")
+    run_monitoring()
